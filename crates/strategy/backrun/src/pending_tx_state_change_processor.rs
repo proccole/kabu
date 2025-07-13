@@ -1,4 +1,3 @@
-use crate::kabu_data_types::KabuTx;
 use alloy_eips::BlockNumberOrTag;
 use alloy_network::Network;
 use alloy_primitives::{Address, BlockNumber, TxHash, U256};
@@ -20,7 +19,7 @@ use kabu_core_actors::{subscribe, Accessor, Actor, ActorResult, Broadcaster, Con
 use kabu_core_actors_macros::{Accessor, Consumer, Producer};
 use kabu_core_blockchain::{Blockchain, BlockchainState, Strategy};
 use kabu_node_debug_provider::DebugProviderExt;
-use kabu_types_blockchain::{debug_trace_call_diff, GethStateUpdateVec, KabuDataTypesEVM, LoomTx, Mempool, TRACING_CALL_OPTS};
+use kabu_types_blockchain::{debug_trace_call_diff, GethStateUpdateVec, KabuDataTypesEVM, KabuTx, Mempool, TRACING_CALL_OPTS};
 use kabu_types_entities::required_state::{accounts_vec_len, storage_vec_len};
 use kabu_types_entities::{LatestBlock, Market, MarketState};
 use kabu_types_events::{MarketEvents, MempoolEvents, StateUpdateEvent};

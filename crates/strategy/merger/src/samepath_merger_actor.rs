@@ -1,4 +1,3 @@
-use crate::kabu_data_types::KabuTx;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::ops::Deref;
@@ -24,7 +23,7 @@ use kabu_core_blockchain::{Blockchain, BlockchainState, Strategy};
 use kabu_evm_db::{DatabaseHelpers, KabuDBError};
 use kabu_evm_utils::{evm_dyn_transact, KabuEVMWrapper};
 use kabu_node_debug_provider::DebugProviderExt;
-use kabu_types_blockchain::{debug_trace_call_pre_state, GethStateUpdate, GethStateUpdateVec, KabuDataTypes, LoomTx, TRACING_CALL_OPTS};
+use kabu_types_blockchain::{debug_trace_call_pre_state, GethStateUpdate, GethStateUpdateVec, KabuDataTypes, KabuTx, TRACING_CALL_OPTS};
 use kabu_types_entities::{DataFetcher, FetchState, LatestBlock, MarketState, Swap};
 use kabu_types_events::{MarketEvents, MessageSwapCompose, SwapComposeData, SwapComposeMessage, TxComposeData};
 

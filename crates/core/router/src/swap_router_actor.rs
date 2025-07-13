@@ -1,4 +1,3 @@
-use crate::kabu_data_types::KabuTx;
 use eyre::{eyre, Result};
 use kabu_core_actors::{Accessor, Actor, ActorResult, Broadcaster, Consumer, Producer, SharedState, WorkerResult};
 use kabu_core_actors_macros::{Accessor, Consumer, Producer};

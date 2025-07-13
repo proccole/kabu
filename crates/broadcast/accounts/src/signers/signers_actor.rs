@@ -1,4 +1,3 @@
-use crate::kabu_data_types::KabuTx;
 use alloy_primitives::Bytes;
 use eyre::{eyre, Result};
 use tokio::sync::broadcast::error::RecvError;
@@ -8,7 +7,7 @@ use tracing::{error, info};
 use kabu_core_actors::{Actor, ActorResult, Broadcaster, Consumer, Producer, WorkerResult};
 use kabu_core_actors_macros::{Accessor, Consumer, Producer};
 use kabu_core_blockchain::Blockchain;
-use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEthereum, LoomTx};
+use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEthereum, KabuTx};
 use kabu_types_events::{MessageTxCompose, RlpState, TxComposeData, TxComposeMessageType, TxState};
 
 async fn sign_task<LDT: KabuDataTypes>(

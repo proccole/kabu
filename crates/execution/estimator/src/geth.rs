@@ -1,4 +1,3 @@
-use crate::kabu_data_types::KabuTx;
 use revm::DatabaseRef;
 use std::sync::Arc;
 
@@ -19,7 +18,7 @@ use kabu_types_entities::{Swap, SwapEncoder};
 use kabu_broadcast_flashbots::Flashbots;
 use kabu_core_actors::{subscribe, Actor, ActorResult, Broadcaster, Consumer, Producer, WorkerResult};
 use kabu_core_actors_macros::{Consumer, Producer};
-use kabu_types_blockchain::LoomTx;
+use kabu_types_blockchain::KabuTx;
 use kabu_types_events::{MessageSwapCompose, SwapComposeData, SwapComposeMessage, TxComposeData, TxState};
 
 async fn estimator_task<P: Provider<Ethereum> + Send + Sync + Clone + 'static, DB: DatabaseRef + Send + Sync + Clone>(
@@ -81,7 +80,7 @@ async fn estimator_task<P: Provider<Ethereum> + Send + Sync + Clone + 'static, D
 
     //let typed_tx = tx_request.clone().into();
     let tx = tx_signer.sign(tx_request.clone()).await?;
-    let tx_hash = LoomTx::get_tx_hash(&tx);
+    let tx_hash = KabuTx::get_tx_hash(&tx);
     let tx_rlp = tx.encode();
 
     simulation_bundle.push(Bytes::from(tx_rlp));

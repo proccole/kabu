@@ -1,4 +1,3 @@
-use crate::kabu_data_types::KabuTx;
 use crate::EntityAddress;
 use alloy_consensus::transaction::Recovered;
 use alloy_consensus::{SignableTransaction, TxEnvelope};
@@ -161,7 +160,7 @@ mod tests {
     use alloy_primitives::{address, TxHash};
     use alloy_rpc_types::TransactionRequest;
     use eyre::Result;
-    use kabu_types_blockchain::LoomTx;
+    use kabu_types_blockchain::KabuTx;
     // TxSigner tests
 
     #[test]

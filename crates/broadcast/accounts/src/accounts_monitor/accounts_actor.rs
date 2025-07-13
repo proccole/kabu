@@ -1,4 +1,3 @@
-use crate::kabu_data_types::KabuTx;
 use alloy_consensus::Transaction;
 use alloy_eips::{BlockId, BlockNumberOrTag};
 use alloy_network::Network;
@@ -11,7 +10,7 @@ use kabu_core_actors::{Accessor, Actor, ActorResult, Broadcaster, Consumer, Shar
 use kabu_core_actors_macros::{Accessor, Consumer};
 use kabu_core_blockchain::Blockchain;
 use kabu_defi_abi::IERC20::IERC20Events;
-use kabu_types_blockchain::{KabuBlock, KabuDataTypes, LoomTx};
+use kabu_types_blockchain::{KabuBlock, KabuDataTypes, KabuTx};
 use kabu_types_entities::{AccountNonceAndBalanceState, EntityAddress, LatestBlock};
 use kabu_types_events::MarketEvents;
 use std::marker::PhantomData;

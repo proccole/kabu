@@ -1,4 +1,3 @@
-use crate::kabu_data_types::KabuTx;
 use alloy_primitives::BlockNumber;
 use chrono::{Duration, Utc};
 use eyre::eyre;
@@ -10,7 +9,7 @@ use kabu_core_actors::{run_sync, subscribe, Accessor, Actor, ActorResult, Broadc
 use kabu_core_actors_macros::{Accessor, Consumer, Producer};
 use kabu_core_blockchain::Blockchain;
 use kabu_types_blockchain::{ChainParameters, Mempool, MempoolTx};
-use kabu_types_blockchain::{KabuBlock, KabuDataTypes, KabuDataTypesEthereum, KabuHeader, LoomTx};
+use kabu_types_blockchain::{KabuBlock, KabuDataTypes, KabuDataTypesEthereum, KabuHeader, KabuTx};
 use kabu_types_events::{MempoolEvents, MessageBlock, MessageBlockHeader, MessageMempoolDataUpdate};
 
 pub async fn new_mempool_worker<LDT: KabuDataTypes>(
