@@ -27,6 +27,9 @@ Kabu is a MEV bot framework, currently under heavy development.
 - We reuse as much as possible from reth, alloy and revm
 - We keep as close as possible to the architecture of reth
 
+## Kabu contract
+Find the Kabu contract [here](https://github.com/cakevm/kabu-contract).
+
 ## Why "Kabu"?
 
 In Japanese, *kabu* (株) means "stock" — both in the financial sense and as a metaphor for growth.  
