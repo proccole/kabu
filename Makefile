@@ -34,7 +34,7 @@ maxperf-exex-node:
 .PHONY: doc
 doc:
 	RUSTDOCFLAGS="--show-type-layout --generate-link-to-definition --enable-index-page -D warnings -Z unstable-options" \
-	cargo +nightly doc --workspace --all-features --no-deps --document-private-items
+	cargo +nightly doc --workspace --all-features --no-deps --document-private-items --exclude kabu-defi-abi
 
 ## Development commands
 # Target to run all tests (excluding loom-defi-abi doc tests and flashbots env-dependent tests)

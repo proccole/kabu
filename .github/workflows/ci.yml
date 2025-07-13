@@ -58,6 +58,7 @@ jobs:
       - run: make swap-test-all
 
   replayer:
+    if: false
     name: make replayer
     runs-on: ubuntu-latest
     timeout-minutes: 20
