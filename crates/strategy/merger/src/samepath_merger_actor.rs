@@ -4,16 +4,14 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use alloy_eips::BlockNumberOrTag;
-use alloy_network::{Network, TransactionResponse};
+use alloy_network::Network;
 use alloy_primitives::{Address, TxHash, U256};
 use alloy_provider::Provider;
 use alloy_rpc_types::state::StateOverride;
-use alloy_rpc_types::{BlockOverrides, Header, Transaction, TransactionRequest};
+use alloy_rpc_types::{BlockOverrides, Transaction, TransactionRequest};
 use alloy_rpc_types_trace::geth::GethDebugTracingCallOptions;
-use eyre::{eyre, ErrReport, Result};
+use eyre::{eyre, Result};
 use lazy_static::lazy_static;
-use loom_evm_utils::LoomExecuteEvm;
-use revm::database::CacheDB;
 use revm::{Database, DatabaseCommit, DatabaseRef};
 use tokio::sync::broadcast::error::RecvError;
 use tokio::sync::RwLock;
@@ -23,7 +21,7 @@ use loom_core_actors::{subscribe, Accessor, Actor, ActorResult, Broadcaster, Con
 use loom_core_actors_macros::{Accessor, Consumer, Producer};
 use loom_core_blockchain::{Blockchain, BlockchainState, Strategy};
 use loom_evm_db::{DatabaseHelpers, LoomDBError};
-use loom_evm_utils::{evm_dyn_transact, evm_transact, LoomEVMWrapper};
+use loom_evm_utils::{evm_dyn_transact, LoomEVMWrapper};
 use loom_node_debug_provider::DebugProviderExt;
 use loom_types_blockchain::{debug_trace_call_pre_state, GethStateUpdate, GethStateUpdateVec, LoomDataTypes, LoomTx, TRACING_CALL_OPTS};
 use loom_types_entities::{DataFetcher, FetchState, LatestBlock, MarketState, Swap};

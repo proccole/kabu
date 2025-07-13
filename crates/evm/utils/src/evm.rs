@@ -78,6 +78,7 @@ pub trait LoomExecuteEvm: ExecuteEvm<Output = LoomExecuteOutputType> + ContextSe
     fn get_db_ref(&self) -> &dyn DatabaseRef<Error = LoomDBError>;
 }
 
+#[allow(type_alias_bounds)]
 pub type LoomEVMType<DB: DatabaseRef<Error = LoomDBError> + Database<Error = LoomDBError> + DatabaseCommit> =
     MainnetEvm<Context<BlockEnv, TxEnv, CfgEnv, DB, JournaledState<DB>>, ()>;
 
@@ -183,13 +184,13 @@ impl EVMParserHelper {
 
     pub fn revert_bytes_to_string(bytes: &Bytes) -> String {
         if bytes.len() < 4 {
-            return format!("{:?}", bytes);
+            return format!("{bytes:?}");
         }
         let error_data = &bytes[4..];
 
         match String::from_utf8(error_data.to_vec()) {
             Ok(s) => s.replace(char::from(0), "").trim().to_string(),
-            Err(_) => format!("{:?}", bytes),
+            Err(_) => format!("{bytes:?}"),
         }
     }
 
@@ -209,6 +210,7 @@ impl EVMParserHelper {
         }
     }
 
+    #[allow(clippy::result_large_err)]
     #[allow(dead_code)]
     fn parse_geth_trace_execution_result(
         execution_result: ExecutionResult,

@@ -5952,6 +5952,8 @@ dependencies = [
  "futures",
  "influxdb",
  "loom 0.6.0",
+ "loom-evm-utils",
+ "loom-types-blockchain",
  "num_cpus",
  "rand 0.8.5",
  "rayon",
@@ -6347,6 +6349,7 @@ dependencies = [
  "loom-evm-db",
  "loom-execution-multicaller",
  "loom-node-actor-config",
+ "loom-types-blockchain",
  "loom-types-events",
  "tokio",
 ]

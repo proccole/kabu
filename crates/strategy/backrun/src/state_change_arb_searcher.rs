@@ -21,7 +21,7 @@ use loom_core_actors_macros::{Accessor, Consumer, Producer};
 use loom_core_blockchain::{Blockchain, Strategy};
 use loom_evm_db::{DatabaseHelpers, LoomDBError};
 use loom_evm_utils::LoomEVMWrapper;
-use loom_types_blockchain::{GethStateUpdateVec, LoomDataTypes, LoomDataTypesEVM};
+use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEVM};
 use loom_types_entities::strategy_config::StrategyConfig;
 use loom_types_entities::{Market, PoolWrapper, Swap, SwapDirection, SwapError, SwapLine, SwapPath};
 use loom_types_events::{
@@ -49,6 +49,7 @@ async fn state_change_arb_searcher_task<
     let start_time_utc = chrono::Utc::now();
 
     let start_time = std::time::Instant::now();
+    #[allow(clippy::mutable_key_type)]
     let mut swap_path_set: HashSet<SwapPath> = HashSet::new();
 
     let market_guard_read = market.read().await;
@@ -57,16 +58,6 @@ async fn state_change_arb_searcher_task<
     for (pool, v) in state_update_event.directions().iter() {
         let pool_paths: Vec<SwapPath> = match market_guard_read.get_pool_paths(&pool.get_pool_id()) {
             Some(paths) => {
-                let pool_paths = paths
-                    .into_iter()
-                    .enumerate()
-                    .filter(|(idx, swap_path)| {
-                        *idx < 100 || swap_path.score.unwrap_or_default() > 0.97
-                        //&& !swap_path.pools.iter().any(|pool| market_guard_read.is_pool_disabled(&pool.get_pool_id()))
-                    })
-                    .map(|(_, swap_path)| swap_path)
-                    .collect::<Vec<_>>();
-
                 // let pool_paths = pool_paths
                 //     .into_iter()
                 //     .enumerate()
@@ -74,7 +65,15 @@ async fn state_change_arb_searcher_task<
                 //     .map(|(idx, path)| path)
                 //     .collect::<Vec<_>>();
                 // pool_paths
-                pool_paths
+                paths
+                    .into_iter()
+                    .enumerate()
+                    .filter(|(idx, swap_path)| {
+                        *idx < 100 || swap_path.score.unwrap_or_default() > 0.97
+                        //&& !swap_path.pools.iter().any(|pool| market_guard_read.is_pool_disabled(&pool.get_pool_id()))
+                    })
+                    .map(|(_, swap_path)| swap_path)
+                    .collect::<Vec<_>>()
             }
 
             None => {
@@ -114,7 +113,7 @@ async fn state_change_arb_searcher_task<
 
     //let evm = Arc::new(LoomEVMWrapper::new(market_state_clone));
 
-    let tasks = tokio::task::spawn(async move {
+    let _tasks = tokio::task::spawn(async move {
         thread_pool.install(|| {
             swap_path_vec.into_par_iter().for_each_with((&swap_path_tx, &market_state_clone, &next_header), |req, item| {
                 let mut mut_item: SwapLine = SwapLine { path: item, ..Default::default() };

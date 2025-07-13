@@ -1,7 +1,6 @@
-use alloy_primitives::{Address, U256};
+use alloy_primitives::Address;
 use alloy_rpc_types::Header;
-use eyre::{eyre, ErrReport, Result};
-use revm::context::BlockEnv;
+use eyre::{eyre, Result};
 use revm::{Database, DatabaseCommit, DatabaseRef};
 use tokio::sync::broadcast::error::RecvError;
 use tracing::{debug, error, info};
@@ -10,9 +9,7 @@ use loom_core_actors::{subscribe, Accessor, Actor, ActorResult, Broadcaster, Con
 use loom_core_actors_macros::{Accessor, Consumer, Producer};
 use loom_core_blockchain::{Blockchain, Strategy};
 use loom_evm_db::LoomDBError;
-use loom_evm_utils::evm_env::header_to_block_env;
 use loom_evm_utils::LoomEVMWrapper;
-use loom_types_blockchain::LoomHeader;
 use loom_types_entities::{LatestBlock, Swap, SwapStep};
 use loom_types_events::{MarketEvents, MessageSwapCompose, SwapComposeData, SwapComposeMessage};
 

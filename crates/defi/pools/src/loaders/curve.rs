@@ -55,7 +55,7 @@ where
         })
     }
 
-    fn fetch_pool_by_id_from_evm(&self, _pool_id: EntityAddress, evm: &mut dyn LoomExecuteEvm) -> eyre::Result<PoolWrapper> {
+    fn fetch_pool_by_id_from_evm(&self, _pool_id: EntityAddress, _evm: &mut dyn LoomExecuteEvm) -> eyre::Result<PoolWrapper> {
         Err(eyre!("NOT_IMPLEMENTED"))
     }
 

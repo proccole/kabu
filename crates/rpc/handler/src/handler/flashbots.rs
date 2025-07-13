@@ -1,5 +1,4 @@
 use crate::dto::flashbots::{BundleRequest, BundleResponse, SendBundleResponse};
-use alloy_primitives::{hex, keccak256, U256};
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::Json;
@@ -7,7 +6,7 @@ use loom_rpc_state::AppState;
 use loom_types_blockchain::ChainParameters;
 use revm::{DatabaseCommit, DatabaseRef};
 use std::fmt::Debug;
-use tracing::{error, info};
+use tracing::info;
 
 pub async fn flashbots<DB>(
     State(app_state): State<AppState<DB>>,
@@ -31,8 +30,8 @@ where
                 format!("Target block is target_block={} <= last_block={}", target_block, last_block_header.number),
             ));
         }
-        let next_block_timestamp = last_block_header.timestamp + 12 * (target_block - last_block_header.number);
-        let next_block_base_fee = ChainParameters::ethereum().calc_next_block_base_fee(
+        let _next_block_timestamp = last_block_header.timestamp + 12 * (target_block - last_block_header.number);
+        let _next_block_base_fee = ChainParameters::ethereum().calc_next_block_base_fee(
             last_block_header.gas_used,
             last_block_header.gas_limit,
             last_block_header.base_fee_per_gas.unwrap_or_default(),

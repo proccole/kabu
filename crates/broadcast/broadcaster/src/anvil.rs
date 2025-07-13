@@ -1,5 +1,4 @@
 use alloy_eips::BlockNumberOrTag;
-use alloy_network::primitives::BlockTransactionsKind;
 use alloy_network::{Ethereum, Network};
 use alloy_provider::Provider;
 use alloy_rpc_types::BlockTransactions;

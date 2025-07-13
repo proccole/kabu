@@ -441,18 +441,19 @@ impl PoolAbiEncoder for MaverickAbiSwapEncoder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloy::providers::network::primitives::BlockTransactionsKind;
     use alloy::rpc::types::BlockNumberOrTag;
     use loom_defi_abi::maverick::IMaverickQuoter::IMaverickQuoterInstance;
     use loom_evm_db::LoomDBType;
     use loom_evm_utils::LoomEVMWrapper;
     use loom_node_debug_provider::AnvilDebugProviderFactory;
+    use loom_types_blockchain::LoomDataTypesEthereum;
     use loom_types_entities::required_state::RequiredStateReader;
-    use loom_types_entities::MarketState;
+    use revm::database::CacheDB;
     use std::env;
     use tracing::debug;
 
-    #[tokio::test]
+    #[ignore]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn test_pool() -> Result<()> {
         let _ = env_logger::try_init_from_env(env_logger::Env::default().default_filter_or("info,defi_pools=off"));
 
@@ -466,16 +467,17 @@ mod tests {
 
         let state_required = pool.get_state_required()?;
 
-        let state_required = RequiredStateReader::fetch_calls_and_slots(client.clone(), state_required, None).await?;
+        let state_required =
+            RequiredStateReader::<LoomDataTypesEthereum>::fetch_calls_and_slots(client.clone(), state_required, Some(20045799)).await?;
         debug!("{:?}", state_required);
 
+        let block_number = 20045799u64;
+
+        use loom_types_entities::MarketState;
         let mut market_state = MarketState::new(LoomDBType::default());
         market_state.state_db.apply_geth_update(state_required);
-
-        let block_number = client.get_block_number().await?;
         let block = client.get_block_by_number(BlockNumberOrTag::Number(block_number)).await?.unwrap();
-
-        let mut evm = LoomEVMWrapper::new(market_state.state_db.clone()).with_header(&block.header);
+        let mut evm = LoomEVMWrapper::new(CacheDB::new(market_state.state_db.clone())).with_header(&block.header);
 
         let amount = U256::from(pool.liquidity1 / U256::from(1000));
 

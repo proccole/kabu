@@ -47,7 +47,7 @@ impl SwapAmountType {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct SwapLine {
     pub path: SwapPath,
     /// Input token amount of the swap
@@ -60,19 +60,6 @@ pub struct SwapLine {
     pub swap_to: Option<EntityAddress>,
     /// Gas used for the swap
     pub gas_used: Option<u64>,
-}
-
-impl Default for SwapLine {
-    fn default() -> Self {
-        SwapLine {
-            path: SwapPath::default(),
-            amount_in: SwapAmountType::default(),
-            amount_out: SwapAmountType::default(),
-            calculation_results: Vec::default(),
-            swap_to: None,
-            gas_used: None,
-        }
-    }
 }
 
 impl fmt::Display for SwapLine {
@@ -95,7 +82,7 @@ impl fmt::Display for SwapLine {
         let amount_in = match self.amount_in {
             SwapAmountType::Set(x) => match token_in {
                 Some(t) => format!("{:?}", t.to_float(x)),
-                _ => format!("{}", x),
+                _ => format!("{x}"),
             },
             _ => {
                 format!("{:?}", self.amount_in)
@@ -104,7 +91,7 @@ impl fmt::Display for SwapLine {
         let amount_out = match self.amount_out {
             SwapAmountType::Set(x) => match token_out {
                 Some(t) => format!("{:?}", t.to_float(x)),
-                _ => format!("{}", x),
+                _ => format!("{x}"),
             },
             _ => {
                 format!("{:?}", self.amount_out)
@@ -112,7 +99,7 @@ impl fmt::Display for SwapLine {
         };
 
         let calculation_results =
-            self.calculation_results.iter().map(|calculation_result| format!("{}", calculation_result)).collect::<Vec<String>>().join(", ");
+            self.calculation_results.iter().map(|calculation_result| format!("{calculation_result}")).collect::<Vec<String>>().join(", ");
 
         write!(
             f,
@@ -313,6 +300,7 @@ impl SwapLine {
     const MIN_VALID_OUT_AMOUNT: U256 = U256::from_limbs([0x100, 0, 0, 0]);
 
     /// Calculate the out amount for the swap line for a given in amount
+    #[allow(clippy::result_large_err)]
     pub fn calculate_with_in_amount(
         &self,
         evm: &mut dyn LoomExecuteEvm,
@@ -371,6 +359,7 @@ impl SwapLine {
     }
 
     /// Calculate the in amount for the swap line for a given out amount
+    #[allow(clippy::result_large_err)]
     pub fn calculate_with_out_amount(
         &self,
         evm: &mut dyn LoomExecuteEvm,
@@ -425,6 +414,7 @@ impl SwapLine {
     }
 
     /// Optimize the swap line for a given in amount
+    #[allow(clippy::result_large_err)]
     pub fn optimize_with_in_amount(&mut self, evm: &mut dyn LoomExecuteEvm, in_amount: U256) -> Result<&mut Self, SwapError> {
         let mut current_in_amount = in_amount;
         let mut best_profit: Option<I256> = None;

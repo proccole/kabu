@@ -17,7 +17,7 @@ use loom_types_entities::required_state::RequiredStateReader;
 use loom_types_entities::{EntityAddress, Market, MarketState, PoolClass, PoolLoaders, PoolWrapper, SwapDirection};
 use loom_types_events::{LoomTask, MarketEvents};
 
-use loom_types_blockchain::{get_touched_addresses, LoomDataTypes, LoomDataTypesEVM, LoomDataTypesEthereum};
+use loom_types_blockchain::{get_touched_addresses, LoomDataTypes, LoomDataTypesEVM};
 use loom_types_entities::pool_config::PoolsLoadingConfig;
 use revm::{Database, DatabaseCommit, DatabaseRef};
 use tokio::sync::Semaphore;
@@ -45,9 +45,7 @@ where
     subscribe!(tasks_rx);
     loop {
         if let Ok(task) = tasks_rx.recv().await {
-            let pools = match task {
-                LoomTask::FetchAndAddPools(pools) => pools,
-            };
+            let LoomTask::FetchAndAddPools(pools) = task;
 
             for (pool_id, pool_class) in pools {
                 // Check if pool already exists

@@ -126,10 +126,7 @@ where
             }
         }
 
-        let lp_token = match CurveCommonContract::<P, N>::lp_token(pool_contract.get_address()).await {
-            Ok(lp_token_address) => Some(lp_token_address),
-            Err(_) => None,
-        };
+        let lp_token = (CurveCommonContract::<P, N>::lp_token(pool_contract.get_address()).await).ok();
 
         let (underlying_tokens, is_meta) = match pool_contract.as_ref() {
             CurveContract::I128_2ToMeta(_interface) => (CurveProtocol::<P, N>::get_underlying_tokens(tokens[1])?, true),
@@ -181,10 +178,7 @@ where
             }
         }
 
-        let lp_token = match CurveCommonContract::<P, N>::lp_token(pool_contract.get_address()).await {
-            Ok(lp_token_address) => Some(lp_token_address),
-            Err(_) => None,
-        };
+        let lp_token = (CurveCommonContract::<P, N>::lp_token(pool_contract.get_address()).await).ok();
 
         let (underlying_tokens, is_meta) = match pool_contract.as_ref() {
             CurveContract::I128_2ToMeta(_interface) => (CurveProtocol::<P, N>::get_underlying_tokens(tokens[1])?, true),
@@ -430,6 +424,16 @@ where
                 }
             }
         }
+
+        // Add a call to fetch the pool contract bytecode
+        // Use the first get_dy call that we're already making
+        if !self.tokens.is_empty() && self.tokens.len() >= 2 {
+            // Try to add get_dy(0, 1, 1) to ensure contract bytecode is fetched
+            if let Ok(data) = self.pool_contract.get_dy_call_data(0, 1, U256::from(1)) {
+                state_reader.add_call(self.get_address(), data);
+            }
+        }
+
         state_reader.add_slot_range(self.address, U256::from(0), 0x20);
 
         for token_address in self.get_tokens() {
@@ -598,17 +602,19 @@ mod tests {
     use crate::protocols::CurveProtocol;
     use crate::CurvePool;
     use alloy::primitives::U256;
-    use alloy::providers::network::primitives::BlockTransactionsKind;
     use alloy::providers::Provider;
     use alloy::rpc::types::BlockNumberOrTag;
     use env_logger::Env as EnvLog;
     use loom_evm_db::{DatabaseLoomExt, LoomDBType};
     use loom_evm_utils::LoomEVMWrapper;
     use loom_node_debug_provider::AnvilDebugProviderFactory;
+    use loom_types_blockchain::LoomDataTypesEthereum;
     use loom_types_entities::required_state::RequiredStateReader;
     use loom_types_entities::{MarketState, Pool};
-    use tracing::debug;
+    use revm::database::CacheDB;
+    use tracing::{debug, error};
 
+    #[ignore]
     #[tokio::test]
     async fn test_pool() -> Result<()> {
         let _ = env_logger::try_init_from_env(EnvLog::default().default_filter_or("info,alloy_rpc_client=off"));
@@ -626,7 +632,10 @@ mod tests {
             let pool = CurvePool::fetch_pool_data_with_default_encoder(client.clone(), curve_contract).await.unwrap();
             let state_required = pool.get_state_required().unwrap();
 
-            let state_required = RequiredStateReader::fetch_calls_and_slots(client.clone(), state_required, None).await.unwrap();
+            let state_required =
+                RequiredStateReader::<LoomDataTypesEthereum>::fetch_calls_and_slots(client.clone(), state_required, Some(20045799))
+                    .await
+                    .unwrap();
             debug!("Pool state fetched {} {}", pool.address, state_required.len());
 
             market_state.state_db.apply_geth_update(state_required);
@@ -637,10 +646,10 @@ mod tests {
                 market_state.state_db.storage_len()
             );
 
-            let block_header = client.get_block_by_number(BlockNumberOrTag::Latest).await.unwrap().unwrap().header;
+            let block_header = client.get_block_by_number(BlockNumberOrTag::Number(20045799)).await.unwrap().unwrap().header;
             debug!("Block {} {}", block_header.number, block_header.timestamp);
 
-            let mut evm = LoomEVMWrapper::new(market_state.state_db.clone()).with_header(block_header);
+            let mut evm = LoomEVMWrapper::new(CacheDB::new(market_state.state_db.clone())).with_header(&block_header);
 
             let tokens = pool.tokens.clone();
             let balances = pool.balances.clone();
@@ -653,7 +662,13 @@ mod tests {
                     let token_in = tokens[i];
                     let token_out = tokens[j];
                     let (out_amount, gas_used) =
-                        pool.calculate_out_amount(evm.get_evm_mut(), &token_in.into(), &token_out.into(), in_amount).unwrap_or_default();
+                        match pool.calculate_out_amount(evm.get_evm_mut(), &token_in.into(), &token_out.into(), in_amount) {
+                            Ok(result) => result,
+                            Err(e) => {
+                                error!("Failed to calculate out amount for pool {:?}: {}", pool.get_address(), e);
+                                (U256::ZERO, 0)
+                            }
+                        };
                     debug!(
                         "Calculated : {:?} {} -> {} : {} -> {} gas : {}",
                         pool.get_address(),

@@ -45,8 +45,8 @@ fn build_swap_path_two_hopes_basic_in(
         }
 
         let Some(loop_pool) = market.get_pool(pool_address) else { continue };
-        let token_from = market.get_token_or_default(&token_from_address);
-        let token_to = market.get_token_or_default(&token_to_address);
+        let token_from = market.get_token_or_default(token_from_address);
+        let token_to = market.get_token_or_default(token_to_address);
 
         let mut swap_path = SwapPath::new_swap(token_from.clone(), token_to.clone(), pool.clone());
         if !swap_path.contains_pool(loop_pool) {
@@ -138,7 +138,7 @@ fn build_swap_path_four_hopes_basic_in(
 
                     if let Some(token_token_pools_1) = market.get_token_token_pools(token_to_address, token_middle_address) {
                         if let Some(token_token_pools_2) = market.get_token_token_pools(token_middle_address, token_middle_address_0) {
-                            if let Some(token_token_pools_3) = market.get_token_token_pools(token_middle_address_0, &token_from_address) {
+                            if let Some(token_token_pools_3) = market.get_token_token_pools(token_middle_address_0, token_from_address) {
                                 for pool_address_1 in token_token_pools_1.iter() {
                                     if market.is_pool_disabled(pool_address_1) {
                                         continue;
@@ -439,14 +439,14 @@ pub fn build_swap_path_vec(market: &Market, directions: &BTreeMap<PoolWrapper, V
             let token_from_address = direction.from();
             let token_to_address = direction.to();
 
-            if market.is_basic_token(&token_to_address) {
+            if market.is_basic_token(token_to_address) {
                 ret_map.extend(build_swap_path_two_hopes_basic_out(market, pool, token_from_address, token_to_address)?);
                 ret_map.extend(build_swap_path_three_hopes_basic_out(market, pool, token_from_address, token_to_address)?);
                 // TODO : Add this later
                 //ret_map.extend(build_swap_path_four_hopes_basic_out(market, pool, token_from_address, token_to_address)?);
             }
 
-            if market.is_basic_token(&token_from_address) {
+            if market.is_basic_token(token_from_address) {
                 ret_map.extend(build_swap_path_two_hopes_basic_in(market, pool, token_from_address, token_to_address)?);
                 ret_map.extend(build_swap_path_three_hopes_basic_in(market, pool, token_from_address, token_to_address)?);
 
@@ -456,8 +456,8 @@ pub fn build_swap_path_vec(market: &Market, directions: &BTreeMap<PoolWrapper, V
                 }*/
             }
 
-            if (!market.is_basic_token(&token_from_address) && !market.is_basic_token(&token_to_address))
-                || (!market.is_weth_token(&token_from_address) && !market.is_weth_token(&token_to_address))
+            if (!market.is_basic_token(token_from_address) && !market.is_basic_token(token_to_address))
+                || (!market.is_weth_token(token_from_address) && !market.is_weth_token(token_to_address))
             {
                 ret_map.extend(build_swap_path_three_hopes_no_basic(market, pool, token_from_address, token_to_address)?);
             }

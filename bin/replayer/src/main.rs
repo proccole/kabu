@@ -21,8 +21,7 @@ use loom_defi_abi::AbiEncoderHelper;
 use loom_defi_address_book::{TokenAddressEth, UniswapV3PoolAddress};
 use loom_defi_pools::state_readers::ERC20StateReader;
 use loom_evm_db::DatabaseLoomExt;
-use loom_evm_utils::evm_env::env_for_block;
-use loom_evm_utils::NWETH;
+use loom_evm_utils::{LoomEVMWrapper, NWETH};
 use loom_execution_multicaller::MulticallerSwapEncoder;
 use loom_node_player::NodeBlockPlayerActor;
 use loom_types_entities::required_state::RequiredState;
@@ -87,8 +86,8 @@ async fn main() -> Result<()> {
     let mut bc_actors =
         BlockchainActors::new(provider.clone(), swap_encoder.clone(), bc.clone(), bc_state.clone(), strategy.clone(), vec![]);
     bc_actors
-        .with_nonce_and_balance_monitor_only_events()?
-        .initialize_signers_with_anvil()?
+        .with_nonce_and_balance_monitor_only_once()?
+        .with_signers()?
         .with_market_state_preloader_virtual(vec![])?
         .with_preloaded_state(vec![(UniswapV3PoolAddress::USDC_WETH_500, PoolClass::UniswapV3)], Some(required_state))?
         .with_block_history()?
@@ -99,16 +98,16 @@ async fn main() -> Result<()> {
     if let Err(e) =
         bc_actors.start(NodeBlockPlayerActor::new(provider.clone(), start_block_number, start_block_number + 200).on_bc(&bc, &bc_state))
     {
-        panic!("Cannot start block player : {}", e);
+        panic!("Cannot start block player : {e}");
     }
 
     tokio::task::spawn(bc_actors.wait());
     let compose_channel = strategy.swap_compose_channel();
 
-    let mut header_sub = bc.new_block_headers_channel().subscribe().await;
-    let mut block_sub = bc.new_block_with_tx_channel().subscribe().await;
-    let mut logs_sub = bc.new_block_logs_channel().subscribe().await;
-    let mut state_update_sub = bc.new_block_state_update_channel().subscribe().await;
+    let mut header_sub = bc.new_block_headers_channel().subscribe();
+    let mut block_sub = bc.new_block_with_tx_channel().subscribe();
+    let mut logs_sub = bc.new_block_logs_channel().subscribe();
+    let mut state_update_sub = bc.new_block_state_update_channel().subscribe();
 
     //let memepool = bc.mempool();
     let market = bc.market();
@@ -135,7 +134,7 @@ async fn main() -> Result<()> {
                         if header.number % 10 == 0 {
                             info!("Composing swap: block_number={}, block_hash={}", header.number, header.hash);
 
-                            let swap_path = market.read().await.swap_path(vec![TokenAddressEth::WETH, TokenAddressEth::USDC], vec![EntityAddress::Address(UniswapV3PoolAddress::USDC_WETH_500)])?;
+                            let swap_path = market.read().await.swap_path(vec![TokenAddressEth::WETH.into(), TokenAddressEth::USDC.into()], vec![EntityAddress::Address(UniswapV3PoolAddress::USDC_WETH_500)])?;
                             let mut swap_line = SwapLine::from(swap_path);
                             swap_line.amount_in = SwapAmountType::Set( NWETH::from_float(0.1));
                             swap_line.gas_used = Some(300000);
@@ -151,7 +150,7 @@ async fn main() -> Result<()> {
                                     ..SwapComposeData::default()
                                 });
 
-                            if let Err(e) = compose_channel.send(tx_compose_encode_msg).await {
+                            if let Err(e) = compose_channel.send(tx_compose_encode_msg) {
                                 error!("compose_channel.send : {}", e)
                             }else{
                                 debug!("compose_channel.send ok");
@@ -194,7 +193,9 @@ async fn main() -> Result<()> {
                         let mut state_db = market_state.read().await.state_db.clone();
                         state_db.apply_geth_update_vec(state_update.state_update);
 
-                        if let Ok(balance) = ERC20StateReader::balance_of(&state_db, env_for_block(cur_header.number, cur_header.timestamp), TokenAddressEth::WETH, TARGET_ADDRESS ) {
+
+                        let mut evm = LoomEVMWrapper::new(state_db.clone());
+                        if let Ok(balance) = ERC20StateReader::balance_of(evm.get_mut(), TokenAddressEth::WETH, TARGET_ADDRESS ) {
                             info!("------WETH Balance of {} : {}", TARGET_ADDRESS, balance);
                             let fetched_balance = CallBuilder::<(), RootProvider, ()>::new_raw(node_provider.clone(), AbiEncoderHelper::encode_erc20_balance_of(TARGET_ADDRESS)).to(TokenAddressEth::WETH).block(cur_header.number.into()).call().await?;
 
@@ -204,7 +205,7 @@ async fn main() -> Result<()> {
                                 exit(1);
                             }
                         }
-                        if let Ok(balance) = ERC20StateReader::balance_of(&state_db, env_for_block(cur_header.number, cur_header.timestamp), TokenAddressEth::WETH, UniswapV3PoolAddress::USDC_WETH_500 ) {
+                        if let Ok(balance) = ERC20StateReader::balance_of(evm.get_mut(), TokenAddressEth::WETH, UniswapV3PoolAddress::USDC_WETH_500 ) {
                             info!("------WETH Balance of {} : {}/({:#x}) ", UniswapV3PoolAddress::USDC_WETH_500, balance, balance);
                         }
 

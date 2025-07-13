@@ -187,7 +187,7 @@ mod test {
     use super::*;
     use alloy_primitives::map::B256HashMap;
     use alloy_primitives::{B256, U256};
-    use alloy_provider::network::primitives::BlockTransactionsKind;
+
     use alloy_provider::ProviderBuilder;
     use alloy_rpc_client::{ClientBuilder, WsConnect};
     use alloy_rpc_types::state::{AccountOverride, StateOverride};

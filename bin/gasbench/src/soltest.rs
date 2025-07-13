@@ -15,12 +15,12 @@ import {{TestHelper, SwapTest}} from "./Helper.sol";
 
 contract MulticallerGasBench  is Test, TestHelper, SwapTest  {{
 
-    string[{}] testname = [
-{}
+    string[{test_size}] testname = [
+{test_names}
 ];
 
-    bytes[{}] callsdata = [
-{}
+    bytes[{test_size}] callsdata = [
+{call_data}
 ];
 
 
@@ -56,8 +56,7 @@ contract MulticallerGasBench  is Test, TestHelper, SwapTest  {{
 
 
 }}
-        "#,
-        test_size, test_names, test_size, call_data
+        "#
     )
 }
 
@@ -65,7 +64,7 @@ pub fn create_sol_test(requests_vec: Vec<(String, Bytes)>) -> String {
     let requests_vec = requests_vec;
     let req_len = requests_vec.len();
     let (names, data_vec): (Vec<String>, Vec<Bytes>) = requests_vec.into_iter().unzip();
-    let names_string_vec: Vec<String> = names.into_iter().map(|x| format!("\t\"{}\"", x)).collect();
+    let names_string_vec: Vec<String> = names.into_iter().map(|x| format!("\t\"{x}\"")).collect();
     let names_string = names_string_vec.join(",\n");
     let calldata_string_vec: Vec<String> = data_vec.into_iter().map(|x| format!("\tbytes(hex\"{}\")", hex::encode(x))).collect();
     let calldata_string = calldata_string_vec.join(",\n");

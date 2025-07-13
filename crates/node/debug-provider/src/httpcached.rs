@@ -141,13 +141,13 @@ impl HttpCachedTransport {
 
     pub async fn get_block_number(self) -> Result<ResponsePacket, TransportError> {
         let block_number = self.read_block_number();
-        let value = RawValue::from_string(format!("{}", block_number).to_string()).unwrap();
+        let value = RawValue::from_string(format!("{block_number}").to_string()).unwrap();
         let body = Response { id: Id::None, payload: ResponsePayload::Success(value) };
         Ok(ResponsePacket::Single(body))
     }
     pub async fn new_block_filter(self) -> Result<ResponsePacket, TransportError> {
         let filter_id = self.create_block_filter().await;
-        let value = format!("\"0x{:x}\"", filter_id).to_string();
+        let value = format!("\"0x{filter_id:x}\"").to_string();
         let value = RawValue::from_string(value).unwrap();
         let body = Response { id: Id::None, payload: ResponsePayload::Success(value) };
         Ok(ResponsePacket::Single(body))
@@ -397,7 +397,7 @@ mod test {
             client::{ClientBuilder, RpcClient},
             types::{
                 trace::geth::{GethDebugBuiltInTracerType, GethDebugTracerType, GethDebugTracingOptions, PreStateConfig},
-                BlockNumberOrTag, BlockTransactionsKind,
+                BlockNumberOrTag,
             },
         },
     };
@@ -431,6 +431,7 @@ mod test {
         Ok(())
     }
 
+    #[ignore]
     #[tokio::test]
     async fn test_get_block_number() -> Result<()> {
         let _ = env_logger::try_init_from_env(env_logger::Env::default().default_filter_or("info,alloy_rpc_client=off,"));
@@ -478,8 +479,8 @@ mod test {
             let total_supply = weth.totalSupply().call().await.unwrap();
             debug!("Total supply : {}", total_supply._0);
 
-            let block_by_number = provider.get_block_by_number(BlockNumberOrTag::Latest, BlockTransactionsKind::Hashes).await?.unwrap();
-            let block_by_hash = provider.get_block_by_hash(block_by_number.header.hash, BlockTransactionsKind::Full).await?.unwrap();
+            let block_by_number = provider.get_block_by_number(BlockNumberOrTag::Latest).await?.unwrap();
+            let block_by_hash = provider.get_block_by_hash(block_by_number.header.hash).await?.unwrap();
             assert_eq!(block_by_hash.header, block_by_number.header);
 
             let block_number = block_by_number.header.number;

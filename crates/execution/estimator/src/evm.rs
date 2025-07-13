@@ -97,7 +97,7 @@ where
 
             tokio::task::spawn(async move {
                 for pool_id in pool_id_vec {
-                    let pool_id_string = format!("{}", pool_id);
+                    let pool_id_string = format!("{pool_id}");
                     let write_query = WriteQuery::new(Timestamp::from(start_time), "estimation")
                         .add_field("success", 1i64)
                         .add_tag("pool", pool_id_string);

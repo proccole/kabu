@@ -67,7 +67,7 @@ where
             CurveContract::U256_3EthTo2(_) => "U256_3_Eth_To2",
             //_ => "CurveUnknown"
         };
-        write!(f, "{}", contract_type)
+        write!(f, "{contract_type}")
     }
 }
 

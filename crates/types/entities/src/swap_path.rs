@@ -125,7 +125,7 @@ impl SwapPath {
     #[inline]
     pub fn get_hash(&self) -> u64 {
         let mut h = DefaultHasher::new();
-        let hash = self.hash(&mut h);
+        self.hash(&mut h);
         h.finish()
     }
 }
@@ -223,17 +223,17 @@ impl SwapPaths {
                         if token_from.get_address().eq(token_from_address) && token_to.get_address().eq(token_to_address) {
                             entry.disabled = disabled;
                             if !entry.disabled_pool.contains(pool_id) {
-                                entry.disabled_pool.push(pool_id.clone());
+                                entry.disabled_pool.push(*pool_id);
                             }
                             self.disabled_directions
-                                .insert(SwapDirection::new(*token_from_address, *token_to_address).get_hash_with_pool(&pool_id), disabled);
+                                .insert(SwapDirection::new(*token_from_address, *token_to_address).get_hash_with_pool(pool_id), disabled);
                         }
                     }
                 } else {
                     //debug!("All path disabled by pool hash={}, path={}", entry.get_hash(), entry);
                     entry.disabled = disabled;
                     if !entry.disabled_pool.contains(pool_id) {
-                        entry.disabled_pool.push(pool_id.clone());
+                        entry.disabled_pool.push(*pool_id);
                     }
                 }
             }
@@ -247,7 +247,7 @@ impl SwapPaths {
             .filter_map(|a| {
                 self.paths
                     .get(*a)
-                    .filter(|a| a.disabled_pool.len() == 0 || (a.disabled_pool.len() == 1 && a.disabled_pool.contains(pool_id)))
+                    .filter(|a| a.disabled_pool.is_empty() || (a.disabled_pool.len() == 1 && a.disabled_pool.contains(pool_id)))
             })
             .cloned()
             .collect();
@@ -279,7 +279,6 @@ mod test {
     use alloy_primitives::{Address, U256};
     use eyre::{eyre, ErrReport};
     use loom_evm_utils::LoomExecuteEvm;
-    use revm::DatabaseRef;
     use std::any::Any;
     use tokio::task::JoinHandle;
     use tracing::error;

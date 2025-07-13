@@ -19,7 +19,7 @@ tracing.workspace = true
 
 [features]
 serde = ["dep:serde"]
-serde-json = ["dep:serde_json"]
+serde-json = ["dep:serde_json", "serde"]
 
 
 [dev-dependencies]

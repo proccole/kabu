@@ -7,7 +7,6 @@ use crate::worker::node_player_worker;
 use alloy_network::{Ethereum, Network};
 use alloy_primitives::BlockNumber;
 use alloy_provider::Provider;
-use eyre::ErrReport;
 use loom_core_actors::{Accessor, Actor, ActorResult, Broadcaster, Consumer, Producer, SharedState, WorkerResult};
 use loom_core_actors_macros::{Accessor, Consumer, Producer};
 use loom_core_blockchain::{Blockchain, BlockchainState};
@@ -45,7 +44,14 @@ impl<P, N, DB> NodeBlockPlayerActor<P, N, DB>
 where
     N: Network,
     P: Provider<N> + DebugProviderExt<N> + Send + Sync + Clone + 'static,
-    DB: Database<Error = ErrReport> + DatabaseRef<Error = ErrReport> + DatabaseCommit + DatabaseLoomExt + Send + Sync + Clone + 'static,
+    DB: Database<Error = loom_evm_db::LoomDBError>
+        + DatabaseRef<Error = loom_evm_db::LoomDBError>
+        + DatabaseCommit
+        + DatabaseLoomExt
+        + Send
+        + Sync
+        + Clone
+        + 'static,
 {
     pub fn new(client: P, start_block: BlockNumber, end_block: BlockNumber) -> NodeBlockPlayerActor<P, N, DB> {
         NodeBlockPlayerActor {

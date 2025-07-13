@@ -298,7 +298,7 @@ pub struct BlockHistoryManager<P, N, DB, LDT> {
 //     }
 // }
 
-impl<'de, P, N, S, LDT> BlockHistoryManager<P, N, S, LDT>
+impl<P, N, S, LDT> BlockHistoryManager<P, N, S, LDT>
 where
     N: Network<BlockResponse = LDT::Block>,
     P: Provider<N> + DebugProviderExt<N> + Send + Sync + Clone + 'static,
@@ -510,7 +510,7 @@ mod test {
     use alloy_provider::ext::AnvilApi;
     use alloy_provider::ProviderBuilder;
     use alloy_rpc_client::ClientBuilder;
-    use alloy_rpc_types::BlockNumberOrTag;
+    use alloy_rpc_types::{BlockNumberOrTag, Header};
     use loom_evm_db::LoomDBType;
     use loom_evm_utils::geth_state_update::*;
     use loom_node_debug_provider::AnvilProviderExt;
@@ -625,7 +625,8 @@ mod test {
 
         block_history.add_block_header(block_2.header.clone())?;
 
-        let mut entry_2 = block_history_manager.get_or_fetch_entry_cloned(&mut block_history, block_2.header.hash).await?;
+        let mut entry_2: BlockHistoryEntry<LoomDataTypesEthereum> =
+            block_history_manager.get_or_fetch_entry_cloned(&mut block_history, block_2.header.hash).await?;
         block_history_manager.fetch_entry_data(&mut entry_2).await;
         entry_2.state_update = Some(vec![geth_state_update_add_account(
             GethStateUpdate::default(),

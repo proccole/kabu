@@ -296,7 +296,7 @@ impl<
                     info!("Pool monitor monitor actor started")
                 }
                 Err(e) => {
-                    panic!("PoolHealthMonitorActor error {}", e)
+                    panic!("PoolHealthMonitorActor error {e}")
                 }
             }
         }
@@ -314,7 +314,7 @@ impl<
                             info!("Signers have been initialized")
                         }
                         Err(e) => {
-                            panic!("Cannot initialize signers {}", e);
+                            panic!("Cannot initialize signers {e}");
                         }
                     }
 
@@ -325,7 +325,7 @@ impl<
                             info!("Signers actor has been started")
                         }
                         Err(e) => {
-                            panic!("Cannot start signers actor {}", e)
+                            panic!("Cannot start signers actor {e}")
                         }
                     }
                 }
@@ -348,7 +348,7 @@ impl<
                         info!("Market state preload actor executed successfully")
                     }
                     Err(e) => {
-                        panic!("MarketStatePreloadedOneShotActor : {}", e)
+                        panic!("MarketStatePreloadedOneShotActor : {e}")
                     }
                 }
             }
@@ -415,8 +415,7 @@ impl<
                 }
 
                 if client_config.db_path.is_none() {
-                    let mut node_block_actor =
-                        NodeBlockActor::<P, Ethereum, LoomDataTypesEthereum>::new(client, NodeBlockActorConfig::all_enabled());
+                    let mut node_block_actor = NodeBlockActor::new(client, NodeBlockActorConfig::all_enabled());
                     match node_block_actor
                         .produce(blockchain.new_block_headers_channel())
                         .produce(blockchain.new_block_with_tx_channel())
@@ -472,7 +471,7 @@ impl<
                         info!("Price actor has been initialized : {}", name)
                     }
                     Err(e) => {
-                        panic!("Cannot initialize price actor {} : {}", name, e);
+                        panic!("Cannot initialize price actor {name} : {e}");
                     }
                 }
             }
@@ -498,7 +497,7 @@ impl<
                         info!("Nonce monitor has been initialized {name} for {}", blockchain.chain_id())
                     }
                     Err(e) => {
-                        panic!("Cannot initialize nonce and balance monitor {} : {}", name, e);
+                        panic!("Cannot initialize nonce and balance monitor {name} : {e}");
                     }
                 }
             }
@@ -552,7 +551,7 @@ impl<
                             info!("History pool loader actor started successfully {name}")
                         }
                         Err(e) => {
-                            panic!("HistoryPoolLoaderOneShotActor : {}", e)
+                            panic!("HistoryPoolLoaderOneShotActor : {e}")
                         }
                     }
                 }
@@ -562,7 +561,7 @@ impl<
                     let mut curve_pools_loader_actor = ProtocolPoolLoaderOneShotActor::new(client.clone(), pool_loaders.clone());
                     match curve_pools_loader_actor.produce(blockchain.tasks_channel()).start() {
                         Err(e) => {
-                            panic!("CurvePoolLoaderOneShotActor : {}", e)
+                            panic!("CurvePoolLoaderOneShotActor : {e}")
                         }
                         Ok(r) => {
                             tasks.extend(r);
@@ -580,7 +579,7 @@ impl<
                             info!("New pool actor started")
                         }
                         Err(e) => {
-                            panic!("NewPoolLoaderActor : {}", e)
+                            panic!("NewPoolLoaderActor : {e}")
                         }
                     }
                 }
@@ -599,7 +598,7 @@ impl<
                         info!("Pool loader actor started successfully")
                     }
                     Err(e) => {
-                        panic!("PoolLoaderActor : {}", e)
+                        panic!("PoolLoaderActor : {e}")
                     }
                 }
             }

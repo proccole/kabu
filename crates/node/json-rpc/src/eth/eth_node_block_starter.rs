@@ -3,7 +3,7 @@ use crate::eth::node_block_logs_worker::new_node_block_logs_worker;
 use crate::eth::node_block_state_worker::new_node_block_state_worker;
 use crate::eth::node_block_with_tx_worker::new_block_with_tx_worker;
 use alloy_json_rpc::RpcRecv;
-use alloy_network::{BlockResponse, Ethereum, Network};
+use alloy_network::{BlockResponse, Network};
 use alloy_provider::Provider;
 use alloy_rpc_types::Header;
 use loom_core_actors::{ActorResult, Broadcaster, WorkerResult};

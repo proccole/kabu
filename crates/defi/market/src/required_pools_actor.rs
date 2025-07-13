@@ -13,7 +13,7 @@ use loom_core_actors_macros::{Accessor, Consumer};
 use loom_core_blockchain::{Blockchain, BlockchainState};
 use loom_evm_db::LoomDBError;
 use loom_node_debug_provider::DebugProviderExt;
-use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEVM};
+use loom_types_blockchain::LoomDataTypesEVM;
 use loom_types_entities::required_state::{RequiredState, RequiredStateReader};
 use loom_types_entities::{EntityAddress, Market, MarketState, PoolClass, PoolLoaders};
 

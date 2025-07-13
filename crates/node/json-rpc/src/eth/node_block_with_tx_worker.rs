@@ -1,9 +1,9 @@
 use alloy_json_rpc::RpcRecv;
-use alloy_network::{BlockResponse, Ethereum, Network};
+use alloy_network::{BlockResponse, Network};
 use alloy_provider::Provider;
-use alloy_rpc_types::{BlockTransactionsKind, Header};
+use alloy_rpc_types::Header;
 use loom_core_actors::{subscribe, Broadcaster, WorkerResult};
-use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEVM, LoomDataTypesEthereum, LoomHeader};
+use loom_types_blockchain::LoomDataTypesEVM;
 use loom_types_events::{BlockUpdate, Message, MessageBlock};
 use tracing::{debug, error};
 

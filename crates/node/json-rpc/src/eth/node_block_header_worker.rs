@@ -1,15 +1,13 @@
 use std::collections::HashMap;
 
-use alloy_network::{Ethereum, Network};
+use alloy_network::Network;
 use alloy_primitives::BlockHash;
 use alloy_provider::Provider;
-use alloy_pubsub::PubSubConnect;
 use alloy_rpc_types::Header;
 use chrono::Utc;
-use eyre::Result;
 use futures::StreamExt;
-use loom_core_actors::{run_sync, Broadcaster, WorkerResult};
-use loom_types_blockchain::{LoomDataTypesEVM, LoomDataTypesEthereum, LoomHeader};
+use loom_core_actors::{Broadcaster, WorkerResult};
+use loom_types_blockchain::LoomDataTypesEVM;
 use loom_types_events::{BlockHeaderEventData, MessageBlockHeader};
 use tracing::{error, info};
 

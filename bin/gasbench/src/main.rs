@@ -94,7 +94,7 @@ async fn main() -> Result<()> {
     preload_market_state(client.clone(), vec![multicaller_address.into()], vec![], vec![], market_state_instance.clone(), None).await?;
 
     //Preloading market
-    preload_pools(client.clone(), market_instance.clone(), market_state_instance.clone()).await?;
+    preload_pools::<_, _>(client.clone(), market_instance.clone(), market_state_instance.clone()).await?;
 
     let market = market_instance.read().await;
 
@@ -139,10 +139,10 @@ async fn main() -> Result<()> {
 
         let sp = swap_path.clone();
         let sp_dto: SwapLineDTO = (&sp).into();
-        println!("Checking {}", sp_dto);
+        println!("Checking {sp_dto}");
         if let Some(filter) = &cli.filter.clone() {
-            if !format!("{}", sp_dto).contains(filter) {
-                println!("Skipping {}", sp_dto);
+            if !format!("{sp_dto}").contains(filter) {
+                println!("Skipping {sp_dto}");
                 continue;
             }
         }
@@ -188,7 +188,7 @@ async fn main() -> Result<()> {
             calldata_vec.sort_by(|a, b| a.0.cmp(&b.0));
             let calldata_vec: Vec<(String, Bytes)> = calldata_vec.into_iter().map(|(k, v)| (k.to_string(), v)).collect();
             let test_data = create_sol_test(calldata_vec);
-            println!("{}", test_data);
+            println!("{test_data}");
             let mut file = File::create(bench_file).await?;
             file.write_all(test_data.as_bytes()).await?;
         } else if cli.save {
@@ -225,7 +225,7 @@ async fn main() -> Result<()> {
                             }
                         };
 
-                        println!("{} : {} {} - {} ", change, current_entry, gas, stored_gas,);
+                        println!("{change} : {current_entry} {gas} - {stored_gas} ",);
                     }
                     None => {
                         if *gas < 40000 {

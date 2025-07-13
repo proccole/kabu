@@ -10,7 +10,6 @@ use loom_node_debug_provider::AnvilDebugProviderFactory;
 use loom_strategy_backrun::SwapCalculator;
 use loom_types_entities::required_state::RequiredStateReader;
 use loom_types_entities::{EntityAddress, Market, PoolClass, PoolWrapper, SwapLine, SwapPath, Token};
-use revm::primitives::Env;
 
 pub fn bench_swap_calculator(c: &mut Criterion) {
     let mut group = c.benchmark_group("swap_calculator");
@@ -33,7 +32,7 @@ pub fn bench_swap_calculator(c: &mut Criterion) {
             let mut market = Market::default();
             // Add basic token for start/end
             let weth_token = Token::new_with_data(TokenAddressEth::WETH, Some("WETH".to_string()), None, Some(18), true, false);
-            market.add_token(weth_token)?;
+            market.add_token(weth_token);
 
             for (pool_address, pool_class) in pool_addresses.iter() {
                 let pool: PoolWrapper;
@@ -68,7 +67,7 @@ pub fn bench_swap_calculator(c: &mut Criterion) {
     println!("SwapLine: {}", swap_line);
     group.bench_function("calculate", |b| {
         b.iter(|| {
-            SwapCalculator::calculate(black_box(&mut swap_line.clone()), black_box(&state_db), black_box(Env::default()))
+            SwapCalculator::calculate(black_box(&mut swap_line.clone()), black_box(&mut state_db.clone()))
                 .expect("Failed to calculate swap");
         })
     });

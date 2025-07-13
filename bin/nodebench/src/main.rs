@@ -1,5 +1,4 @@
 use crate::cli::Cli;
-use alloy::network::primitives::BlockTransactionsKind;
 use alloy::primitives::{BlockHash, BlockNumber};
 use alloy::{
     eips::BlockNumberOrTag,
@@ -16,6 +15,7 @@ use loom_core_blockchain_actors::BlockchainActors;
 use loom_evm_db::LoomDB;
 use loom_execution_multicaller::MulticallerSwapEncoder;
 use loom_node_actor_config::NodeBlockActorConfig;
+use loom_types_blockchain::LoomDataTypesEthereum;
 use loom_types_events::MempoolEvents;
 use std::fmt::Formatter;
 use std::{collections::HashMap, fmt::Display, sync::Arc};
@@ -231,7 +231,7 @@ async fn collect_stat_task(
 ) -> Result<()> {
     let bc = Blockchain::new(1);
 
-    let bc_state = BlockchainState::<LoomDB>::new();
+    let bc_state = BlockchainState::<LoomDB, LoomDataTypesEthereum>::new();
     let strategy = Strategy::<LoomDB>::new();
 
     let encoder = MulticallerSwapEncoder::default();
@@ -245,12 +245,12 @@ async fn collect_stat_task(
 
     let mut blocks_counter: usize = 0;
 
-    let mut block_header_subscription = bc.new_block_headers_channel().subscribe().await;
-    let mut block_with_tx_subscription = bc.new_block_with_tx_channel().subscribe().await;
-    let mut block_logs_subscription = bc.new_block_logs_channel().subscribe().await;
-    let mut block_state_subscription = bc.new_block_state_update_channel().subscribe().await;
+    let mut block_header_subscription = bc.new_block_headers_channel().subscribe();
+    let mut block_with_tx_subscription = bc.new_block_with_tx_channel().subscribe();
+    let mut block_logs_subscription = bc.new_block_logs_channel().subscribe();
+    let mut block_state_subscription = bc.new_block_state_update_channel().subscribe();
 
-    let mut pending_tx_subscription = bc.mempool_events_channel().subscribe().await;
+    let mut pending_tx_subscription = bc.mempool_events_channel().subscribe();
 
     loop {
         select! {
@@ -266,7 +266,7 @@ async fn collect_stat_task(
                             let recv_time = stat.write().await.block_headers.entry(block_number).or_default().add_now(id);
                             println!("{id} : {} block header received {} {}", block_number, block_hash, recv_time - ping_time);
                         }else{
-                            println!("Warming up {id} : {} block header received {}", block_number, block_hash);
+                            println!("Warming up {id} : {block_number} block header received {block_hash}");
                         }
 
                         if blocks_counter >= blocks_needed + warn_up_blocks {
@@ -288,7 +288,7 @@ async fn collect_stat_task(
                             let recv_time = stat.write().await.block_with_tx.entry(block_number).or_default().add_now(id);
                             println!("{id} : {} block with tx received {} {}", block_number, block_hash, recv_time - ping_time);
                         }else{
-                            println!("Warming up {id} : {} block with tx received {}", block_number, block_hash);
+                            println!("Warming up {id} : {block_number} block with tx received {block_hash}");
                         }
                     }
                     Err(e)=>{
@@ -325,7 +325,7 @@ async fn collect_stat_task(
                             let recv_time = stat.write().await.block_state.entry(block_number).or_default().add_now(id);
                             println!("{id} : {} block state received {} {}", block_number, block_hash, recv_time - ping_time);
                         }else{
-                            println!("Warming up {id} : {} block state tx received {}", block_number, block_hash);
+                            println!("Warming up {id} : {block_number} block state tx received {block_hash}");
                         }
                     }
                     Err(e)=>{
@@ -380,6 +380,7 @@ async fn main() -> Result<()> {
         let (provider, is_grpc) = if endpoint == "grpc" {
             (prev_provider.clone().unwrap(), true)
         } else {
+            #[allow(deprecated)]
             (ProviderBuilder::new().disable_recommended_fillers().on_builtin(endpoint.clone().as_str()).await?, false)
         };
 
@@ -392,7 +393,7 @@ async fn main() -> Result<()> {
         let start_time = Local::now();
         for _i in 0u64..10 {
             let block_number = provider.get_block_number().await?;
-            let _ = provider.get_block_by_number(BlockNumberOrTag::Number(block_number), BlockTransactionsKind::Hashes).await?;
+            let _ = provider.get_block_by_number(BlockNumberOrTag::Number(block_number)).await?;
         }
         let ping_time = (Local::now() - start_time) / (10 * 2);
         println!("Ping time {idx} : {ping_time}");
@@ -409,12 +410,11 @@ async fn main() -> Result<()> {
 
     let mut calc = TxStatCollector::new(cli.endpoint.len());
 
-    println!("{}", stat);
+    println!("{stat}");
 
     for (block_number, _) in stat.block_headers.iter() {
         println!("Getting block {block_number}");
-        let block =
-            first_provider.get_block_by_number(BlockNumberOrTag::Number(*block_number), BlockTransactionsKind::Hashes).await?.unwrap();
+        let block = first_provider.get_block_by_number(BlockNumberOrTag::Number(*block_number)).await?.unwrap();
 
         calc.total_txs += block.transactions.len();
 

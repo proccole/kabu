@@ -6,10 +6,8 @@ use eyre::Result;
 use rand::prelude::{Rng, SeedableRng, StdRng};
 use rayon::prelude::*;
 use rayon::{ThreadPool, ThreadPoolBuilder};
-use revm::primitives::Env;
 use std::collections::HashMap;
 use std::env;
-use std::ops::Deref;
 use std::sync::Arc;
 #[allow(unused_imports)]
 use tokio::sync::RwLock;
@@ -22,6 +20,8 @@ use loom::evm::db::{LoomDB, LoomDBType};
 use loom::node::debug_provider::AnvilDebugProviderFactory;
 use loom::types::entities::required_state::RequiredStateReader;
 use loom::types::entities::{MarketState, Pool, PoolWrapper};
+use loom_evm_utils::LoomEVMWrapper;
+use loom_types_blockchain::LoomDataTypesEthereum;
 
 #[allow(dead_code)]
 async fn performance_test() {
@@ -67,7 +67,8 @@ async fn fetch_data_and_pool() -> Result<(MarketState<LoomDB>, PoolWrapper)> {
 
     let state_required = pool.get_state_required()?;
 
-    let state_required = RequiredStateReader::fetch_calls_and_slots(client.clone(), state_required, Some(block_number)).await?;
+    let state_required =
+        RequiredStateReader::<LoomDataTypesEthereum>::fetch_calls_and_slots(client.clone(), state_required, Some(block_number)).await?;
 
     market_state.state_db.apply_geth_update(state_required);
 
@@ -76,11 +77,11 @@ async fn fetch_data_and_pool() -> Result<(MarketState<LoomDB>, PoolWrapper)> {
 
 #[allow(dead_code)]
 async fn sync_run(state_db: &LoomDBType, pool: UniswapV3Pool) {
-    let evm_env = Env::default();
     let step = U256::from(U256::from(10).pow(U256::from(18)));
     let mut in_amount = U256::from(U256::from(10).pow(U256::from(18)));
     (0..10).for_each(|_| {
-        let (out_amount, gas_used) = pool.calculate_out_amount(state_db, evm_env.clone(), &pool.token1, &pool.token0, in_amount).unwrap();
+        let mut evm = LoomEVMWrapper::new(state_db.clone());
+        let (out_amount, gas_used) = pool.calculate_out_amount(evm.get_mut(), &pool.token1.into(), &pool.token0.into(), in_amount).unwrap();
         if out_amount.is_zero() || gas_used < 50_000 {
             panic!("BAD CALC")
         }
@@ -90,7 +91,6 @@ async fn sync_run(state_db: &LoomDBType, pool: UniswapV3Pool) {
 
 async fn rayon_run(state_db: &LoomDBType, pool: PoolWrapper, threadpool: Arc<ThreadPool>) {
     let start_time = Local::now();
-    let evm_env = Env::default();
     let step = U256::from(U256::from(10).pow(U256::from(16)));
     let in_amount = U256::from(U256::from(10).pow(U256::from(18)));
 
@@ -110,13 +110,14 @@ async fn rayon_run(state_db: &LoomDBType, pool: PoolWrapper, threadpool: Arc<Thr
 
     tokio::task::spawn(async move {
         threadpool.install(|| {
-            in_vec.into_par_iter().for_each_with((&state_db_clone, &evm_env, &result_tx), |req, in_amount| {
-                let (out_amount, gas_used) = pool.calculate_out_amount(req.0, req.1.clone(), &token_from, &token_to, in_amount).unwrap();
+            in_vec.into_par_iter().for_each_with((&state_db_clone, &result_tx), |(state_db, result_tx), in_amount| {
+                let mut evm = LoomEVMWrapper::new(state_db.clone());
+                let (out_amount, gas_used) = pool.calculate_out_amount(evm.get_mut(), &token_from, &token_to, in_amount).unwrap();
                 if out_amount.is_zero() || gas_used < 50_000 {
                     panic!("BAD CALC")
                 }
 
-                if let Err(e) = req.2.try_send(out_amount) {
+                if let Err(e) = result_tx.try_send(out_amount) {
                     error!("{e}")
                 }
             });
@@ -169,14 +170,13 @@ async fn rayon_parallel_run(state_db: &LoomDBType, pool: PoolWrapper) {
 }
 
 async fn tokio_run(state_db: &LoomDBType, pool: UniswapV3Pool) {
-    let evm_env = Env::default();
     let step = U256::from(U256::from(10).pow(U256::from(16)));
     let in_amount = U256::from(U256::from(10).pow(U256::from(18)));
 
     const ITER_COUNT: usize = 10000;
     const WORKERS_COUNT: usize = 10;
 
-    let (request_tx, request_rx) = tokio::sync::mpsc::channel::<Option<(Arc<LoomDBType>, Arc<Env>, U256)>>(ITER_COUNT);
+    let (request_tx, request_rx) = tokio::sync::mpsc::channel::<Option<(Arc<LoomDBType>, U256)>>(ITER_COUNT);
     let (result_tx, mut result_rx) = tokio::sync::mpsc::channel::<U256>(ITER_COUNT);
 
     let request_rx = Arc::new(RwLock::new(request_rx));
@@ -195,9 +195,9 @@ async fn tokio_run(state_db: &LoomDBType, pool: UniswapV3Pool) {
                         drop(request_rx_guard);
                         match req {
                             Some(req) => {
-                                let (out_amount, gas_used) = pool
-                                    .calculate_out_amount(req.0.deref(), req.1.as_ref().clone(), &pool.token1, &pool.token0, req.2)
-                                    .unwrap();
+                                let mut evm = LoomEVMWrapper::new(req.0.as_ref().clone());
+                                let (out_amount, gas_used) =
+                                    pool.calculate_out_amount(evm.get_mut(), &pool.token1.into(), &pool.token0.into(), req.1).unwrap();
                                 if out_amount.is_zero() || gas_used < 50_000 {
                                     panic!("BAD CALC")
                                 }
@@ -226,11 +226,10 @@ async fn tokio_run(state_db: &LoomDBType, pool: UniswapV3Pool) {
     let range = 0..ITER_COUNT;
     let in_vec: Vec<U256> = range.map(|i| in_amount + (step * U256::from(i))).collect();
 
-    let env_clone = Arc::new(evm_env);
     let state_db_clone = Arc::new(state_db.clone());
 
     for in_amount in in_vec.into_iter() {
-        if let Err(e) = request_tx.try_send(Some((state_db_clone.clone(), env_clone.clone(), in_amount))) {
+        if let Err(e) = request_tx.try_send(Some((state_db_clone.clone(), in_amount))) {
             println!("error : {e}")
         }
     }

@@ -5,7 +5,6 @@ use alloy_primitives::Address;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::Json;
-use eyre::ErrReport;
 use loom_evm_utils::error_handler::internal_error;
 use loom_rpc_state::AppState;
 use loom_types_entities::{EntityAddress, PoolWrapper};
@@ -146,15 +145,15 @@ pub async fn market_stats<DB: DatabaseRef + DatabaseCommit + Send + Sync + Clone
         (status = 200, description = "Market stats", body = QuoteResponse),
     )
 )]
-pub async fn pool_quote<DB: DatabaseRef<Error = ErrReport> + DatabaseCommit + Send + Sync + Clone + 'static>(
+pub async fn pool_quote<DB: DatabaseRef<Error = loom_evm_db::LoomDBError> + DatabaseCommit + Send + Sync + Clone + 'static>(
     State(app_state): State<AppState<DB>>,
     Path(address): Path<String>,
-    Json(quote_request): Json<QuoteRequest>,
+    Json(_quote_request): Json<QuoteRequest>,
 ) -> Result<Json<QuoteResponse>, (StatusCode, String)> {
     let address = Address::from_str(&address).map_err(internal_error)?;
     match app_state.bc.market().read().await.pools().get(&EntityAddress::Address(address)) {
         None => Err((StatusCode::NOT_FOUND, "Pool not found".to_string())),
-        Some(pool) => Err((StatusCode::NOT_FOUND, "Not_implemted".to_string())),
+        Some(_pool) => Err((StatusCode::NOT_FOUND, "Not_implemted".to_string())),
         //TODO : rewrite
         /*let evm_env = Env::default();
         let quote_result = pool.pool.calculate_out_amount(

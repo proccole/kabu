@@ -507,6 +507,7 @@ mod tests {
     use loom_evm_db::LoomDBType;
     use loom_evm_utils::LoomEVMWrapper;
     use loom_node_debug_provider::AnvilDebugProviderFactory;
+    use loom_types_blockchain::LoomDataTypesEthereum;
     use loom_types_entities::required_state::RequiredStateReader;
     use loom_types_entities::MarketState;
     use revm::database::CacheDB;
@@ -536,7 +537,8 @@ mod tests {
         let state_required = pool.get_state_required().unwrap();
         debug!("{:?}", state_required);
 
-        let state_update = RequiredStateReader::fetch_calls_and_slots(client.clone(), state_required, None).await.unwrap();
+        let state_update =
+            RequiredStateReader::<LoomDataTypesEthereum>::fetch_calls_and_slots(client.clone(), state_required, None).await.unwrap();
 
         let mut market_state = MarketState::new(LoomDBType::default());
 

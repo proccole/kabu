@@ -35,10 +35,6 @@ where
     LDT: LoomDataTypesEVM<Block = Block>,
     LDT::Block: BlockResponse + RpcRecv,
 {
-    fn name(&self) -> &'static str {
-        "NodeBlockActor"
-    }
-
     pub fn new(client: P, config: NodeBlockActorConfig) -> NodeBlockActor<P, N, LDT> {
         NodeBlockActor {
             client,
@@ -79,7 +75,7 @@ where
         )
     }
     fn name(&self) -> &'static str {
-        self.name()
+        "NodeBlockActor"
     }
 }
 
@@ -98,7 +94,7 @@ where
         )
     }
     fn name(&self) -> &'static str {
-        self.name()
+        "NodeBlockActor"
     }
 }
 

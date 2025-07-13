@@ -17,7 +17,7 @@ pub struct LatestBlock<LDT: LoomDataTypes = LoomDataTypesEthereum> {
 
 impl<LDT: LoomDataTypes<Address = Address, Header = Header, BlockHash = BlockHash, StateUpdate = GethStateUpdate>> LatestBlock<LDT> {
     pub fn hash(&self) -> LDT::BlockHash {
-        self.block_hash.clone()
+        self.block_hash
     }
 
     pub fn parent_hash(&self) -> Option<LDT::BlockHash> {
@@ -54,11 +54,7 @@ impl<LDT: LoomDataTypes<Address = Address, Header = Header, BlockHash = BlockHas
     }
 
     pub fn txs(&self) -> Option<Vec<LDT::Transaction>> {
-        if let Some(block) = &self.block_with_txs {
-            Some(block.get_transactions())
-        } else {
-            None
-        }
+        self.block_with_txs.as_ref().map(|block| block.get_transactions())
     }
 
     pub fn coinbase(&self) -> Option<LDT::Address> {

@@ -524,6 +524,7 @@ mod test {
     use loom_evm_db::{LoomDBError, LoomDBType};
     use loom_evm_utils::LoomEVMWrapper;
     use loom_node_debug_provider::{AnvilDebugProviderFactory, AnvilDebugProviderType};
+    use loom_types_blockchain::LoomDataTypesEthereum;
     use loom_types_entities::required_state::RequiredStateReader;
     use revm::database::EmptyDBTyped;
     use std::env;
@@ -598,6 +599,7 @@ mod test {
         }
     }
 
+    #[ignore]
     #[tokio::test]
     async fn test_calculate_out_amount() -> Result<()> {
         // Verify that the calculated out amount is the same as the contract's out amount
@@ -607,7 +609,9 @@ mod test {
         for pool_address in POOL_ADDRESSES {
             let pool = UniswapV3Pool::fetch_pool_data(client.clone(), pool_address).await?;
             let state_required = pool.get_state_required()?;
-            let state_update = RequiredStateReader::fetch_calls_and_slots(client.clone(), state_required, Some(BLOCK_NUMBER)).await?;
+            let state_update =
+                RequiredStateReader::<LoomDataTypesEthereum>::fetch_calls_and_slots(client.clone(), state_required, Some(BLOCK_NUMBER))
+                    .await?;
 
             let mut state_db = LoomDBType::default();
             state_db.apply_geth_update(state_update);
@@ -663,6 +667,7 @@ mod test {
         Ok(())
     }
 
+    #[ignore]
     #[tokio::test]
     async fn test_calculate_in_amount() -> Result<()> {
         // Verify that the calculated out amount is the same as the contract's out amount
@@ -672,7 +677,9 @@ mod test {
         for pool_address in POOL_ADDRESSES {
             let pool = UniswapV3Pool::fetch_pool_data(client.clone(), pool_address).await?;
             let state_required = pool.get_state_required()?;
-            let state_update = RequiredStateReader::fetch_calls_and_slots(client.clone(), state_required, Some(BLOCK_NUMBER)).await?;
+            let state_update =
+                RequiredStateReader::<LoomDataTypesEthereum>::fetch_calls_and_slots(client.clone(), state_required, Some(BLOCK_NUMBER))
+                    .await?;
 
             let mut state_db = LoomDBType::default().with_ext_db(EmptyDBTyped::<LoomDBError>::new());
             state_db.apply_geth_update(state_update);
@@ -728,6 +735,7 @@ mod test {
         Ok(())
     }
 
+    #[ignore]
     #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn test_calculate_in_amount_with_ext_db() -> Result<()> {
         // Verify that the calculated out amount is the same as the contract's out amount

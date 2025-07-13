@@ -160,7 +160,7 @@ impl Display for PoolProtocol {
             Self::BalancerV2 => "BalancerV2",
             Self::Custom(x) => "Custom",
         };
-        write!(f, "{}", protocol_name)
+        write!(f, "{protocol_name}")
     }
 }
 

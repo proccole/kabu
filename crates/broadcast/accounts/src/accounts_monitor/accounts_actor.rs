@@ -1,7 +1,7 @@
 use alloy_consensus::Transaction;
 use alloy_eips::{BlockId, BlockNumberOrTag};
-use alloy_network::{Network, TransactionResponse};
-use alloy_primitives::{Address, Log, U256};
+use alloy_network::Network;
+use alloy_primitives::{Log, U256};
 use alloy_provider::Provider;
 use alloy_rpc_types::eth::Log as EthLog;
 use alloy_rpc_types::TransactionTrait;
@@ -10,7 +10,7 @@ use loom_core_actors::{Accessor, Actor, ActorResult, Broadcaster, Consumer, Shar
 use loom_core_actors_macros::{Accessor, Consumer};
 use loom_core_blockchain::Blockchain;
 use loom_defi_abi::IERC20::IERC20Events;
-use loom_types_blockchain::{LoomBlock, LoomDataTypes, LoomDataTypesEVM, LoomTx};
+use loom_types_blockchain::{LoomBlock, LoomDataTypes, LoomTx};
 use loom_types_entities::{AccountNonceAndBalanceState, EntityAddress, LatestBlock};
 use loom_types_events::MarketEvents;
 use std::marker::PhantomData;

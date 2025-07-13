@@ -18,7 +18,7 @@ pub struct SwapStep {
 impl Display for SwapStep {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let paths = self.swap_line_vec.iter().map(|path| format!("{path}")).collect::<Vec<String>>().join(" / ");
-        write!(f, "{}", paths)
+        write!(f, "{paths}")
     }
 }
 

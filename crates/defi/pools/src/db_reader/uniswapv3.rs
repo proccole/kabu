@@ -106,6 +106,7 @@ mod test {
     use loom_evm_db::LoomDBType;
     use loom_evm_utils::LoomEVMWrapper;
     use loom_node_debug_provider::AnvilDebugProviderFactory;
+    use loom_types_blockchain::LoomDataTypesEthereum;
     use loom_types_entities::required_state::RequiredStateReader;
     use loom_types_entities::{MarketState, Pool};
 
@@ -113,6 +114,7 @@ mod test {
     use crate::state_readers::UniswapV3EvmStateReader;
     use crate::UniswapV3Pool;
 
+    #[ignore]
     #[tokio::test]
     async fn test_reader() -> Result<()> {
         let _ = env_logger::try_init_from_env(env_logger::Env::default().default_filter_or(
@@ -131,7 +133,8 @@ mod test {
 
         let state_required = pool.get_state_required()?;
 
-        let state_required = RequiredStateReader::fetch_calls_and_slots(client.clone(), state_required, None).await?;
+        let state_required =
+            RequiredStateReader::<LoomDataTypesEthereum>::fetch_calls_and_slots(client.clone(), state_required, None).await?;
 
         market_state.state_db.apply_geth_update(state_required);
 

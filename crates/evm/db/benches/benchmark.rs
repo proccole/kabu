@@ -1,14 +1,16 @@
 use std::collections::HashSet;
 use std::hash::{DefaultHasher, Hash};
 
+use alloy::consensus::constants::KECCAK_EMPTY;
 use alloy::primitives::map::HashMap;
-use alloy::primitives::{Address, Bytes, U256};
+use alloy::primitives::{Address, U256};
 use criterion::{criterion_group, criterion_main, Criterion};
-use rand::{thread_rng, Rng, RngCore};
-use revm::db::{AccountState as DbAccountState, CacheDB, DbAccount, EmptyDB};
-use revm::primitives::{Account, AccountInfo, Bytecode, KECCAK_EMPTY};
-use revm::{Database, DatabaseCommit, DatabaseRef};
+use rand::{thread_rng, Rng};
+use revm::database::{AccountState, CacheDB, EmptyDB};
+use revm::state::{Account, AccountInfo, Bytecode};
+use revm::{DatabaseCommit, DatabaseRef};
 
+use loom_evm_db::fast_cache_db::FastDbAccount;
 use loom_evm_db::fast_hasher::{HashedAddress, HashedAddressCell, SimpleBuildHasher, SimpleHasher};
 use loom_evm_db::{DatabaseHelpers, LoomDB, LoomDBType};
 
@@ -16,9 +18,9 @@ const N: usize = 100000;
 const N_ACC: usize = 10000;
 const N_MEM: usize = 1000;
 
-fn generate_account(mem_size: usize) -> DbAccount {
+fn generate_account(mem_size: usize) -> FastDbAccount {
     let mut rng = thread_rng();
-    let mut storage_map: HashMap<U256, U256> = HashMap::default();
+    let mut storage_map: HashMap<U256, U256, SimpleBuildHasher> = HashMap::with_hasher(SimpleBuildHasher::default());
     for _j in 0..mem_size {
         storage_map.insert(rng.gen::<U256>(), rng.gen::<U256>());
     }
@@ -30,17 +32,17 @@ fn generate_account(mem_size: usize) -> DbAccount {
 
     let info = AccountInfo::new(U256::ZERO, 0, KECCAK_EMPTY, Bytecode::new());
 
-    DbAccount { info, account_state: DbAccountState::Touched, storage: storage_map }
+    FastDbAccount { info, account_state: AccountState::Touched, storage: storage_map }
 }
-fn generate_accounts(acc_size: usize, mem_size: usize) -> Vec<DbAccount> {
-    let mut ret: Vec<DbAccount> = Vec::new();
+fn generate_accounts(acc_size: usize, mem_size: usize) -> Vec<FastDbAccount> {
+    let mut ret: Vec<FastDbAccount> = Vec::new();
     for _i in 0..acc_size {
         ret.push(generate_account(mem_size));
     }
     ret
 }
 
-fn fill_cache_db(db: &mut CacheDB<EmptyDB>, addr: &[Address], accs: &[DbAccount]) {
+fn fill_cache_db(db: &mut CacheDB<EmptyDB>, addr: &[Address], accs: &[FastDbAccount]) {
     for a in 0..addr.len() {
         db.insert_account_info(addr[a], accs[a].info.clone());
         for (k, v) in accs[a].storage.iter() {
@@ -49,7 +51,7 @@ fn fill_cache_db(db: &mut CacheDB<EmptyDB>, addr: &[Address], accs: &[DbAccount]
     }
 }
 
-fn fill_loom_db(db: &mut LoomDBType, addr: &[Address], accs: &[DbAccount]) {
+fn fill_loom_db(db: &mut LoomDBType, addr: &[Address], accs: &[FastDbAccount]) {
     for a in 0..addr.len() {
         db.insert_account_info(addr[a], accs[a].info.clone());
         for (k, v) in accs[a].storage.iter() {
@@ -58,23 +60,23 @@ fn fill_loom_db(db: &mut LoomDBType, addr: &[Address], accs: &[DbAccount]) {
     }
 }
 
-fn fill_trait<DB: DatabaseCommit>(db: &mut DB, addr: &[Address], accs: &[DbAccount]) {
+fn fill_trait<DB: DatabaseCommit>(db: &mut DB, addr: &[Address], accs: &[FastDbAccount]) {
     let len = addr.len();
     let mut update: HashMap<Address, Account> = HashMap::default();
 
     for i in 0..len {
         let acc = DatabaseHelpers::account_db_to_revm(accs[i].clone());
-        update.insert(addr[i].clone(), acc);
+        update.insert(addr[i], acc);
     }
     db.commit(update)
 }
 
-fn read_trait<DB: DatabaseRef>(db: &DB, addr: &[Address], accs: &[DbAccount]) {
+fn read_trait<DB: DatabaseRef>(db: &DB, addr: &[Address], accs: &[FastDbAccount]) {
     let len = addr.len();
-    let mut update: HashMap<Address, Account> = HashMap::default();
+    let _update: HashMap<Address, Account> = HashMap::default();
 
     for i in 0..len {
-        if let Ok(Some(acc)) = db.basic_ref(addr[i]) {
+        if let Ok(Some(_acc)) = db.basic_ref(addr[i]) {
             for (k, v) in accs[i].storage.iter() {
                 assert_eq!(db.storage_ref(addr[i], *k).unwrap_or_default(), *v)
             }
@@ -82,17 +84,17 @@ fn read_trait<DB: DatabaseRef>(db: &DB, addr: &[Address], accs: &[DbAccount]) {
     }
 }
 
-fn test_insert_cache_db(addr: &[Address], accs: &[DbAccount]) {
+fn test_insert_cache_db(addr: &[Address], accs: &[FastDbAccount]) {
     let mut db = CacheDB::new(EmptyDB::new());
     fill_cache_db(&mut db, addr, accs);
 }
 
-fn test_insert_loom_db(addr: &[Address], accs: &[DbAccount]) {
+fn test_insert_loom_db(addr: &[Address], accs: &[FastDbAccount]) {
     let mut db = LoomDBType::default();
     fill_loom_db(&mut db, addr, accs);
 }
 
-fn test_read_cache_db(db: &CacheDB<EmptyDB>, addr: &[Address], accs: &[DbAccount]) {
+fn test_read_cache_db(db: &CacheDB<EmptyDB>, addr: &[Address], accs: &[FastDbAccount]) {
     for (i, a) in addr.iter().enumerate() {
         for (k, v) in accs[i].storage.iter() {
             if db.storage_ref(*a, *k).unwrap() != *v {
@@ -102,7 +104,7 @@ fn test_read_cache_db(db: &CacheDB<EmptyDB>, addr: &[Address], accs: &[DbAccount
     }
 }
 
-fn test_read_loom_db(db: &LoomDBType, addr: &[Address], accs: &[DbAccount]) {
+fn test_read_loom_db(db: &LoomDBType, addr: &[Address], accs: &[FastDbAccount]) {
     for (i, a) in addr.iter().enumerate() {
         for (k, v) in accs[i].storage.iter() {
             if db.storage_ref(*a, *k).unwrap() != *v {
@@ -112,7 +114,7 @@ fn test_read_loom_db(db: &LoomDBType, addr: &[Address], accs: &[DbAccount]) {
     }
 }
 
-fn build_one(addr: &[Address], accs: &[DbAccount]) -> HashMap<HashedAddressCell, U256, SimpleBuildHasher> {
+fn build_one(addr: &[Address], accs: &[FastDbAccount]) -> HashMap<HashedAddressCell, U256, SimpleBuildHasher> {
     let mut hm: HashMap<HashedAddressCell, U256, SimpleBuildHasher> = HashMap::with_hasher(SimpleBuildHasher::default());
 
     for (a, addr) in addr.iter().enumerate() {
@@ -125,7 +127,7 @@ fn build_one(addr: &[Address], accs: &[DbAccount]) -> HashMap<HashedAddressCell,
     hm
 }
 
-fn build_many(addr: &[Address], accs: &[DbAccount]) -> HashMap<Address, HashMap<U256, U256>> {
+fn build_many(addr: &[Address], accs: &[FastDbAccount]) -> HashMap<Address, HashMap<U256, U256>> {
     let mut hm: HashMap<Address, HashMap<U256, U256>> = HashMap::default();
 
     for (a, addr) in addr.iter().enumerate() {
@@ -138,11 +140,11 @@ fn build_many(addr: &[Address], accs: &[DbAccount]) -> HashMap<Address, HashMap<
     hm
 }
 
-fn test_build_many(addr: &[Address], accs: &[DbAccount]) {
+fn test_build_many(addr: &[Address], accs: &[FastDbAccount]) {
     build_many(addr, accs);
 }
 
-fn test_read_many(addr: &[Address], accs: &[DbAccount], hm: &HashMap<Address, HashMap<U256, U256>>) {
+fn test_read_many(addr: &[Address], accs: &[FastDbAccount], hm: &HashMap<Address, HashMap<U256, U256>>) {
     for (a, addr) in addr.iter().enumerate() {
         let acc = &accs[a];
         match hm.get(addr) {
@@ -165,11 +167,11 @@ fn test_read_many(addr: &[Address], accs: &[DbAccount], hm: &HashMap<Address, Ha
     }
 }
 
-fn test_build_one(addr: &[Address], accs: &[DbAccount]) {
+fn test_build_one(addr: &[Address], accs: &[FastDbAccount]) {
     build_one(addr, accs);
 }
 
-fn test_read_one(addr: &[Address], accs: &[DbAccount], hm: &HashMap<HashedAddressCell, U256, SimpleBuildHasher>) {
+fn test_read_one(addr: &[Address], accs: &[FastDbAccount], hm: &HashMap<HashedAddressCell, U256, SimpleBuildHasher>) {
     for (a, addr) in addr.iter().enumerate() {
         let acc = &accs[a];
         for (k, v) in acc.storage.iter() {
@@ -297,8 +299,8 @@ fn benchmark_test_group_trait(c: &mut Criterion) {
     let addr: Vec<Address> = (0..N_ACC).map(|_| Address::random()).collect();
     let accs = generate_accounts(N_ACC, N_MEM);
 
-    let mut cache_db = CacheDB::new(EmptyDB::new());
-    let mut loom_db = LoomDB::default();
+    let cache_db = CacheDB::new(EmptyDB::new());
+    let loom_db = LoomDB::default();
 
     //group.bench_function("test_hash_speed", |b| b.iter(|| fill_trait(&mut cache_db, &addr, &accs)));
     group.bench_function("test_fill_trait_cache_db", |b| b.iter(|| fill_trait(&mut cache_db.clone(), &addr, &accs)));

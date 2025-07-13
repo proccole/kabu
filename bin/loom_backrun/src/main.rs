@@ -93,7 +93,7 @@ async fn main() -> Result<()> {
             info!("Swap path encoder actor started successfully")
         }
         Err(e) => {
-            panic!("ArbSwapPathEncoderActor {}", e)
+            panic!("ArbSwapPathEncoderActor {e}")
         }
     }
 
@@ -164,7 +164,7 @@ async fn main() -> Result<()> {
         .start()
     {
         Err(e) => {
-            panic!("State health monitor actor failed : {}", e)
+            panic!("State health monitor actor failed : {e}")
         }
         Ok(r) => {
             worker_task_vec.extend(r);
@@ -182,7 +182,7 @@ async fn main() -> Result<()> {
         .start()
     {
         Err(e) => {
-            panic!("Stuffing txs monitor actor failed : {}", e)
+            panic!("Stuffing txs monitor actor failed : {e}")
         }
         Ok(r) => {
             worker_task_vec.extend(r);
@@ -195,7 +195,7 @@ async fn main() -> Result<()> {
         let mut influxdb_writer_actor = InfluxDbWriterActor::new(influxdb_config.url, influxdb_config.database, influxdb_config.tags);
         match influxdb_writer_actor.consume(blockchain.influxdb_write_channel()).start() {
             Err(e) => {
-                panic!("InfluxDB writer actor failed : {}", e)
+                panic!("InfluxDB writer actor failed : {e}")
             }
             Ok(r) => {
                 worker_task_vec.extend(r);
@@ -212,7 +212,7 @@ async fn main() -> Result<()> {
             .start()
         {
             Err(e) => {
-                panic!("Block latency recorder actor failed : {}", e)
+                panic!("Block latency recorder actor failed : {e}")
             }
             Ok(r) => {
                 worker_task_vec.extend(r);

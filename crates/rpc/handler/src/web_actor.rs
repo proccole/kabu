@@ -1,6 +1,5 @@
 use crate::router::router;
 use axum::Router;
-use eyre::ErrReport;
 use loom_core_actors::{Actor, ActorResult, WorkerResult};
 use loom_core_actors_macros::Consumer;
 use loom_core_blockchain::{Blockchain, BlockchainState};
@@ -23,7 +22,7 @@ pub async fn start_web_server_worker<S, DB>(
     shutdown_token: CancellationToken,
 ) -> WorkerResult
 where
-    DB: DatabaseRef<Error = ErrReport> + DatabaseCommit + Send + Sync + Clone + Default + 'static,
+    DB: DatabaseRef<Error = loom_evm_db::LoomDBError> + DatabaseCommit + Send + Sync + Clone + Default + 'static,
     S: Clone + Send + Sync + 'static,
     Router: From<Router<S>>,
 {
@@ -58,7 +57,7 @@ pub struct WebServerActor<S, DB: Clone + Send + Sync + 'static> {
 
 impl<S, DB> WebServerActor<S, DB>
 where
-    DB: DatabaseRef<Error = ErrReport> + Send + Sync + Clone + Default + 'static,
+    DB: DatabaseRef<Error = loom_evm_db::LoomDBError> + Send + Sync + Clone + Default + 'static,
     S: Clone + Send + Sync + 'static,
     Router: From<Router<S>>,
 {
@@ -75,7 +74,7 @@ impl<S, DB> Actor for WebServerActor<S, DB>
 where
     S: Clone + Send + Sync + 'static,
     Router: From<Router<S>>,
-    DB: DatabaseRef<Error = ErrReport> + DatabaseCommit + Send + Sync + Clone + Default + 'static,
+    DB: DatabaseRef<Error = loom_evm_db::LoomDBError> + DatabaseCommit + Send + Sync + Clone + Default + 'static,
 {
     fn start(&self) -> ActorResult {
         let task = tokio::spawn(start_web_server_worker(

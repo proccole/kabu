@@ -3,7 +3,7 @@ use loom_core_actors::{Accessor, Actor, ActorResult, Broadcaster, Consumer, Prod
 use loom_core_actors_macros::{Accessor, Consumer, Producer};
 use loom_core_blockchain::{Blockchain, Strategy};
 use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEthereum};
-use loom_types_entities::{AccountNonceAndBalanceState, EntityAddress, TxSigners};
+use loom_types_entities::{AccountNonceAndBalanceState, TxSigners};
 use loom_types_events::{MessageSwapCompose, MessageTxCompose, SwapComposeData, SwapComposeMessage, TxComposeData};
 use revm::DatabaseRef;
 use tokio::sync::broadcast::error::RecvError;

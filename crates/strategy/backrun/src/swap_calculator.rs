@@ -12,6 +12,7 @@ pub struct SwapCalculator {}
 
 impl SwapCalculator {
     #[inline]
+    #[allow(clippy::result_large_err)]
     pub fn calculate<'a>(path: &'a mut SwapLine, evm: &mut dyn LoomExecuteEvm) -> eyre::Result<&'a mut SwapLine, SwapError> {
         let first_token = path.get_first_token().unwrap();
         if let Some(amount_in) = first_token.calc_token_value_from_eth(*START_OPTIMIZE_INPUT) {

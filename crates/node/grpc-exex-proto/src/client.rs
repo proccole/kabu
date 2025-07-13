@@ -60,7 +60,7 @@ impl ExExClient {
                     }
                     Ok(None) => break, // Stream has ended
                     Err(err) => {
-                        eprintln!("Error receiving mempooltx.message: {:?}", err);
+                        eprintln!("Error receiving mempooltx.message: {err:?}");
                         break;
                     }
                 }
@@ -96,7 +96,7 @@ impl ExExClient {
 
                     } // Stream has ended
                     Err(err) => {
-                        eprintln!("Error receiving header.message: {:?}", err);
+                        eprintln!("Error receiving header.message: {err:?}");
                         break;
                     }
                 }
@@ -145,7 +145,7 @@ impl ExExClient {
                     },
                     Ok(None) => break, // Stream has ended
                     Err(err) => {
-                        eprintln!("Error receiving block.message: {:?}", err);
+                        eprintln!("Error receiving block.message: {err:?}");
                         break;
                     }
                 }
@@ -193,7 +193,7 @@ impl ExExClient {
                     },
                     Ok(None) => break, // Stream has ended
                     Err(err) => {
-                        eprintln!("Error receiving logs.message: {:?}", err);
+                        eprintln!("Error receiving logs.message: {err:?}");
                         break;
                     }
                 }
@@ -255,7 +255,7 @@ impl ExExClient {
                     },
                     Ok(None) => break, // Stream has ended
                     Err(err) => {
-                        eprintln!("Error receiving state_update.message: {:?}", err);
+                        eprintln!("Error receiving state_update.message: {err:?}");
                         break;
                     }
                 }
@@ -282,12 +282,12 @@ impl ExExClient {
                     Ok(Some(notification)) => {
                             match ExExNotification::try_from(&notification) {
                                 Ok(notification) => yield notification,
-                                Err(err) => eprintln!("Error converting notification: {:?}", err),
+                                Err(err) => eprintln!("Error converting notification: {err:?}"),
                             }
                         },
                     Ok(None) => break, // Stream has ended
                     Err(err) => {
-                        eprintln!("Error receiving exex.message: {:?}", err);
+                        eprintln!("Error receiving exex.message: {err:?}");
                         break;
                     }
                 }

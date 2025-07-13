@@ -14,6 +14,16 @@ pub struct Strategy<DB: Clone + Send + Sync + 'static, LDT: LoomDataTypes + 'sta
 impl<
         DB: DatabaseRef + Database + DatabaseCommit + BlockHistoryState<LDT> + DatabaseLoomExt + Send + Sync + Clone + Default + 'static,
         LDT: LoomDataTypes,
+    > Default for Strategy<DB, LDT>
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<
+        DB: DatabaseRef + Database + DatabaseCommit + BlockHistoryState<LDT> + DatabaseLoomExt + Send + Sync + Clone + Default + 'static,
+        LDT: LoomDataTypes,
     > Strategy<DB, LDT>
 {
     pub fn new() -> Self {

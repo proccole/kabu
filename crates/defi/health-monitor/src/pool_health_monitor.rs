@@ -61,7 +61,7 @@ pub async fn pool_health_monitor_worker(
 
 
                                             for (idx, pool) in estimate_error.swap_path.pools.iter().enumerate() {
-                                                let tokens = vec![estimate_error.swap_path.tokens[idx].get_address(), estimate_error.swap_path.tokens[idx+1].get_address()];
+                                                let tokens = [estimate_error.swap_path.tokens[idx].get_address(), estimate_error.swap_path.tokens[idx+1].get_address()];
                                                 if pool.get_protocol() == PoolProtocol::UniswapV2Like || pool.get_protocol() == PoolProtocol::UniswapV3Like {
                                                 //tokens.iter().any(|token_address| !TRUSTED_TOKENS.contains(token_address) ) {
                                                     let pool_id = pool.get_pool_id();

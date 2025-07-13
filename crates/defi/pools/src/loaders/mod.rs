@@ -119,15 +119,13 @@ where
     where
         P: Provider<N> + Clone,
     {
-        let pool_loader = PoolLoadersBuilder::<P, N, LDT>::new()
+        PoolLoadersBuilder::<P, N, LDT>::new()
             .with_provider(provider.clone())
             .with_config(config)
             .add_loader(PoolClass::Maverick, MaverickPoolLoader::with_provider(provider.clone()))
             .add_loader(PoolClass::UniswapV2, UniswapV2PoolLoader::with_provider(provider.clone()))
             .add_loader(PoolClass::UniswapV3, UniswapV3PoolLoader::with_provider(provider.clone()))
             .add_loader(PoolClass::Curve, CurvePoolLoader::with_provider(provider.clone()))
-            .build();
-
-        pool_loader
+            .build()
     }
 }

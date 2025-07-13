@@ -104,8 +104,8 @@ impl Ord for EntityAddress {
 impl Display for EntityAddress {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Address(a) => write!(f, "{}", a),
-            Self::Bytes32(a) => write!(f, "{}", a),
+            Self::Address(a) => write!(f, "{a}"),
+            Self::Bytes32(a) => write!(f, "{a}"),
         }
     }
 }
