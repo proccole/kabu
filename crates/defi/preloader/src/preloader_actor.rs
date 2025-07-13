@@ -13,7 +13,7 @@ use loom_core_actors_macros::Accessor;
 use loom_core_blockchain::{Blockchain, BlockchainState};
 use loom_defi_address_book::TokenAddressEth;
 use loom_evm_utils::{BalanceCheater, NWETH};
-use loom_types_blockchain::{GethStateUpdate, LoomDataTypes, LoomDataTypesEthereum};
+use loom_types_blockchain::{GethStateUpdate, LoomDataTypes};
 use loom_types_entities::{AccountNonceAndBalanceState, EntityAddress, MarketState, TxSigners};
 use revm::{Database, DatabaseCommit, DatabaseRef};
 use tracing::{debug, error, trace};

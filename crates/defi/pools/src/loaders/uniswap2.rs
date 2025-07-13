@@ -2,17 +2,14 @@ use crate::protocols::{fetch_uni2_factory, UniswapV2Protocol};
 use crate::{pool_loader, UniswapV2Pool};
 use alloy::primitives::Bytes;
 use alloy::primitives::Log as EVMLog;
-use alloy::providers::network::Ethereum;
 use alloy::sol_types::SolEventInterface;
-use eyre::{eyre, ErrReport};
+use eyre::eyre;
 use futures::Stream;
 use loom_defi_abi::uniswap2::IUniswapV2Pair::IUniswapV2PairEvents;
 use loom_evm_utils::LoomExecuteEvm;
 use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEVM, LoomDataTypesEthereum};
 use loom_types_entities::{get_protocol_by_factory, EntityAddress, PoolClass, PoolLoader, PoolProtocol, PoolWrapper};
-use revm::DatabaseRef;
 use std::future::Future;
-use std::ops::DerefMut;
 use std::pin::Pin;
 use std::sync::Arc;
 

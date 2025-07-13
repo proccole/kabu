@@ -8,15 +8,21 @@ use loom_defi_address_book::{
 use loom_defi_market::fetch_and_add_pool_by_pool_id;
 use loom_defi_pools::PoolLoadersBuilder;
 use loom_node_debug_provider::DebugProviderExt;
+use loom_types_blockchain::LoomDataTypes;
 use loom_types_entities::pool_config::PoolsLoadingConfig;
 use loom_types_entities::{Market, MarketState, PoolClass, Token};
 use revm::{Database, DatabaseCommit, DatabaseRef};
 use std::sync::Arc;
 
-pub async fn preload_pools<P, DB>(client: P, market: SharedState<Market>, market_state: SharedState<MarketState<DB>>) -> eyre::Result<()>
+pub async fn preload_pools<P, DB, LDT>(
+    client: P,
+    market: SharedState<Market>,
+    market_state: SharedState<MarketState<DB>>,
+) -> eyre::Result<()>
 where
     P: Provider<Ethereum> + DebugProviderExt<Ethereum> + Send + Sync + Clone + 'static,
     DB: DatabaseRef + DatabaseCommit + Database + Send + Sync + Clone + 'static,
+    LDT: LoomDataTypes + 'static,
 {
     let mut market_instance = market.write().await;
 

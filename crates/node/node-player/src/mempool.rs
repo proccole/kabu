@@ -3,11 +3,10 @@ use alloy_rpc_types::Header;
 use eyre::Result;
 use loom_core_actors::SharedState;
 use loom_evm_db::LoomDBError;
-use loom_evm_utils::{evm_call, evm_call_raw, EVMParserHelper, LoomEVMWrapper};
+use loom_evm_utils::{evm_call_raw, EVMParserHelper, LoomEVMWrapper};
 use loom_types_blockchain::Mempool;
 use loom_types_entities::MarketState;
 use revm::{Database, DatabaseCommit, DatabaseRef};
-use std::fmt::Debug;
 use tracing::{debug, info};
 
 pub(crate) async fn replayer_mempool_task<DB>(

@@ -307,7 +307,7 @@ mod tests {
     use revm::database::EmptyDB;
     use revm::primitives::{Address, I256, KECCAK_EMPTY, U256};
     use revm::state::{AccountInfo, Bytecode};
-    use revm::DatabaseRef;
+    use revm::{Database, DatabaseRef};
 
     #[test]
     fn test_insert_account_storage() {

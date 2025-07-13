@@ -9,7 +9,7 @@ use alloy_provider::{Network, Provider, ProviderBuilder, RootProvider};
 use alloy_rpc_client::ClientBuilder;
 use alloy_transport_ipc::IpcConnect;
 use alloy_transport_ws::WsConnect;
-use eyre::{eyre, ErrReport, Result};
+use eyre::{eyre, Result};
 use loom_broadcast_accounts::{InitializeSignersOneShotBlockingActor, NonceAndBalanceMonitorActor, TxSignersActor};
 use loom_broadcast_broadcaster::FlashbotsBroadcastActor;
 use loom_broadcast_flashbots::Flashbots;

@@ -1,7 +1,7 @@
 use crate::market_state::MarketStateConfig;
 use crate::BlockHistoryEntry;
 use loom_evm_db::{DatabaseLoomExt, LoomDB};
-use loom_types_blockchain::{GethStateUpdate, GethStateUpdateVec, LoomDataTypes};
+use loom_types_blockchain::{GethStateUpdate, LoomDataTypes};
 use tracing::{error, trace};
 
 pub trait BlockHistoryState<LDT>

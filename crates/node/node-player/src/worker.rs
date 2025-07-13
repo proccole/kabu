@@ -3,7 +3,7 @@ use alloy_eips::BlockId;
 use alloy_network::Ethereum;
 use alloy_primitives::BlockNumber;
 use alloy_provider::Provider;
-use alloy_rpc_types::{BlockTransactions, BlockTransactionsKind, Filter};
+use alloy_rpc_types::{BlockTransactions, Filter};
 use loom_core_actors::{Broadcaster, SharedState, WorkerResult};
 use loom_evm_db::{DatabaseLoomExt, LoomDBError};
 use loom_node_debug_provider::DebugProviderExt;
@@ -14,7 +14,6 @@ use loom_types_events::{
     MessageBlockStateUpdate,
 };
 use revm::{Database, DatabaseCommit, DatabaseRef};
-use std::fmt::Debug;
 use std::ops::RangeInclusive;
 use std::time::Duration;
 use tracing::{debug, error};

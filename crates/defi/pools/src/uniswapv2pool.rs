@@ -11,9 +11,8 @@ use loom_defi_address_book::FactoryAddress;
 use loom_evm_utils::LoomExecuteEvm;
 use loom_types_entities::required_state::RequiredState;
 use loom_types_entities::{EntityAddress, Pool, PoolAbiEncoder, PoolClass, PoolProtocol, PreswapRequirement, SwapDirection};
-use revm::DatabaseRef;
 use std::any::Any;
-use std::ops::{Deref, Div};
+use std::ops::Div;
 use tracing::debug;
 
 lazy_static! {

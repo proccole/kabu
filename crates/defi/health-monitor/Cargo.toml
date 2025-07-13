@@ -12,21 +12,21 @@ version.workspace = true
 loom-core-actors.workspace = true
 loom-core-actors-macros.workspace = true
 loom-core-blockchain.workspace = true
+loom-defi-address-book.workspace = true
 loom-evm-db.workspace = true
 loom-evm-utils.workspace = true
 loom-types-blockchain.workspace = true
 loom-types-entities.workspace = true
 loom-types-events.workspace = true
-loom-defi-address-book.workspace = true
 
 chrono.workspace = true
 eyre.workspace = true
 influxdb.workspace = true
 lazy_static.workspace = true
-tokio.workspace = true
-tracing.workspace = true
 tikv-jemalloc-ctl.workspace = true
 tikv-jemallocator.workspace = true
+tokio.workspace = true
+tracing.workspace = true
 
 #alloy
 alloy-consensus.workspace = true

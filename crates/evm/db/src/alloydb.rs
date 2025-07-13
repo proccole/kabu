@@ -1,15 +1,12 @@
 use crate::error::LoomDBError;
-use alloy::eips::{BlockId, BlockNumberOrTag};
-use alloy::network::primitives::{BlockTransactionsKind, HeaderResponse};
+use alloy::eips::BlockId;
+use alloy::network::primitives::HeaderResponse;
 use alloy::providers::{network::BlockResponse, Network, Provider};
-use core::error::Error;
-use eyre::ErrReport;
 use revm::state::{AccountInfo, Bytecode};
 use revm::{
     primitives::{Address, B256, U256},
     Database, DatabaseRef,
 };
-use std::convert::Infallible;
 use std::future::IntoFuture;
 use tokio::runtime::{Handle, Runtime};
 

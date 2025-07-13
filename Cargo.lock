@@ -3419,6 +3419,7 @@ dependencies = [
  "loom-evm-utils",
  "loom-execution-multicaller",
  "loom-node-debug-provider",
+ "loom-types-blockchain",
  "loom-types-entities",
  "revm",
  "serde",

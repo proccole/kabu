@@ -1,6 +1,6 @@
 use crate::loom_data_types::LoomTransactionRequest;
-use crate::{ChainParameters, GethStateUpdate, LoomBlock, LoomDataTypes, LoomDataTypesEVM, LoomHeader, LoomTx};
-use alloy_consensus::{BlockHeader, Transaction as TransactionTrait};
+use crate::{GethStateUpdate, LoomBlock, LoomDataTypes, LoomDataTypesEVM, LoomTx};
+use alloy_consensus::Transaction as TransactionTrait;
 use alloy_eips::eip2718::Encodable2718;
 use alloy_primitives::{Address, BlockHash, Bytes, TxHash, TxKind};
 use alloy_provider::network::TransactionBuilder;

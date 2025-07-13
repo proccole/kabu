@@ -5,7 +5,7 @@ use alloy::rpc::types::TransactionRequest;
 use alloy::sol_types::SolCall;
 use eyre::{eyre, Result};
 use loom_defi_abi::uniswap_periphery::IQuoterV2;
-use loom_evm_utils::{evm_call, evm_dyn_call, LoomExecuteEvm};
+use loom_evm_utils::{evm_dyn_call, LoomExecuteEvm};
 
 pub struct UniswapV3QuoterV2Encoder {}
 

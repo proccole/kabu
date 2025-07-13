@@ -1,6 +1,6 @@
 #![allow(clippy::type_complexity)]
 
-use alloy_consensus::{BlockHeader, Header};
+use alloy_consensus::Header;
 use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEVM, LoomDataTypesEthereum};
 use loom_types_entities::{PoolWrapper, SwapDirection};
 use revm::DatabaseRef;

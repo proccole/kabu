@@ -1,10 +1,5 @@
-use alloy::consensus::Transaction as TransactionTrait;
-use alloy::consensus::{TxEip4844Variant, TxEnvelope};
 use alloy::primitives::private::alloy_rlp;
-use alloy::primitives::{Bytes, SignatureError, TxKind, U256};
-use alloy::rlp::Decodable;
-use alloy::rpc::types::Transaction;
-use revm::context::TxEnv;
+use alloy::primitives::SignatureError;
 use thiserror::Error;
 
 #[derive(Debug, Error)]

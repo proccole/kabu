@@ -1,14 +1,12 @@
 use crate::{pool_loader, MaverickPool};
 use alloy::primitives::Bytes;
 use alloy::primitives::Log as EVMLog;
-use alloy::providers::network::Ethereum;
 use alloy::sol_types::SolEventInterface;
-use eyre::{eyre, ErrReport, Result};
+use eyre::{eyre, Result};
 use loom_defi_abi::maverick::IMaverickPool::IMaverickPoolEvents;
 use loom_evm_utils::LoomExecuteEvm;
 use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEVM, LoomDataTypesEthereum};
 use loom_types_entities::{EntityAddress, PoolClass, PoolLoader, PoolWrapper};
-use revm::DatabaseRef;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;

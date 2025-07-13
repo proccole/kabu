@@ -2,7 +2,6 @@ use alloy::consensus::transaction::Recovered;
 use alloy::consensus::TxEnvelope;
 use alloy::eips::eip2718::Decodable2718;
 use alloy::primitives::Bytes;
-use alloy::rlp::Decodable;
 use alloy::rpc::types::Transaction;
 use alloy::rpc::types::{BlockNumHash, Log as ALog};
 use eyre::{OptionExt, Result};

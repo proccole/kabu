@@ -1,12 +1,10 @@
-use alloy::consensus::{BlockHeader, Transaction as TransactionTrait};
+use alloy::consensus::BlockHeader;
 use alloy::network::TransactionBuilder;
-use alloy::primitives::{Address, U256};
-use alloy::rpc::types::{Header, Transaction, TransactionRequest};
+use alloy::primitives::Address;
+use alloy::rpc::types::TransactionRequest;
 use lazy_static::lazy_static;
-use revm::context::setters::ContextSetters;
-use revm::context::{BlockEnv, Evm, TxEnv};
+use revm::context::{BlockEnv, TxEnv};
 use revm::context_interface::block::BlobExcessGasAndPrice;
-use revm::Context;
 
 lazy_static! {
     static ref COINBASE: Address = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326".parse().unwrap();

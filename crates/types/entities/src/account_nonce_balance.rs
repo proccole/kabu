@@ -1,8 +1,6 @@
-use std::collections::HashMap;
-
 use crate::EntityAddress;
-use alloy_primitives::{Address, U256};
-use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEthereum};
+use alloy_primitives::U256;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Default)]
 pub struct AccountNonceAndBalances {

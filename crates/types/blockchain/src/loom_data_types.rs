@@ -1,11 +1,8 @@
 use crate::{ChainParameters, GethStateUpdate};
 use alloy_consensus::BlockHeader;
 use alloy_primitives::{Address, BlockHash, Bytes, TxHash};
-use alloy_provider::network::BlockResponse;
 use alloy_rpc_types::TransactionTrait;
-use alloy_rpc_types_eth::{Header, Log, TransactionRequest};
-use op_alloy::rpc_types::OpTransactionRequest;
-use serde::de::Deserialize;
+use alloy_rpc_types_eth::{Header, Log};
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
 

@@ -10,7 +10,7 @@ use alloy::{
     rpc::{
         client::{NoParams, WsConnect},
         types::trace::geth::{GethDebugTracingCallOptions, GethDebugTracingOptions, GethTrace, TraceResult},
-        types::{BlockNumberOrTag, BlockTransactionsKind, TransactionRequest},
+        types::{BlockNumberOrTag, TransactionRequest},
     },
     transports::TransportResult,
 };

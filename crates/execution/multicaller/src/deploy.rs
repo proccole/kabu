@@ -1,8 +1,5 @@
-use std::time::Duration;
-
 use alloy_eips::eip1559::BaseFeeParams;
 use alloy_network::eip2718::Encodable2718;
-use alloy_network::primitives::BlockTransactionsKind;
 use alloy_network::{Ethereum, EthereumWallet, TransactionBuilder, TxSigner};
 use alloy_primitives::{hex, Address, Bytes, TxKind, B256};
 use alloy_provider::ext::AnvilApi;
@@ -13,6 +10,7 @@ use alloy_signer_local::PrivateKeySigner;
 use eyre::{eyre, OptionExt, Result};
 use k256::SecretKey;
 use lazy_static::lazy_static;
+use std::time::Duration;
 use tracing::{debug, error, info};
 
 lazy_static! {
@@ -156,7 +154,7 @@ mod test {
 
         let anvil_provider = Arc::new(AnvilDebugProviderFactory::from_node_on_block(node_url, 19109956).await?);
 
-        let block = anvil_provider.get_block_by_number(BlockNumberOrTag::Latest, BlockTransactionsKind::Hashes).await?;
+        let block = anvil_provider.get_block_by_number(BlockNumberOrTag::Latest).await?;
         debug!("Block number : {}", block.unwrap().header.number);
 
         let priv_key = anvil_provider.privkey()?;

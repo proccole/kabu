@@ -1,20 +1,15 @@
 use crate::block_history::block_history_state::BlockHistoryState;
 use crate::market_state::MarketStateConfig;
-use alloy_consensus::{BlockHeader, TxEnvelope};
 use alloy_json_rpc::RpcRecv;
-use alloy_network::{BlockResponse, Ethereum, Network};
-use alloy_primitives::{BlockHash, BlockNumber, FixedBytes};
+use alloy_network::{BlockResponse, Network};
+use alloy_primitives::{BlockHash, BlockNumber};
 use alloy_provider::Provider;
-use alloy_rpc_types::{Block, BlockId, BlockTransactionsKind, Filter, Header, Log};
+use alloy_rpc_types::{BlockId, Filter};
 use eyre::{eyre, ErrReport, OptionExt, Result};
 use loom_node_debug_provider::DebugProviderExt;
-use loom_types_blockchain::{
-    debug_trace_block, GethStateUpdate, GethStateUpdateVec, LoomBlock, LoomDataTypes, LoomDataTypesEVM, LoomDataTypesEthereum, LoomHeader,
-};
-use serde::de::Deserialize;
+use loom_types_blockchain::{debug_trace_block, LoomBlock, LoomDataTypes, LoomDataTypesEVM, LoomHeader};
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::future::IntoFuture;
 use std::marker::PhantomData;
 use tracing::{debug, error};
 
@@ -28,7 +23,7 @@ pub struct BlockHistoryEntry<LDT: LoomDataTypes> {
 
 impl<LDT: LoomDataTypes> Default for BlockHistoryEntry<LDT> {
     fn default() -> Self {
-        Self { ..Default::default() }
+        Self { header: LDT::Header::default(), block: None, logs: None, state_update: None }
     }
 }
 
@@ -443,7 +438,6 @@ where
 
     pub async fn set_chain_head(&self, block_history: &mut BlockHistory<S, LDT>, header: LDT::Header) -> Result<(bool, usize)> {
         let mut reorg_depth = 0;
-        let mut is_new_block = false;
         let mut is_new_block = false;
         let parent_hash = LoomHeader::<LDT>::get_parent_hash(&header);
         let first_block_number = block_history.get_first_block_number();

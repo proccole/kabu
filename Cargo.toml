@@ -1,63 +1,63 @@
 [workspace]
 default-members = [
-    "bin/exex_grpc_node",
-    "bin/gasbench",
-    "bin/keys",
-    "bin/loom_anvil",
-    "bin/loom_backrun",
-    "bin/loom_exex",
-    "bin/nodebench",
-    "bin/replayer",
+  "bin/exex_grpc_node",
+  "bin/gasbench",
+  "bin/keys",
+  "bin/loom_anvil",
+  "bin/loom_backrun",
+  "bin/loom_exex",
+  "bin/nodebench",
+  "bin/replayer",
 ]
 members = [
-    "bin/exex_grpc_loom",
-    "bin/exex_grpc_node",
-    "bin/gasbench",
-    "bin/keys",
-    "bin/loom_anvil",
-    "bin/loom_backrun",
-    "bin/loom_exex",
-    "bin/nodebench",
-    "bin/replayer",
-    "crates/broadcast/accounts",
-    "crates/broadcast/broadcaster",
-    "crates/broadcast/flashbots",
-    "crates/core/block-history-actor",
-    "crates/core/blockchain",
-    "crates/core/blockchain-actors",
-    "crates/core/mempool",
-    "crates/core/router",
-    "crates/core/topology",
-    "crates/defi/abi",
-    "crates/defi/address-book",
-    "crates/defi/health-monitor",
-    "crates/defi/market",
-    "crates/defi/pools",
-    "crates/defi/preloader",
-    "crates/defi/price",
-    "crates/defi/uniswap-v3-math",
-    "crates/evm/db",
-    "crates/evm/utils",
-    "crates/execution/estimator",
-    "crates/execution/multicaller",
-    "crates/loom",
-    "crates/metrics",
-    "crates/node/db-access",
-    "crates/node/debug-provider",
-    "crates/node/exex",
-    "crates/node/grpc",
-    "crates/node/grpc-exex-proto",
-    "crates/node/json-rpc",
-    "crates/node/node-actor-config",
-    "crates/node/node-player",
-    "crates/rpc/handler",
-    "crates/rpc/state",
-    "crates/storage/db",
-    "crates/strategy/backrun",
-    "crates/strategy/merger",
-    "crates/types/blockchain",
-    "crates/types/entities",
-    "crates/types/events",
+  "bin/exex_grpc_loom",
+  "bin/exex_grpc_node",
+  "bin/gasbench",
+  "bin/keys",
+  "bin/loom_anvil",
+  "bin/loom_backrun",
+  "bin/loom_exex",
+  "bin/nodebench",
+  "bin/replayer",
+  "crates/broadcast/accounts",
+  "crates/broadcast/broadcaster",
+  "crates/broadcast/flashbots",
+  "crates/core/block-history-actor",
+  "crates/core/blockchain",
+  "crates/core/blockchain-actors",
+  "crates/core/mempool",
+  "crates/core/router",
+  "crates/core/topology",
+  "crates/defi/abi",
+  "crates/defi/address-book",
+  "crates/defi/health-monitor",
+  "crates/defi/market",
+  "crates/defi/pools",
+  "crates/defi/preloader",
+  "crates/defi/price",
+  "crates/defi/uniswap-v3-math",
+  "crates/evm/db",
+  "crates/evm/utils",
+  "crates/execution/estimator",
+  "crates/execution/multicaller",
+  "crates/loom",
+  "crates/metrics",
+  "crates/node/db-access",
+  "crates/node/debug-provider",
+  "crates/node/exex",
+  "crates/node/grpc",
+  "crates/node/grpc-exex-proto",
+  "crates/node/json-rpc",
+  "crates/node/node-actor-config",
+  "crates/node/node-player",
+  "crates/rpc/handler",
+  "crates/rpc/state",
+  "crates/storage/db",
+  "crates/strategy/backrun",
+  "crates/strategy/merger",
+  "crates/types/blockchain",
+  "crates/types/entities",
+  "crates/types/events",
 ]
 resolver = "2"
 
@@ -199,31 +199,31 @@ wiremock = "0.6.2"
 ## We keep revm and alloy dependencies pinned to specific versions as reth depends on them
 
 # revm
-revm = { version = "20.0.0-alpha.1", features = ["blst", "optional_balance_check", "secp256k1", "std"], default-features = false }
 op-revm = { version = "1.0.0-alpha.1", default-features = false }
+revm = { version = "20.0.0-alpha.1", features = ["blst", "optional_balance_check", "secp256k1", "std"], default-features = false }
 revm-inspectors = "0.16.0"
 revm-interpreter = { version = "15.2.0", default-features = false }
 revm-primitives = { version = "15.2.0", features = ["std"], default-features = false }
 
-op-alloy = { version = "0.11.0", features = ["consensus", "rpc-types", "network", "provider"] }
+op-alloy = { version = "0.11.0", features = ["consensus", "network", "provider", "rpc-types"] }
 
 #op-alloy = { rev = "a952369" }
 
 # alloy
 alloy = { version = "0.12.2", features = [
-    "consensus",
-    "contract",
-    "full",
-    "json-rpc",
-    "map-fxhash",
-    "node-bindings",
-    "rand",
-    "rlp",
-    "rpc-types-anvil",
-    "rpc-types-json",
-    "rpc-types-trace",
-    "serde",
-    "sol-types",
+  "consensus",
+  "contract",
+  "full",
+  "json-rpc",
+  "map-fxhash",
+  "node-bindings",
+  "rand",
+  "rlp",
+  "rpc-types-anvil",
+  "rpc-types-json",
+  "rpc-types-trace",
+  "serde",
+  "sol-types",
 ], default-features = false }
 alloy-consensus = "0.12.2"
 alloy-contract = "0.12.1"
@@ -304,17 +304,17 @@ lto = "fat"
 
 
 [patch.crates-io]
+op-revm = { git = "https://github.com/bluealloy/revm", rev = "19a5f3b" }
 revm = { git = "https://github.com/bluealloy/revm", rev = "19a5f3b" }
 revm-bytecode = { git = "https://github.com/bluealloy/revm", rev = "19a5f3b" }
-revm-database = { git = "https://github.com/bluealloy/revm", rev = "19a5f3b" }
-revm-state = { git = "https://github.com/bluealloy/revm", rev = "19a5f3b" }
-revm-primitives = { git = "https://github.com/bluealloy/revm", rev = "19a5f3b" }
-revm-interpreter = { git = "https://github.com/bluealloy/revm", rev = "19a5f3b" }
-revm-inspector = { git = "https://github.com/bluealloy/revm", rev = "19a5f3b" }
 revm-context = { git = "https://github.com/bluealloy/revm", rev = "19a5f3b" }
 revm-context-interface = { git = "https://github.com/bluealloy/revm", rev = "19a5f3b" }
+revm-database = { git = "https://github.com/bluealloy/revm", rev = "19a5f3b" }
 revm-database-interface = { git = "https://github.com/bluealloy/revm", rev = "19a5f3b" }
+revm-inspector = { git = "https://github.com/bluealloy/revm", rev = "19a5f3b" }
+revm-interpreter = { git = "https://github.com/bluealloy/revm", rev = "19a5f3b" }
+revm-primitives = { git = "https://github.com/bluealloy/revm", rev = "19a5f3b" }
 revm-specification = { git = "https://github.com/bluealloy/revm", rev = "19a5f3b" }
-op-revm = { git = "https://github.com/bluealloy/revm", rev = "19a5f3b" }
+revm-state = { git = "https://github.com/bluealloy/revm", rev = "19a5f3b" }
 
 revm-inspectors = { git = "https://github.com/paradigmxyz/revm-inspectors", rev = "9219073" }

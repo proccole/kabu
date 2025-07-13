@@ -5,7 +5,7 @@ mod uniswap3;
 
 use crate::loaders::curve::CurvePoolLoader;
 use alloy::providers::network::Ethereum;
-use alloy::providers::{Network, Provider, RootProvider};
+use alloy::providers::{Network, Provider};
 use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEVM, LoomDataTypesEthereum};
 use loom_types_entities::pool_config::PoolsLoadingConfig;
 use loom_types_entities::{PoolClass, PoolLoader, PoolLoaders};

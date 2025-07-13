@@ -1,14 +1,12 @@
 use crate::protocols::CurveProtocol;
 use crate::{pool_loader, CurvePool};
 use alloy::primitives::Bytes;
-use alloy::providers::network::Ethereum;
 use async_stream::stream;
-use eyre::{eyre, ErrReport};
+use eyre::eyre;
 use futures::Stream;
 use loom_evm_utils::LoomExecuteEvm;
 use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEVM, LoomDataTypesEthereum};
 use loom_types_entities::{EntityAddress, PoolClass, PoolLoader, PoolWrapper};
-use revm::DatabaseRef;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;

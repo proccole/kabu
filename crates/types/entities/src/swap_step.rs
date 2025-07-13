@@ -2,12 +2,10 @@ use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 
 use alloy_primitives::{I256, U256};
-use eyre::{eyre, ErrReport, Result};
-use revm::DatabaseRef;
+use eyre::{eyre, Result};
 use tracing::error;
 
 use crate::{EntityAddress, PoolWrapper, SwapAmountType, SwapLine, Token};
-use loom_evm_db::LoomDBType;
 use loom_evm_utils::LoomExecuteEvm;
 
 #[derive(Clone, Debug)]

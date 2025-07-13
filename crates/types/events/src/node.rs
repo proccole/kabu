@@ -1,7 +1,5 @@
-use alloy_rpc_types::Header;
-
 use crate::Message;
-use loom_types_blockchain::{GethStateUpdateVec, LoomDataTypesOptimism, LoomHeader, MempoolTx};
+use loom_types_blockchain::{GethStateUpdateVec, LoomHeader, MempoolTx};
 use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEthereum};
 
 #[derive(Clone, Debug)]

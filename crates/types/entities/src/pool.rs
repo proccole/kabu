@@ -11,9 +11,8 @@ use crate::EntityAddress;
 use alloy_primitives::{Address, Bytes, U256};
 use eyre::{eyre, ErrReport, Result};
 use loom_defi_address_book::FactoryAddress;
-use loom_evm_utils::{LoomEVMType, LoomEVMWrapper, LoomExecuteEvm};
-use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEVM, LoomDataTypesEthereum};
-use revm::{DatabaseRef, ExecuteEvm};
+use loom_evm_utils::LoomExecuteEvm;
+use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEthereum};
 use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumIter, EnumString, VariantNames};
 

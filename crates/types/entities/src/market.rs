@@ -309,16 +309,25 @@ mod tests {
 
         assert!(result.is_ok());
 
-        assert_eq!(market.get_pool(&EntityAddress::Address(pool_address)).unwrap().pool.get_address(), pool_address);
+        assert_eq!(
+            market.get_pool(&EntityAddress::Address(pool_address)).unwrap().pool.get_address(),
+            EntityAddress::Address(pool_address)
+        );
 
-        assert_eq!(*market.get_token_token_pools(&token0, &token1).unwrap().get(0).unwrap(), EntityAddress::Address(pool_address));
-        assert_eq!(*market.get_token_token_pools(&token1, &token0).unwrap().get(0).unwrap(), EntityAddress::Address(pool_address));
+        assert_eq!(
+            *market.get_token_token_pools(&EntityAddress::Address(token0), &EntityAddress::Address(token1)).unwrap().get(0).unwrap(),
+            EntityAddress::Address(pool_address)
+        );
+        assert_eq!(
+            *market.get_token_token_pools(&EntityAddress::Address(token1), &EntityAddress::Address(token0)).unwrap().get(0).unwrap(),
+            EntityAddress::Address(pool_address)
+        );
 
-        assert!(market.get_token_tokens(&token0).unwrap().contains(&token1));
-        assert!(market.get_token_tokens(&token1).unwrap().contains(&token0));
+        assert!(market.get_token_tokens(&EntityAddress::Address(token0)).unwrap().contains(&EntityAddress::Address(token1)));
+        assert!(market.get_token_tokens(&EntityAddress::Address(token1)).unwrap().contains(&EntityAddress::Address(token0)));
 
-        assert!(market.get_token_pools(&token0).unwrap().contains(&EntityAddress::Address(pool_address)));
-        assert!(market.get_token_pools(&token1).unwrap().contains(&EntityAddress::Address(pool_address)));
+        assert!(market.get_token_pools(&EntityAddress::Address(token0)).unwrap().contains(&EntityAddress::Address(pool_address)));
+        assert!(market.get_token_pools(&EntityAddress::Address(token1)).unwrap().contains(&EntityAddress::Address(pool_address)));
     }
 
     #[test]
@@ -326,7 +335,7 @@ mod tests {
         let mut market = Market::default();
         let token_address = Address::random();
 
-        assert_eq!(market.get_token(&token_address).unwrap().get_address(), token_address);
+        assert_eq!(market.get_token(&EntityAddress::Address(token_address)).unwrap().get_address(), EntityAddress::Address(token_address));
     }
 
     #[test]
@@ -334,9 +343,9 @@ mod tests {
         let market = Market::default();
         let token_address = Address::random();
 
-        let token = market.get_token_or_default(&token_address);
+        let token = market.get_token_or_default(&EntityAddress::Address(token_address));
 
-        assert_eq!(token.get_address(), token_address);
+        assert_eq!(token.get_address(), EntityAddress::Address(token_address));
     }
 
     #[test]
@@ -348,7 +357,7 @@ mod tests {
 
         let pool = market.get_pool(&EntityAddress::Address(pool_address));
 
-        assert_eq!(pool.unwrap().get_address(), pool_address);
+        assert_eq!(pool.unwrap().get_address(), EntityAddress::Address(pool_address));
     }
 
     #[test]
@@ -383,17 +392,27 @@ mod tests {
         market.add_pool(mock_pool.clone());
 
         assert!(!market.is_pool_disabled(&EntityAddress::Address(pool_address)));
-        assert_eq!(market.get_token_token_pools(&token0, &token1).unwrap().len(), 1);
+        assert_eq!(market.get_token_token_pools(&EntityAddress::Address(token0), &EntityAddress::Address(token1)).unwrap().len(), 1);
 
         // toggle not ok
-        market.set_pool_disabled(EntityAddress::Address(pool_address), token0, token1, true);
+        market.set_pool_disabled(
+            &EntityAddress::Address(pool_address),
+            &EntityAddress::Address(token0),
+            &EntityAddress::Address(token1),
+            true,
+        );
         assert!(market.is_pool_disabled(&EntityAddress::Address(pool_address)));
-        assert_eq!(market.get_token_token_pools(&token0, &token1).unwrap().len(), 1);
+        assert_eq!(market.get_token_token_pools(&EntityAddress::Address(token0), &EntityAddress::Address(token1)).unwrap().len(), 1);
 
         // toggle back
-        market.set_pool_disabled(EntityAddress::Address(pool_address), token0, token1, false);
+        market.set_pool_disabled(
+            &EntityAddress::Address(pool_address),
+            &EntityAddress::Address(token0),
+            &EntityAddress::Address(token1),
+            false,
+        );
         assert!(!market.is_pool_disabled(&EntityAddress::Address(pool_address)));
-        assert_eq!(market.get_token_token_pools(&token0, &token1).unwrap().len(), 1);
+        assert_eq!(market.get_token_token_pools(&EntityAddress::Address(token0), &EntityAddress::Address(token1)).unwrap().len(), 1);
     }
 
     #[test]
@@ -405,7 +424,7 @@ mod tests {
         let mock_pool = MockPool { address: pool_address, token0, token1 };
         market.add_pool(mock_pool);
 
-        let pools = market.get_token_token_pools(&token0, &token1);
+        let pools = market.get_token_token_pools(&EntityAddress::Address(token0), &EntityAddress::Address(token1));
 
         assert_eq!(pools.unwrap().get(0).unwrap(), &EntityAddress::Address(pool_address));
     }
@@ -419,9 +438,9 @@ mod tests {
         let mock_pool = MockPool { address: pool_address, token0, token1 };
         market.add_pool(mock_pool);
 
-        let tokens = market.get_token_tokens(&token0);
+        let tokens = market.get_token_tokens(&EntityAddress::Address(token0));
 
-        assert_eq!(tokens.unwrap().get(0).unwrap(), &token1);
+        assert_eq!(tokens.unwrap().get(0).unwrap(), &EntityAddress::Address(token1));
     }
 
     #[test]
@@ -433,7 +452,7 @@ mod tests {
         let mock_pool = MockPool { address: pool_address, token0, token1 };
         market.add_pool(mock_pool);
 
-        let pools = market.get_token_pools(&token0).cloned();
+        let pools = market.get_token_pools(&EntityAddress::Address(token0)).cloned();
 
         assert_eq!(pools.unwrap().get(0).unwrap(), &EntityAddress::Address(pool_address));
     }
@@ -470,31 +489,32 @@ mod tests {
         assert_eq!(swap_paths.get(1).unwrap().tokens_count(), 3);
 
         // the order of the swap paths is not deterministic
-        let (first_path, second_path) = if swap_paths.get(0).unwrap().pools.get(0).unwrap().get_address() == pool_address1 {
-            (swap_paths.get(0).unwrap(), swap_paths.get(1).unwrap())
-        } else {
-            (swap_paths.get(1).unwrap(), swap_paths.get(0).unwrap())
-        };
+        let (first_path, second_path) =
+            if swap_paths.get(0).unwrap().pools.get(0).unwrap().get_address() == EntityAddress::Address(pool_address1) {
+                (swap_paths.get(0).unwrap(), swap_paths.get(1).unwrap())
+            } else {
+                (swap_paths.get(1).unwrap(), swap_paths.get(0).unwrap())
+            };
 
         // first path weth -> token1 -> -> weth
-        let tokens = first_path.tokens.iter().map(|token| token.get_address()).collect::<Vec<Address>>();
-        assert_eq!(tokens.get(0), Some(&TokenAddressEth::WETH));
-        assert_eq!(tokens.get(1), Some(&token1));
-        assert_eq!(tokens.get(2), Some(&TokenAddressEth::WETH));
+        let tokens = first_path.tokens.iter().map(|token| token.get_address()).collect::<Vec<EntityAddress>>();
+        assert_eq!(tokens.get(0), Some(&EntityAddress::Address(TokenAddressEth::WETH)));
+        assert_eq!(tokens.get(1), Some(&EntityAddress::Address(token1)));
+        assert_eq!(tokens.get(2), Some(&EntityAddress::Address(TokenAddressEth::WETH)));
 
-        let pools = first_path.pools.iter().map(|pool| pool.get_address()).collect::<Vec<Address>>();
-        assert_eq!(pools.get(0), Some(&pool_address1));
-        assert_eq!(pools.get(1), Some(&pool_address2));
+        let pools = first_path.pools.iter().map(|pool| pool.get_address()).collect::<Vec<EntityAddress>>();
+        assert_eq!(pools.get(0), Some(&EntityAddress::Address(pool_address1)));
+        assert_eq!(pools.get(1), Some(&EntityAddress::Address(pool_address2)));
 
         // other way around
-        let tokens = second_path.tokens.iter().map(|token| token.get_address()).collect::<Vec<Address>>();
-        assert_eq!(tokens.get(0), Some(&TokenAddressEth::WETH));
-        assert_eq!(tokens.get(1), Some(&token1));
-        assert_eq!(tokens.get(2), Some(&TokenAddressEth::WETH));
+        let tokens = second_path.tokens.iter().map(|token| token.get_address()).collect::<Vec<EntityAddress>>();
+        assert_eq!(tokens.get(0), Some(&EntityAddress::Address(TokenAddressEth::WETH)));
+        assert_eq!(tokens.get(1), Some(&EntityAddress::Address(token1)));
+        assert_eq!(tokens.get(2), Some(&EntityAddress::Address(TokenAddressEth::WETH)));
 
-        let pools = second_path.pools.iter().map(|pool| pool.get_address()).collect::<Vec<Address>>();
-        assert_eq!(pools.get(0), Some(&pool_address2));
-        assert_eq!(pools.get(1), Some(&pool_address1));
+        let pools = second_path.pools.iter().map(|pool| pool.get_address()).collect::<Vec<EntityAddress>>();
+        assert_eq!(pools.get(0), Some(&EntityAddress::Address(pool_address2)));
+        assert_eq!(pools.get(1), Some(&EntityAddress::Address(pool_address1)));
 
         Ok(())
     }
@@ -539,35 +559,36 @@ mod tests {
         assert_eq!(swap_paths.get(1).unwrap().tokens_count(), 4);
 
         // the order of the swap paths is not deterministic
-        let (first_path, second_path) = if swap_paths.get(0).unwrap().tokens.get(1).unwrap().get_address() == token1 {
+        let (first_path, second_path) = if swap_paths.get(0).unwrap().tokens.get(1).unwrap().get_address() == EntityAddress::Address(token1)
+        {
             (swap_paths.get(0).unwrap(), swap_paths.get(1).unwrap())
         } else {
             (swap_paths.get(1).unwrap(), swap_paths.get(0).unwrap())
         };
 
         // first path weth -> token1 -> token2 -> weth
-        let tokens = first_path.tokens.iter().map(|token| token.get_address()).collect::<Vec<Address>>();
-        assert_eq!(tokens.get(0), Some(&TokenAddressEth::WETH));
-        assert_eq!(tokens.get(1), Some(&token1));
-        assert_eq!(tokens.get(2), Some(&token2));
-        assert_eq!(tokens.get(3), Some(&TokenAddressEth::WETH));
+        let tokens = first_path.tokens.iter().map(|token| token.get_address()).collect::<Vec<EntityAddress>>();
+        assert_eq!(tokens.get(0), Some(&EntityAddress::Address(TokenAddressEth::WETH)));
+        assert_eq!(tokens.get(1), Some(&EntityAddress::Address(token1)));
+        assert_eq!(tokens.get(2), Some(&EntityAddress::Address(token2)));
+        assert_eq!(tokens.get(3), Some(&EntityAddress::Address(TokenAddressEth::WETH)));
 
-        let pools = first_path.pools.iter().map(|pool| pool.get_address()).collect::<Vec<Address>>();
-        assert_eq!(pools.get(0), Some(&pool_address1));
-        assert_eq!(pools.get(1), Some(&pool_address2));
-        assert_eq!(pools.get(2), Some(&pool_address3));
+        let pools = first_path.pools.iter().map(|pool| pool.get_address()).collect::<Vec<EntityAddress>>();
+        assert_eq!(pools.get(0), Some(&EntityAddress::Address(pool_address1)));
+        assert_eq!(pools.get(1), Some(&EntityAddress::Address(pool_address2)));
+        assert_eq!(pools.get(2), Some(&EntityAddress::Address(pool_address3)));
 
         // other way around
-        let tokens = second_path.tokens.iter().map(|token| token.get_address()).collect::<Vec<Address>>();
-        assert_eq!(tokens.get(0), Some(&TokenAddressEth::WETH));
-        assert_eq!(tokens.get(1), Some(&token2));
-        assert_eq!(tokens.get(2), Some(&token1));
-        assert_eq!(tokens.get(3), Some(&TokenAddressEth::WETH));
+        let tokens = second_path.tokens.iter().map(|token| token.get_address()).collect::<Vec<EntityAddress>>();
+        assert_eq!(tokens.get(0), Some(&EntityAddress::Address(TokenAddressEth::WETH)));
+        assert_eq!(tokens.get(1), Some(&EntityAddress::Address(token2)));
+        assert_eq!(tokens.get(2), Some(&EntityAddress::Address(token1)));
+        assert_eq!(tokens.get(3), Some(&EntityAddress::Address(TokenAddressEth::WETH)));
 
-        let pools = second_path.pools.iter().map(|pool| pool.get_address()).collect::<Vec<Address>>();
-        assert_eq!(pools.get(0), Some(&pool_address3));
-        assert_eq!(pools.get(1), Some(&pool_address2));
-        assert_eq!(pools.get(2), Some(&pool_address1));
+        let pools = second_path.pools.iter().map(|pool| pool.get_address()).collect::<Vec<EntityAddress>>();
+        assert_eq!(pools.get(0), Some(&EntityAddress::Address(pool_address3)));
+        assert_eq!(pools.get(1), Some(&EntityAddress::Address(pool_address2)));
+        assert_eq!(pools.get(2), Some(&EntityAddress::Address(pool_address1)));
 
         Ok(())
     }

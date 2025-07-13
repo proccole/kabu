@@ -4,7 +4,7 @@ use std::sync::Arc;
 use alloy_primitives::U256;
 #[cfg(not(debug_assertions))]
 use chrono::TimeDelta;
-use eyre::{eyre, ErrReport, Result};
+use eyre::{eyre, Result};
 use influxdb::{Timestamp, WriteQuery};
 use rayon::prelude::*;
 use rayon::{ThreadPool, ThreadPoolBuilder};
@@ -21,7 +21,7 @@ use loom_core_actors_macros::{Accessor, Consumer, Producer};
 use loom_core_blockchain::{Blockchain, Strategy};
 use loom_evm_db::{DatabaseHelpers, LoomDBError};
 use loom_evm_utils::LoomEVMWrapper;
-use loom_types_blockchain::{GethStateUpdate, GethStateUpdateVec, LoomDataTypes, LoomDataTypesEVM};
+use loom_types_blockchain::{GethStateUpdateVec, LoomDataTypes, LoomDataTypesEVM};
 use loom_types_entities::strategy_config::StrategyConfig;
 use loom_types_entities::{Market, PoolWrapper, Swap, SwapDirection, SwapError, SwapLine, SwapPath};
 use loom_types_events::{

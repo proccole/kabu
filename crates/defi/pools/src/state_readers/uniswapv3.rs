@@ -5,8 +5,7 @@ use alloy::rpc::types::TransactionRequest;
 use alloy::sol_types::{SolCall, SolInterface};
 use loom_defi_abi::uniswap3::IUniswapV3Pool;
 use loom_defi_abi::uniswap3::IUniswapV3Pool::slot0Return;
-use loom_evm_utils::{evm_call, evm_dyn_call, LoomExecuteEvm};
-use revm::ExecuteEvm;
+use loom_evm_utils::{evm_dyn_call, LoomExecuteEvm};
 
 pub struct UniswapV3EvmStateReader {}
 

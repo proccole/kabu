@@ -1,11 +1,8 @@
 use alloy_primitives::utils::parse_units;
 use alloy_primitives::U256;
-use eyre::ErrReport;
 use lazy_static::lazy_static;
-use loom_evm_db::LoomDBError;
 use loom_evm_utils::LoomExecuteEvm;
 use loom_types_entities::{SwapError, SwapLine};
-use revm::DatabaseRef;
 
 lazy_static! {
     static ref START_OPTIMIZE_INPUT: U256 = parse_units("0.01", "ether").unwrap().get_absolute();

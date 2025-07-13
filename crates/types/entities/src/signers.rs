@@ -7,7 +7,7 @@ use alloy_rpc_types::{Transaction, TransactionRequest};
 use alloy_signer_local::PrivateKeySigner;
 use eyre::{eyre, OptionExt, Result};
 use indexmap::IndexMap;
-use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEVM, LoomDataTypesEthereum};
+use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEthereum};
 use rand::prelude::IteratorRandom;
 use std::fmt;
 use std::fmt::Debug;
@@ -167,14 +167,14 @@ mod tests {
     fn test_new_signer() {
         let wallet = PrivateKeySigner::random();
         let signer = TxSignerEth::new(wallet.clone());
-        assert_eq!(signer.address(), wallet.address());
+        assert_eq!(signer.address(), EntityAddress::Address(wallet.address()));
     }
 
     #[test]
     fn test_address() {
         let wallet = PrivateKeySigner::random();
         let signer = TxSignerEth::new(wallet.clone());
-        assert_eq!(signer.address(), wallet.address());
+        assert_eq!(signer.address(), EntityAddress::Address(wallet.address()));
     }
 
     #[tokio::test]
@@ -244,7 +244,7 @@ mod tests {
         let signer = signers.add_privkey(priv_key);
         assert_eq!(signers.len(), 1);
         assert_eq!(signer.address(), signers.get_address_vec()[0]);
-        assert_eq!(signer.address(), address!("16Df4b25e4E37A9116eb224799c1e0Fb17fd8d30"));
+        assert_eq!(signer.address(), EntityAddress::Address(address!("16Df4b25e4E37A9116eb224799c1e0Fb17fd8d30")));
     }
 
     #[test]
@@ -281,7 +281,7 @@ mod tests {
         assert!(signers.get_signer_by_address(&address).is_ok());
         // test negative case
         let unknown_address = Address::random();
-        assert!(signers.get_signer_by_address(&unknown_address).is_err());
+        assert!(signers.get_signer_by_address(&EntityAddress::Address(unknown_address)).is_err());
     }
 
     #[test]

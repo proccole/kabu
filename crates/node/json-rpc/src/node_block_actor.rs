@@ -1,18 +1,16 @@
 use alloy_json_rpc::RpcRecv;
-use alloy_network::{BlockResponse, Ethereum, Network};
+use alloy_network::{BlockResponse, Network};
 use alloy_provider::Provider;
-use alloy_rpc_types::{Block, Header};
-use op_alloy::network::Optimism;
+use alloy_rpc_types::Block;
 use std::marker::PhantomData;
-use tokio::task::JoinHandle;
 
 use crate::eth::new_eth_node_block_workers_starter;
-use loom_core_actors::{Actor, ActorResult, Broadcaster, Producer, WorkerResult};
+use loom_core_actors::{Actor, ActorResult, Broadcaster, Producer};
 use loom_core_actors_macros::Producer;
 use loom_core_blockchain::Blockchain;
 use loom_node_actor_config::NodeBlockActorConfig;
 use loom_node_debug_provider::DebugProviderExt;
-use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEVM, LoomDataTypesEthereum, LoomDataTypesOptimism};
+use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEVM};
 use loom_types_events::{MessageBlock, MessageBlockHeader, MessageBlockLogs, MessageBlockStateUpdate};
 
 #[derive(Producer)]

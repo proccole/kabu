@@ -1,24 +1,20 @@
-use std::marker::PhantomData;
-
+use super::{PendingTxStateChangeProcessorActor, StateChangeArbSearcherActor};
+use crate::block_state_change_processor::BlockStateChangeProcessorActor;
+use crate::BackrunConfig;
 use alloy_network::Network;
 use alloy_provider::Provider;
-use eyre::ErrReport;
 use influxdb::WriteQuery;
-use revm::{Database, DatabaseCommit, DatabaseRef};
-use tokio::task::JoinHandle;
-use tracing::info;
-
 use loom_core_actors::{Accessor, Actor, ActorResult, Broadcaster, Consumer, Producer, SharedState, WorkerResult};
 use loom_core_actors_macros::{Accessor, Consumer, Producer};
 use loom_evm_db::LoomDBError;
 use loom_node_debug_provider::DebugProviderExt;
-use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEVM, Mempool};
+use loom_types_blockchain::{LoomDataTypesEVM, Mempool};
 use loom_types_entities::{BlockHistory, LatestBlock, Market, MarketState};
 use loom_types_events::{MarketEvents, MempoolEvents, MessageHealthEvent, MessageSwapCompose};
-
-use super::{PendingTxStateChangeProcessorActor, StateChangeArbSearcherActor};
-use crate::block_state_change_processor::BlockStateChangeProcessorActor;
-use crate::BackrunConfig;
+use revm::{Database, DatabaseCommit, DatabaseRef};
+use std::marker::PhantomData;
+use tokio::task::JoinHandle;
+use tracing::info;
 
 #[derive(Accessor, Consumer, Producer)]
 pub struct StateChangeArbActor<P, N, DB: Clone + Send + Sync + 'static, LDT: LoomDataTypesEVM + 'static> {

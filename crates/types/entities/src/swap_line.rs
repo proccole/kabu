@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crate::swap_path::SwapPath;
 use crate::{CalculationResult, EntityAddress, PoolWrapper, SwapError, SwapStep, Token};
 use alloy_primitives::{I256, U256};
-use eyre::{eyre, ErrReport, Report, Result};
+use eyre::{eyre, Result};
 use loom_evm_utils::LoomExecuteEvm;
 use tracing::debug;
 

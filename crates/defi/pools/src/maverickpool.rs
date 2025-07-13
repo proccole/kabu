@@ -11,12 +11,10 @@ use loom_defi_abi::maverick::IMaverickQuoter::{calculateSwapCall, IMaverickQuote
 use loom_defi_abi::maverick::{IMaverickPool, IMaverickQuoter, State};
 use loom_defi_abi::IERC20;
 use loom_defi_address_book::PeripheryAddress;
-use loom_evm_utils::{evm_call, evm_dyn_call, LoomExecuteEvm};
+use loom_evm_utils::{evm_dyn_call, LoomExecuteEvm};
 use loom_types_entities::required_state::RequiredState;
 use loom_types_entities::{EntityAddress, Pool, PoolAbiEncoder, PoolClass, PoolProtocol, PreswapRequirement, SwapDirection};
-use revm::DatabaseRef;
 use std::any::Any;
-use std::ops::DerefMut;
 use tracing::error;
 
 lazy_static! {
@@ -477,7 +475,7 @@ mod tests {
         let block_number = client.get_block_number().await?;
         let block = client.get_block_by_number(BlockNumberOrTag::Number(block_number)).await?.unwrap();
 
-        let mut evm = LoomEVMWrapper::new(market_state.state_db.clone()).with_header(block.header);
+        let mut evm = LoomEVMWrapper::new(market_state.state_db.clone()).with_header(&block.header);
 
         let amount = U256::from(pool.liquidity1 / U256::from(1000));
 

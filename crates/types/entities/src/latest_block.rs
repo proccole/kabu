@@ -3,7 +3,7 @@ use alloy_primitives::{Address, BlockHash, BlockNumber, B256};
 use alloy_rpc_types::state::{AccountOverride, StateOverride};
 use alloy_rpc_types::Header;
 
-use loom_types_blockchain::{GethStateUpdate, GethStateUpdateVec, LoomBlock, LoomHeader};
+use loom_types_blockchain::{GethStateUpdate, LoomBlock, LoomHeader};
 use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEthereum};
 
 pub struct LatestBlock<LDT: LoomDataTypes = LoomDataTypesEthereum> {
@@ -17,7 +17,7 @@ pub struct LatestBlock<LDT: LoomDataTypes = LoomDataTypesEthereum> {
 
 impl<LDT: LoomDataTypes<Address = Address, Header = Header, BlockHash = BlockHash, StateUpdate = GethStateUpdate>> LatestBlock<LDT> {
     pub fn hash(&self) -> LDT::BlockHash {
-        self.hash()
+        self.block_hash.clone()
     }
 
     pub fn parent_hash(&self) -> Option<LDT::BlockHash> {

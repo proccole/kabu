@@ -1,7 +1,7 @@
 use alloy_network::Network;
-use alloy_primitives::{Address, BlockNumber, Bytes, TxKind, U256};
+use alloy_primitives::{Address, BlockNumber, Bytes, U256};
 use alloy_provider::Provider;
-use alloy_rpc_types::{BlockId, BlockNumberOrTag, TransactionInput, TransactionRequest};
+use alloy_rpc_types::{BlockId, BlockNumberOrTag};
 use alloy_rpc_types_trace::geth::AccountState;
 use eyre::{eyre, Result};
 use std::collections::BTreeMap;

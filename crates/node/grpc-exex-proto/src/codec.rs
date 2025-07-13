@@ -1,5 +1,4 @@
 use crate::proto;
-use crate::proto::bytecode::Bytecode;
 use alloy_primitives::{Address, BlockHash, Bloom, TxHash, B256, B64, U256};
 use eyre::{eyre, OptionExt};
 use reth::primitives::Block;

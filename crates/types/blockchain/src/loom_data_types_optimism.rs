@@ -1,11 +1,9 @@
-use crate::{ChainParameters, GethStateUpdate, LoomBlock, LoomDataTypes, LoomDataTypesEVM, LoomDataTypesEthereum, LoomHeader, LoomTx};
-use alloy_consensus::{BlockHeader, Transaction as TransactionTrait};
-use alloy_eips::eip2718::Encodable2718;
+use crate::loom_data_types::LoomTransactionRequest;
+use crate::{GethStateUpdate, LoomBlock, LoomDataTypes, LoomDataTypesEVM, LoomDataTypesEthereum, LoomTx};
+use alloy_consensus::Transaction as TransactionTrait;
 use alloy_primitives::{Address, BlockHash, Bytes, TxHash, TxKind};
 use alloy_provider::network::{TransactionBuilder, TransactionResponse};
-
-use crate::loom_data_types::LoomTransactionRequest;
-use alloy_rpc_types_eth::{Block as EthBlock, Header, Log, TransactionRequest};
+use alloy_rpc_types_eth::{Block as EthBlock, Header, Log};
 use op_alloy::rpc_types::{OpTransactionReceipt, OpTransactionRequest, Transaction as OpTransaction};
 
 #[derive(Clone, Debug, Default)]

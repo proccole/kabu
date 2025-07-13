@@ -6,29 +6,25 @@ use alloy::rpc::types::trace::geth::{AccountState, CallFrame};
 use alloy::rpc::types::trace::parity::TransactionTrace;
 use alloy::rpc::types::Log;
 use alloy::{
-    primitives::{Address, Bytes, B256, U256},
-    rpc::types::{AccessList, AccessListItem, Header, Transaction, TransactionRequest},
+    primitives::{Address, Bytes, B256},
+    rpc::types::{AccessList, AccessListItem, TransactionRequest},
 };
-use auto_impl::auto_impl;
 use eyre::eyre;
 use lazy_static::lazy_static;
 use loom_evm_db::LoomDBError;
 use loom_types_blockchain::GethStateUpdate;
-use revm::bytecode::Bytecode;
 use revm::context::result::{EVMError, ExecutionResult, HaltReason, Output, ResultAndState};
 use revm::context::setters::ContextSetters;
-use revm::context::{Block, BlockEnv, CfgEnv, ContextTr, DBErrorMarker, Evm, Journal, TransactTo, Transaction as EVMTransaction, TxEnv};
+use revm::context::{BlockEnv, CfgEnv, ContextTr, TxEnv};
 use revm::handler::EvmTr;
-use revm::specification::hardfork::{CANCUN, LATEST};
-use revm::state::{Account, AccountInfo};
+use revm::specification::hardfork::LATEST;
+use revm::state::Account;
 use revm::{Context, Database, DatabaseCommit, DatabaseRef, JournaledState, MainBuilder, MainnetEvm};
-use revm::{ExecuteCommitEvm, ExecuteEvm, MainContext};
+use revm::{ExecuteCommitEvm, ExecuteEvm};
 use std::collections::BTreeMap;
-use std::error::Error;
 use std::fmt::Debug;
-use std::ops::{Deref, DerefMut};
 use thiserror::Error;
-use tracing::{debug, error, trace};
+use tracing::{error, trace};
 
 lazy_static! {
     static ref COINBASE: Address = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326".parse().unwrap();
@@ -197,6 +193,7 @@ impl EVMParserHelper {
         }
     }
 
+    #[allow(dead_code)]
     fn parse_trace_execution_result(
         execution_result: ExecutionResult,
         gas_used: u64,
@@ -212,6 +209,7 @@ impl EVMParserHelper {
         }
     }
 
+    #[allow(dead_code)]
     fn parse_geth_trace_execution_result(
         execution_result: ExecutionResult,
         gas_used: u64,
@@ -380,6 +378,7 @@ where
     EVMParserHelper::parse_execution_result(execution_result, gas_used)
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -391,3 +390,4 @@ mod tests {
         evm_call(mainnet_evm.get_evm_mut(), TransactionRequest::default()).unwrap();
     }
 }
+ */

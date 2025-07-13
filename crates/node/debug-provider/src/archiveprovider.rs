@@ -1,15 +1,11 @@
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use crate::anvilprovider::convert_u64;
 use alloy::eips::BlockId;
-use alloy::network::BlockResponse;
 use alloy::primitives::{Address, StorageValue};
 use alloy::rpc::json_rpc::RpcRecv;
-use alloy::rpc::types::BlockTransactionsKind;
 use alloy::{
     network::Ethereum,
     primitives::{BlockNumber, Bytes, U256, U64},

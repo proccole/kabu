@@ -5,7 +5,6 @@ use alloy_primitives::{Address, U256};
 use eyre::ErrReport;
 use eyre::Result;
 use loom_evm_utils::LoomExecuteEvm;
-use revm::DatabaseRef;
 use std::any::Any;
 
 #[derive(Clone)]

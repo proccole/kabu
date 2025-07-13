@@ -1,10 +1,9 @@
-use alloy_consensus::constants::{EIP1559_TX_TYPE_ID, EIP2930_TX_TYPE_ID, EIP4844_TX_TYPE_ID, LEGACY_TX_TYPE_ID};
 use alloy_eips::BlockNumberOrTag;
-use alloy_network::{Network, TransactionBuilder, TransactionResponse};
+use alloy_network::Network;
 use alloy_primitives::{Address, BlockNumber, TxHash, U256};
 use alloy_provider::Provider;
 use alloy_rpc_types::state::StateOverride;
-use alloy_rpc_types::{BlockOverrides, Transaction, TransactionRequest};
+use alloy_rpc_types::BlockOverrides;
 use alloy_rpc_types_trace::geth::GethDebugTracingCallOptions;
 use eyre::{eyre, Result};
 use lazy_static::lazy_static;
@@ -20,9 +19,7 @@ use loom_core_actors::{subscribe, Accessor, Actor, ActorResult, Broadcaster, Con
 use loom_core_actors_macros::{Accessor, Consumer, Producer};
 use loom_core_blockchain::{Blockchain, BlockchainState, Strategy};
 use loom_node_debug_provider::DebugProviderExt;
-use loom_types_blockchain::{
-    debug_trace_call_diff, GethStateUpdateVec, LoomDataTypes, LoomDataTypesEVM, LoomTx, Mempool, TRACING_CALL_OPTS,
-};
+use loom_types_blockchain::{debug_trace_call_diff, GethStateUpdateVec, LoomDataTypesEVM, LoomTx, Mempool, TRACING_CALL_OPTS};
 use loom_types_entities::required_state::{accounts_vec_len, storage_vec_len};
 use loom_types_entities::{LatestBlock, Market, MarketState};
 use loom_types_events::{MarketEvents, MempoolEvents, StateUpdateEvent};
@@ -73,7 +70,7 @@ where
 
     let source = mempool_tx.source.clone();
 
-    let mut transaction_request: LDT::TransactionRequest = tx.to_transaction_request();
+    let transaction_request: LDT::TransactionRequest = tx.to_transaction_request();
 
     // let transaction_type = transaction_request.transaction_type.unwrap_or_default();
     // if transaction_type == LEGACY_TX_TYPE_ID || transaction_type == EIP2930_TX_TYPE_ID {

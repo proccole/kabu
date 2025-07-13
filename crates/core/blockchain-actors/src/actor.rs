@@ -1,10 +1,10 @@
 use alloy_json_rpc::RpcRecv;
 use alloy_network::{BlockResponse, Ethereum, Network};
-use alloy_primitives::{Address, B256, U256};
+use alloy_primitives::{Address, U256};
 use alloy_provider::{Provider, RootProvider};
 use axum::Router;
-use eyre::{eyre, ErrReport, Result};
-use loom_broadcast_accounts::{InitializeSignersOneShotBlockingActor, NonceAndBalanceMonitorActor, TxSignersActor};
+use eyre::{eyre, Result};
+use loom_broadcast_accounts::{NonceAndBalanceMonitorActor, TxSignersActor};
 use loom_broadcast_broadcaster::FlashbotsBroadcastActor;
 use loom_broadcast_flashbots::client::RelayConfig;
 use loom_broadcast_flashbots::Flashbots;
@@ -20,7 +20,6 @@ use loom_defi_market::{
 };
 use loom_defi_pools::{PoolLoadersBuilder, PoolsLoadingConfig};
 use loom_defi_preloader::MarketStatePreloadedOneShotActor;
-use loom_defi_price::PriceActor;
 use loom_evm_db::{DatabaseLoomExt, LoomDBError};
 use loom_evm_utils::NWETH;
 use loom_execution_estimator::{EvmEstimatorActor, GethEstimatorActor};
@@ -38,7 +37,7 @@ use loom_strategy_backrun::{
     BackrunConfig, BlockStateChangeProcessorActor, PendingTxStateChangeProcessorActor, StateChangeArbSearcherActor,
 };
 use loom_strategy_merger::{ArbSwapPathMergerActor, DiffPathMergerActor, SamePathMergerActor};
-use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEVM, LoomDataTypesEthereum};
+use loom_types_blockchain::{LoomDataTypesEVM, LoomDataTypesEthereum};
 use loom_types_entities::required_state::RequiredState;
 use loom_types_entities::{BlockHistoryState, PoolClass, SwapEncoder, TxSigners};
 use revm::{Database, DatabaseCommit, DatabaseRef};
