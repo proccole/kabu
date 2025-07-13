@@ -13,20 +13,24 @@
 
 [gh-kabu]: https://github.com/cakevm/kabu/actions/workflows/ci.yml
 [gh-book]: https://github.com/cakevm/kabu/actions/workflows/book.yml
-[tg-badge]: https://img.shields.io/badge/telegram-kabu-2CA5E0?style=plastic&logo=telegram
+[tg-badge]: https://img.shields.io/badge/telegram-kabu-2C5E3D?style=plastic&logo=telegram
 [tg-url]: https://t.me/joinkabu
 
 </div>
 
-## What is kabu?
+## What is Kabu?
 
-kabu is a MEV bot framework, currently under heavy development.
+Kabu is a MEV bot framework, currently under heavy development.
 
 ## Kabu is opinionated
 - Kabu will only support exex and json-rpc.
 - We reuse as much as possible from reth, alloy and revm
 - We keep as close as possible to the architecture of reth
 
+## Why "Kabu"?
+
+In Japanese, *kabu* (株) means "stock" — both in the financial sense and as a metaphor for growth.  
+The name symbolizes a system that is deeply rooted, yet highly responsive — growing upward like a market chart, grounded like a tree.
 
 ## Acknowledgements
 
