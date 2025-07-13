@@ -4,12 +4,12 @@ mod test {
     use alloy_network::Ethereum;
     use alloy_provider::Provider;
     use loom_core_blockchain::{Blockchain, BlockchainState};
+    use loom_types_blockchain::LoomDataTypesEthereum;
     use loom_types_events::{BlockLogs, BlockStateUpdate, BlockUpdate, MessageBlockHeader};
-    use revm::db::DatabaseRef;
+    use revm::DatabaseRef;
     use tracing::error;
 
     use alloy_eips::BlockNumberOrTag;
-    use alloy_network::primitives::BlockTransactionsKind;
     use alloy_node_bindings::Anvil;
     use alloy_primitives::{Address, B256, U256};
     use alloy_provider::ext::AnvilApi;
@@ -24,7 +24,7 @@ mod test {
     };
     use loom_types_blockchain::{GethStateUpdate, GethStateUpdateVec};
     use loom_types_entities::MarketState;
-    use loom_types_events::{BlockHeader, Message};
+    use loom_types_events::{BlockHeaderEventData, Message};
     use std::time::Duration;
     use tracing::info;
 
@@ -35,7 +35,7 @@ mod test {
         logs: Option<Vec<Log>>,
         state_update: Option<GethStateUpdateVec>,
     ) -> eyre::Result<()> {
-        let header_msg: MessageBlockHeader = Message::new(BlockHeader::new(header.clone()));
+        let header_msg: MessageBlockHeader = Message::new(BlockHeaderEventData::new(header.clone()));
         if let Err(e) = bc.new_block_headers_channel().send(header_msg) {
             error!("bc.new_block_headers_channel().send : {}", e)
         }
@@ -74,7 +74,7 @@ mod test {
     where
         P: Provider<Ethereum> + Send + Sync + Clone + 'static,
     {
-        let block = provider.get_block_by_number(BlockNumberOrTag::Latest, BlockTransactionsKind::Full).await?.unwrap();
+        let block = provider.get_block_by_number(BlockNumberOrTag::Latest).full().await?.unwrap();
         let filter = Filter::new().at_block_hash(block.header.hash);
 
         let logs = provider.get_logs(&filter).await?;
@@ -87,7 +87,7 @@ mod test {
     async fn test_actor_block_history_actor_chain_head_worker<P>(
         provider: P,
         bc: Blockchain,
-        state: BlockchainState<LoomDB>,
+        state: BlockchainState<LoomDB, LoomDataTypesEthereum>,
     ) -> eyre::Result<()>
     where
         P: Provider<Ethereum> + Send + Sync + Clone + 'static,
@@ -131,12 +131,12 @@ mod test {
         broadcast_latest_block(provider.clone(), &bc, None).await?; // broadcast 1#0
 
         provider.anvil_mine(Some(1), None).await?; // mine block 2#0
-        let block_2_0 = provider.get_block_by_number(BlockNumberOrTag::Latest, BlockTransactionsKind::Full).await?.unwrap();
+        let block_2_0 = provider.get_block_by_number(BlockNumberOrTag::Latest).full().await?.unwrap();
 
         broadcast_latest_block(provider.clone(), &bc, None).await?; // broadcast 2#0
 
         provider.anvil_mine(Some(1), None).await?; // mine block 3#0
-        let block_3_0 = provider.get_block_by_number(BlockNumberOrTag::Latest, BlockTransactionsKind::Full).await?.unwrap();
+        let block_3_0 = provider.get_block_by_number(BlockNumberOrTag::Latest).full().await?.unwrap();
 
         provider.anvil_revert(snap).await?;
         provider.anvil_mine(Some(1), None).await?; // mine block 1#1
@@ -150,7 +150,7 @@ mod test {
         assert_eq!(state.market_state().read().await.state_db.storage_ref(ADDR_01, U256::from(1))?, U256::from(2));
 
         provider.anvil_mine(Some(1), None).await?; // mine block 2#1
-        let block_2_1 = provider.get_block_by_number(BlockNumberOrTag::Latest, BlockTransactionsKind::Full).await?.unwrap();
+        let block_2_1 = provider.get_block_by_number(BlockNumberOrTag::Latest).full().await?.unwrap();
 
         broadcast_latest_block(provider.clone(), &bc, None).await?; // broadcast 2#1, chain_head must change
 
@@ -202,7 +202,7 @@ mod test {
 
         let market_state = MarketState::new(LoomDB::empty());
 
-        let bc_state = BlockchainState::<LoomDB>::new_with_market_state(market_state);
+        let bc_state = BlockchainState::<LoomDB, LoomDataTypesEthereum>::new_with_market_state(market_state);
 
         BlockHistoryActor::new(provider.clone()).on_bc(&blockchain, &bc_state).start()?;
 
@@ -274,7 +274,7 @@ mod test {
 
         let market_state = MarketState::new(LoomDB::empty());
 
-        let bc_state = BlockchainState::<LoomDB>::new_with_market_state(market_state);
+        let bc_state = BlockchainState::<LoomDB, LoomDataTypesEthereum>::new_with_market_state(market_state);
 
         BlockHistoryActor::new(provider.clone()).on_bc(&blockchain, &bc_state).start()?;
 

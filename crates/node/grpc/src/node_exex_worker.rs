@@ -8,17 +8,17 @@ use futures::{pin_mut, StreamExt};
 use reth_exex::ExExNotification;
 use reth_provider::Chain;
 use reth_rpc::eth::EthTxBuilder;
-use revm::db::states::StorageSlot;
-use revm::db::{BundleAccount, StorageWithOriginalValues};
+use revm::database::states::StorageSlot;
+use revm::database::{BundleAccount, StorageWithOriginalValues};
 use tokio::select;
 use tracing::{error, info};
 
 use loom_core_actors::{Broadcaster, WorkerResult};
 use loom_evm_utils::reth_types::append_all_matching_block_logs_sealed;
 use loom_node_grpc_exex_proto::ExExClient;
-use loom_types_blockchain::{GethStateUpdate, MempoolTx};
+use loom_types_blockchain::{GethStateUpdate, LoomDataTypesEthereum, MempoolTx};
 use loom_types_events::{
-    BlockHeader, BlockLogs, BlockStateUpdate, BlockUpdate, Message, MessageBlock, MessageBlockHeader, MessageBlockLogs,
+    BlockHeaderEventData, BlockLogs, BlockStateUpdate, BlockUpdate, Message, MessageBlock, MessageBlockHeader, MessageBlockLogs,
     MessageBlockStateUpdate, MessageMempoolDataUpdate, NodeMempoolDataUpdate,
 };
 
@@ -169,7 +169,7 @@ pub async fn node_exex_grpc_worker(
             header = stream_header.next() => {
                 if let Some(header) = header {
                     if let Err(e) = block_header_channel.send(
-                        MessageBlockHeader::new_with_time(BlockHeader::new( header)))
+                        MessageBlockHeader::new_with_time(BlockHeaderEventData::<LoomDataTypesEthereum>::new( header)))
                     {
                         error!("block_header_channel.send error : {}", e)
                     }

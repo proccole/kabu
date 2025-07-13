@@ -9,7 +9,7 @@ use alloy_provider::{Network, Provider, ProviderBuilder, RootProvider};
 use alloy_rpc_client::ClientBuilder;
 use alloy_transport_ipc::IpcConnect;
 use alloy_transport_ws::WsConnect;
-use eyre::{eyre, ErrReport, Result};
+use eyre::{eyre, Result};
 use loom_broadcast_accounts::{InitializeSignersOneShotBlockingActor, NonceAndBalanceMonitorActor, TxSignersActor};
 use loom_broadcast_broadcaster::FlashbotsBroadcastActor;
 use loom_broadcast_flashbots::Flashbots;
@@ -22,7 +22,7 @@ use loom_defi_market::{HistoryPoolLoaderOneShotActor, NewPoolLoaderActor, PoolLo
 use loom_defi_pools::PoolLoadersBuilder;
 use loom_defi_preloader::MarketStatePreloadedOneShotActor;
 use loom_defi_price::PriceActor;
-use loom_evm_db::DatabaseLoomExt;
+use loom_evm_db::{DatabaseLoomExt, LoomDBError};
 use loom_execution_estimator::{EvmEstimatorActor, GethEstimatorActor};
 use loom_execution_multicaller::MulticallerSwapEncoder;
 use loom_node_actor_config::NodeBlockActorConfig;
@@ -47,7 +47,7 @@ pub struct Topology<
     config: TopologyConfig,
     clients: HashMap<String, RootProvider<N>>,
     blockchains: HashMap<String, Blockchain>,
-    blockchain_states: HashMap<String, BlockchainState<DB>>,
+    blockchain_states: HashMap<String, BlockchainState<DB, LDT>>,
     strategies: HashMap<String, Strategy<DB>>,
     signers: HashMap<String, SharedState<TxSigners>>,
     multicaller_encoders: HashMap<String, Address>,
@@ -59,11 +59,11 @@ pub struct Topology<
 }
 
 impl<
-        DB: Database<Error = ErrReport>
-            + DatabaseRef<Error = ErrReport>
+        DB: Database<Error = LoomDBError>
+            + DatabaseRef<Error = LoomDBError>
             + DatabaseCommit
             + DatabaseLoomExt
-            + BlockHistoryState
+            + BlockHistoryState<LoomDataTypesEthereum>
             + Default
             + Send
             + Sync
@@ -195,7 +195,7 @@ impl<
         for (k, params) in self.config.blockchains.iter() {
             let blockchain = Blockchain::new(params.chain_id.unwrap_or(1) as u64);
             let market_state = MarketState::new(DB::default());
-            let blockchain_state = BlockchainState::<DB>::new_with_market_state(market_state);
+            let blockchain_state = BlockchainState::<DB, LoomDataTypesEthereum>::new_with_market_state(market_state);
             let strategy = Strategy::<DB>::new();
 
             blockchains.insert(k.clone(), blockchain);
@@ -296,7 +296,7 @@ impl<
                     info!("Pool monitor monitor actor started")
                 }
                 Err(e) => {
-                    panic!("PoolHealthMonitorActor error {}", e)
+                    panic!("PoolHealthMonitorActor error {e}")
                 }
             }
         }
@@ -314,7 +314,7 @@ impl<
                             info!("Signers have been initialized")
                         }
                         Err(e) => {
-                            panic!("Cannot initialize signers {}", e);
+                            panic!("Cannot initialize signers {e}");
                         }
                     }
 
@@ -325,7 +325,7 @@ impl<
                             info!("Signers actor has been started")
                         }
                         Err(e) => {
-                            panic!("Cannot start signers actor {}", e)
+                            panic!("Cannot start signers actor {e}")
                         }
                     }
                 }
@@ -348,7 +348,7 @@ impl<
                         info!("Market state preload actor executed successfully")
                     }
                     Err(e) => {
-                        panic!("MarketStatePreloadedOneShotActor : {}", e)
+                        panic!("MarketStatePreloadedOneShotActor : {e}")
                     }
                 }
             }
@@ -471,7 +471,7 @@ impl<
                         info!("Price actor has been initialized : {}", name)
                     }
                     Err(e) => {
-                        panic!("Cannot initialize price actor {} : {}", name, e);
+                        panic!("Cannot initialize price actor {name} : {e}");
                     }
                 }
             }
@@ -497,7 +497,7 @@ impl<
                         info!("Nonce monitor has been initialized {name} for {}", blockchain.chain_id())
                     }
                     Err(e) => {
-                        panic!("Cannot initialize nonce and balance monitor {} : {}", name, e);
+                        panic!("Cannot initialize nonce and balance monitor {name} : {e}");
                     }
                 }
             }
@@ -551,7 +551,7 @@ impl<
                             info!("History pool loader actor started successfully {name}")
                         }
                         Err(e) => {
-                            panic!("HistoryPoolLoaderOneShotActor : {}", e)
+                            panic!("HistoryPoolLoaderOneShotActor : {e}")
                         }
                     }
                 }
@@ -561,7 +561,7 @@ impl<
                     let mut curve_pools_loader_actor = ProtocolPoolLoaderOneShotActor::new(client.clone(), pool_loaders.clone());
                     match curve_pools_loader_actor.produce(blockchain.tasks_channel()).start() {
                         Err(e) => {
-                            panic!("CurvePoolLoaderOneShotActor : {}", e)
+                            panic!("CurvePoolLoaderOneShotActor : {e}")
                         }
                         Ok(r) => {
                             tasks.extend(r);
@@ -579,7 +579,7 @@ impl<
                             info!("New pool actor started")
                         }
                         Err(e) => {
-                            panic!("NewPoolLoaderActor : {}", e)
+                            panic!("NewPoolLoaderActor : {e}")
                         }
                     }
                 }
@@ -598,7 +598,7 @@ impl<
                         info!("Pool loader actor started successfully")
                     }
                     Err(e) => {
-                        panic!("PoolLoaderActor : {}", e)
+                        panic!("PoolLoaderActor : {e}")
                     }
                 }
             }
@@ -689,7 +689,7 @@ impl<
         }
     }
 
-    pub fn get_blockchain_state(&self, name: Option<&String>) -> Result<&BlockchainState<DB>> {
+    pub fn get_blockchain_state(&self, name: Option<&String>) -> Result<&BlockchainState<DB, LoomDataTypesEthereum>> {
         match self.blockchain_states.get(name.unwrap_or(&self.default_blockchain_name.clone().unwrap())) {
             Some(a) => Ok(a),
             None => Err(eyre!("BLOCKCHAIN_NOT_FOUND")),

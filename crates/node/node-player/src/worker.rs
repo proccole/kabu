@@ -3,18 +3,17 @@ use alloy_eips::BlockId;
 use alloy_network::Ethereum;
 use alloy_primitives::BlockNumber;
 use alloy_provider::Provider;
-use alloy_rpc_types::{BlockTransactions, BlockTransactionsKind, Filter};
+use alloy_rpc_types::{BlockTransactions, Filter};
 use loom_core_actors::{Broadcaster, SharedState, WorkerResult};
-use loom_evm_db::DatabaseLoomExt;
+use loom_evm_db::{DatabaseLoomExt, LoomDBError};
 use loom_node_debug_provider::DebugProviderExt;
-use loom_types_blockchain::{debug_trace_block, Mempool};
+use loom_types_blockchain::{debug_trace_block, LoomDataTypesEthereum, Mempool};
 use loom_types_entities::MarketState;
 use loom_types_events::{
-    BlockHeader, BlockLogs, BlockStateUpdate, BlockUpdate, Message, MessageBlock, MessageBlockHeader, MessageBlockLogs,
+    BlockHeaderEventData, BlockLogs, BlockStateUpdate, BlockUpdate, Message, MessageBlock, MessageBlockHeader, MessageBlockLogs,
     MessageBlockStateUpdate,
 };
 use revm::{Database, DatabaseCommit, DatabaseRef};
-use std::fmt::Debug;
 use std::ops::RangeInclusive;
 use std::time::Duration;
 use tracing::{debug, error};
@@ -33,12 +32,11 @@ pub async fn node_player_worker<P, DB>(
 ) -> WorkerResult
 where
     P: Provider<Ethereum> + DebugProviderExt<Ethereum> + Send + Sync + Clone + 'static,
-    DB: Database + DatabaseRef + DatabaseCommit + Send + Sync + Clone + DatabaseLoomExt + 'static,
-    <DB as DatabaseRef>::Error: Debug,
+    DB: Database<Error = LoomDBError> + DatabaseRef<Error = LoomDBError> + DatabaseCommit + Send + Sync + Clone + DatabaseLoomExt + 'static,
 {
     for curblock_number in RangeInclusive::new(start_block, end_block) {
         //let curblock_number = provider.client().transport().fetch_next_block().await?;
-        let block = provider.get_block_by_number(curblock_number.into(), BlockTransactionsKind::Hashes).await?;
+        let block = provider.get_block_by_number(curblock_number.into()).await?;
 
         if let Some(block) = block {
             let block_header = block.header.clone();
@@ -68,12 +66,14 @@ where
             };
 
             if let Some(block_headers_channel) = &new_block_headers_channel {
-                if let Err(e) = block_headers_channel.send(Message::new_with_time(BlockHeader::new(block.header))) {
+                if let Err(e) =
+                    block_headers_channel.send(Message::new_with_time(BlockHeaderEventData::<LoomDataTypesEthereum>::new(block.header)))
+                {
                     error!("new_block_headers_channel.send error: {e}");
                 }
             }
             if let Some(block_with_tx_channel) = &new_block_with_tx_channel {
-                match provider.get_block_by_hash(curblock_hash, BlockTransactionsKind::Full).await {
+                match provider.get_block_by_hash(curblock_hash).full().await {
                     Ok(block) => {
                         if let Some(block) = block {
                             let mut txs = if let Some(mempool) = mempool.clone() {

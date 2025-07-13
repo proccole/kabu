@@ -1,11 +1,10 @@
-use crate::pool_id::PoolId;
+use crate::entity_address::EntityAddress;
 use crate::required_state::RequiredState;
 use crate::{Pool, PoolAbiEncoder, PoolClass, PoolProtocol, PreswapRequirement, SwapDirection};
 use alloy_primitives::{Address, U256};
 use eyre::ErrReport;
 use eyre::Result;
-use revm::primitives::Env;
-use revm::DatabaseRef;
+use loom_evm_utils::LoomExecuteEvm;
 use std::any::Any;
 
 #[derive(Clone)]
@@ -34,20 +33,20 @@ impl Pool for MockPool {
         PoolProtocol::UniswapV2
     }
 
-    fn get_address(&self) -> Address {
-        self.address
+    fn get_address(&self) -> EntityAddress {
+        self.address.into()
     }
 
-    fn get_pool_id(&self) -> PoolId {
-        PoolId::Address(self.address)
+    fn get_pool_id(&self) -> EntityAddress {
+        EntityAddress::Address(self.address)
     }
 
     fn get_fee(&self) -> U256 {
         U256::ZERO
     }
 
-    fn get_tokens(&self) -> Vec<Address> {
-        vec![self.token0, self.token1]
+    fn get_tokens(&self) -> Vec<EntityAddress> {
+        vec![self.token0.into(), self.token1.into()]
     }
 
     fn get_swap_directions(&self) -> Vec<SwapDirection> {
@@ -56,10 +55,9 @@ impl Pool for MockPool {
 
     fn calculate_out_amount(
         &self,
-        state: &dyn DatabaseRef<Error = ErrReport>,
-        env: Env,
-        token_address_from: &Address,
-        token_address_to: &Address,
+        evm: &mut dyn LoomExecuteEvm,
+        token_address_from: &EntityAddress,
+        token_address_to: &EntityAddress,
         in_amount: U256,
     ) -> Result<(U256, u64), ErrReport> {
         panic!("Not implemented")
@@ -67,10 +65,9 @@ impl Pool for MockPool {
 
     fn calculate_in_amount(
         &self,
-        state: &dyn DatabaseRef<Error = ErrReport>,
-        env: Env,
-        token_address_from: &Address,
-        token_address_to: &Address,
+        evm: &mut dyn LoomExecuteEvm,
+        token_address_from: &EntityAddress,
+        token_address_to: &EntityAddress,
         out_amount: U256,
     ) -> Result<(U256, u64), ErrReport> {
         panic!("Not implemented")

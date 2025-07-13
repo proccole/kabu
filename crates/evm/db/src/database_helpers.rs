@@ -1,8 +1,9 @@
+use crate::fast_cache_db::FastDbAccount;
 use alloy::primitives::map::HashMap;
 use alloy::primitives::{Address, U256};
 use alloy::rpc::types::trace::geth::AccountState;
-use revm::db::DbAccount;
-use revm::primitives::{Account, AccountStatus, Bytecode, EvmStorageSlot};
+use revm::bytecode::Bytecode;
+use revm::state::{Account, AccountStatus, EvmStorageSlot};
 use revm::{DatabaseCommit, DatabaseRef};
 use std::collections::BTreeMap;
 use tracing::trace;
@@ -11,9 +12,9 @@ pub struct DatabaseHelpers {}
 
 impl DatabaseHelpers {
     #[inline]
-    pub fn account_db_to_revm(db: DbAccount) -> Account {
+    pub fn account_db_to_revm(db: FastDbAccount) -> Account {
         let storage = db.storage.into_iter().map(|(k, v)| (k, EvmStorageSlot::new(v))).collect();
-        Account { info: db.info, storage, status: AccountStatus::Touched }
+        Account { info: db.info, storage, status: AccountStatus::Loaded }
     }
 
     #[inline]

@@ -1,13 +1,10 @@
 #![allow(clippy::type_complexity)]
 
-use std::collections::BTreeMap;
-
-use revm::primitives::Env;
-use revm::DatabaseRef;
-
-use loom_evm_utils::evm_env::env_for_block;
-use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEthereum};
+use alloy_consensus::Header;
+use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEVM, LoomDataTypesEthereum};
 use loom_types_entities::{PoolWrapper, SwapDirection};
+use revm::DatabaseRef;
+use std::collections::BTreeMap;
 
 #[derive(Clone)]
 pub struct StateUpdateEvent<DB, LDT: LoomDataTypes = LoomDataTypesEthereum> {
@@ -17,7 +14,7 @@ pub struct StateUpdateEvent<DB, LDT: LoomDataTypes = LoomDataTypesEthereum> {
     market_state: DB,
     state_update: Vec<LDT::StateUpdate>,
     state_required: Option<Vec<LDT::StateUpdate>>,
-    directions: BTreeMap<PoolWrapper, Vec<SwapDirection<LDT>>>,
+    directions: BTreeMap<PoolWrapper, Vec<SwapDirection>>,
     pub stuffing_txs_hashes: Vec<LDT::TxHash>,
     pub stuffing_txs: Vec<LDT::Transaction>,
     pub origin: String,
@@ -33,7 +30,7 @@ impl<DB: DatabaseRef, LDT: LoomDataTypes> StateUpdateEvent<DB, LDT> {
         market_state: DB,
         state_update: Vec<LDT::StateUpdate>,
         state_required: Option<Vec<LDT::StateUpdate>>,
-        directions: BTreeMap<PoolWrapper, Vec<SwapDirection<LDT>>>,
+        directions: BTreeMap<PoolWrapper, Vec<SwapDirection>>,
         stuffing_txs_hashes: Vec<LDT::TxHash>,
         stuffing_txs: Vec<LDT::Transaction>,
         origin: String,
@@ -53,12 +50,7 @@ impl<DB: DatabaseRef, LDT: LoomDataTypes> StateUpdateEvent<DB, LDT> {
             tips_pct,
         }
     }
-
-    pub fn evm_env(&self) -> Env {
-        env_for_block(self.next_block_number, self.next_block_timestamp)
-    }
-
-    pub fn directions(&self) -> &BTreeMap<PoolWrapper, Vec<SwapDirection<LDT>>> {
+    pub fn directions(&self) -> &BTreeMap<PoolWrapper, Vec<SwapDirection>> {
         &self.directions
     }
 
@@ -87,5 +79,11 @@ impl<DB: DatabaseRef, LDT: LoomDataTypes> StateUpdateEvent<DB, LDT> {
 
     pub fn stuffing_tx_hash(&self) -> LDT::TxHash {
         self.stuffing_txs_hashes.first().cloned().unwrap_or_default()
+    }
+}
+
+impl<DB: DatabaseRef, LDT: LoomDataTypesEVM> StateUpdateEvent<DB, LDT> {
+    pub fn next_header(&self) -> Header {
+        Header { number: self.next_block_number, timestamp: self.next_block_timestamp, ..Default::default() }
     }
 }

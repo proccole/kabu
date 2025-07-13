@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use alloy_primitives::U256;
 use loom_core_actors::SharedState;
 use loom_types_blockchain::GethStateUpdateVec;
-use loom_types_entities::{Market, PoolId, PoolWrapper, SwapDirection};
+use loom_types_entities::{EntityAddress, Market, PoolWrapper, SwapDirection};
 use tracing::debug;
 
 pub async fn get_affected_pools_from_state_update(
@@ -20,7 +20,7 @@ pub async fn get_affected_pools_from_state_update(
                 for cell in state_update_entry.storage.keys() {
                     let cell_u: U256 = U256::from_be_slice(cell.as_slice());
                     if let Some(pool_id) = market_guard.get_pool_id_for_cell(address, &cell_u) {
-                        if let Some(pool) = market_guard.get_pool(&pool_id) {
+                        if let Some(pool) = market_guard.get_pool(pool_id) {
                             if !affected_pools.contains_key(pool) {
                                 debug!("Affected pool_managers {} pool {} ", address, pool_id);
                                 affected_pools.insert(pool.clone(), pool.get_swap_directions());
@@ -28,7 +28,7 @@ pub async fn get_affected_pools_from_state_update(
                         }
                     }
                 }
-            } else if let Some(pool) = market_guard.get_pool(&PoolId::Address(*address)) {
+            } else if let Some(pool) = market_guard.get_pool(&EntityAddress::Address(*address)) {
                 if !affected_pools.contains_key(pool) {
                     affected_pools.insert(pool.clone(), pool.get_swap_directions());
                 }

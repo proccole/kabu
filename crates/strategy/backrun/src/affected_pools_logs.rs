@@ -6,18 +6,15 @@ use eyre::Result;
 use loom_core_actors::SharedState;
 use loom_defi_abi::uniswap4::IUniswapV4PoolManagerEvents::IUniswapV4PoolManagerEventsEvents;
 use loom_defi_address_book::FactoryAddress;
-use loom_types_entities::{Market, PoolId, PoolWrapper, SwapDirection};
+use loom_types_entities::{EntityAddress, Market, PoolWrapper, SwapDirection};
 
 #[allow(dead_code)]
-pub async fn get_affected_pools_from_logs(
-    market: SharedState<Market>,
-    logs: &Vec<Log>,
-) -> Result<BTreeMap<PoolWrapper, Vec<SwapDirection>>> {
+pub async fn get_affected_pools_from_logs(market: SharedState<Market>, logs: &[Log]) -> Result<BTreeMap<PoolWrapper, Vec<SwapDirection>>> {
     let market_guard = market.read().await;
 
     let mut affected_pools: BTreeMap<PoolWrapper, Vec<SwapDirection>> = BTreeMap::new();
 
-    for log in logs.into_iter() {
+    for log in logs.iter() {
         if log.address().eq(&FactoryAddress::UNISWAP_V4_POOL_MANAGER_ADDRESS) {
             if let Some(pool_id) = match IUniswapV4PoolManagerEventsEvents::decode_log(&log.inner, false) {
                 Ok(event) => match event.data {
@@ -28,7 +25,7 @@ pub async fn get_affected_pools_from_logs(
                 },
                 Err(_) => None,
             } {
-                if let Some(pool) = market_guard.get_pool(&PoolId::from(pool_id)) {
+                if let Some(pool) = market_guard.get_pool(&EntityAddress::from(pool_id)) {
                     if !affected_pools.contains_key(pool) {
                         affected_pools.insert(pool.clone(), pool.get_swap_directions());
                     }

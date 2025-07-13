@@ -2,39 +2,36 @@ use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 
 use alloy_primitives::{I256, U256};
-use eyre::{eyre, ErrReport, Result};
-use revm::primitives::Env;
-use revm::DatabaseRef;
+use eyre::{eyre, Result};
 use tracing::error;
 
-use crate::{PoolWrapper, SwapAmountType, SwapLine, Token};
-use loom_evm_db::LoomDBType;
-use loom_types_blockchain::LoomDataTypes;
+use crate::{EntityAddress, PoolWrapper, SwapAmountType, SwapLine, Token};
+use loom_evm_utils::LoomExecuteEvm;
 
 #[derive(Clone, Debug)]
-pub struct SwapStep<LDT: LoomDataTypes> {
-    swap_line_vec: Vec<SwapLine<LDT>>,
-    swap_from: Option<LDT::Address>,
-    swap_to: LDT::Address,
+pub struct SwapStep {
+    swap_line_vec: Vec<SwapLine>,
+    swap_from: Option<EntityAddress>,
+    swap_to: EntityAddress,
 }
 
-impl<LDT: LoomDataTypes> Display for SwapStep<LDT> {
+impl Display for SwapStep {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let paths = self.swap_line_vec.iter().map(|path| format!("{path}")).collect::<Vec<String>>().join(" / ");
-        write!(f, "{}", paths)
+        write!(f, "{paths}")
     }
 }
 
-impl<LDT: LoomDataTypes> SwapStep<LDT> {
-    pub fn new(swap_to: LDT::Address) -> Self {
+impl SwapStep {
+    pub fn new(swap_to: EntityAddress) -> Self {
         Self { swap_line_vec: Vec::new(), swap_to, swap_from: None }
     }
 
-    pub fn get_mut_swap_line_by_index(&mut self, idx: usize) -> &mut SwapLine<LDT> {
+    pub fn get_mut_swap_line_by_index(&mut self, idx: usize) -> &mut SwapLine {
         &mut self.swap_line_vec[idx]
     }
 
-    pub fn swap_line_vec(&self) -> &Vec<SwapLine<LDT>> {
+    pub fn swap_line_vec(&self) -> &Vec<SwapLine> {
         &self.swap_line_vec
     }
 
@@ -46,25 +43,25 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
         self.swap_line_vec.is_empty()
     }
 
-    fn first_swap_line(&self) -> Option<&SwapLine<LDT>> {
+    fn first_swap_line(&self) -> Option<&SwapLine> {
         self.swap_line_vec.first()
     }
 
-    pub fn first_token(&self) -> Option<&Arc<Token<LDT>>> {
+    pub fn first_token(&self) -> Option<&Arc<Token>> {
         match self.first_swap_line() {
             Some(s) => s.get_first_token(),
             None => None,
         }
     }
 
-    pub fn last_token(&self) -> Option<&Arc<Token<LDT>>> {
+    pub fn last_token(&self) -> Option<&Arc<Token>> {
         match self.first_swap_line() {
             Some(s) => s.get_last_token(),
             None => None,
         }
     }
 
-    pub fn add(&mut self, swap_path: SwapLine<LDT>) -> &mut Self {
+    pub fn add(&mut self, swap_path: SwapLine) -> &mut Self {
         if self.is_empty()
             || ((self.first_token().unwrap() == swap_path.get_first_token().unwrap())
                 && (self.last_token().unwrap() == swap_path.get_last_token().unwrap()))
@@ -104,11 +101,11 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
         true
     }
 
-    pub fn get_pools(&self) -> Vec<PoolWrapper<LDT>> {
+    pub fn get_pools(&self) -> Vec<PoolWrapper> {
         self.swap_line_vec.iter().flat_map(|sp| sp.pools().clone()).collect()
     }
 
-    fn common_pools(swap_path_0: &SwapLine<LDT>, swap_path_1: &SwapLine<LDT>) -> usize {
+    fn common_pools(swap_path_0: &SwapLine, swap_path_1: &SwapLine) -> usize {
         let mut ret = 0;
         for pool in swap_path_0.pools().iter() {
             if swap_path_1.pools().contains(pool) {
@@ -118,11 +115,7 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
         ret
     }
 
-    pub fn merge_swap_paths(
-        swap_path_0: SwapLine<LDT>,
-        swap_path_1: SwapLine<LDT>,
-        multicaller: LDT::Address,
-    ) -> Result<(SwapStep<LDT>, SwapStep<LDT>)> {
+    pub fn merge_swap_paths(swap_path_0: SwapLine, swap_path_1: SwapLine, multicaller: EntityAddress) -> Result<(SwapStep, SwapStep)> {
         let mut split_index_start = 0;
         let mut split_index_end = 0;
 
@@ -181,30 +174,14 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
             let (mut split_0_0, mut split_0_1) = swap_path_0.split(split_index_start)?;
             let (split_1_0, mut split_1_1) = swap_path_1.split(split_index_start)?;
 
-            let mut swap_step_0 = SwapStep::<LDT>::new(multicaller);
-            let mut swap_step_1 = SwapStep::<LDT>::new(multicaller);
+            let mut swap_step_0 = SwapStep::new(multicaller);
+            let mut swap_step_1 = SwapStep::new(multicaller);
 
             if let SwapAmountType::Set(a0) = swap_path_0.amount_in {
                 if let SwapAmountType::Set(a1) = swap_path_1.amount_in {
                     split_0_0.amount_in = SwapAmountType::Set(a0.max(a1) >> 1);
                 }
             }
-
-            /*if let SwapAmountType::Set(a0) = swap_path_0.amount_out {
-                if let SwapAmountType::Set(a1) = swap_path_1.amount_out {
-                    split_0_0.amount_out = SwapAmountType::Set(a0.max(a1));
-                }
-            }*/
-
-            /*
-            if let SwapAmountType::Set(a0) = swap_path_0.amount_in {
-                if let SwapAmountType::Set(a1) = swap_path_1.amount_in {
-                    split_0_1.amount_in = SwapAmountType::Set(a0 / (a0 + a1));
-                    split_1_1.amount_in = SwapAmountType::Set(a1 / (a0 + a1));
-                }
-            }
-
-             */
 
             if let SwapAmountType::Set(a0) = swap_path_0.amount_out {
                 if let SwapAmountType::Set(a1) = swap_path_1.amount_out {
@@ -271,8 +248,8 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
         Err(eyre!("CANNOT_MERGE"))
     }
 
-    pub fn get_first_token_address(&self) -> Option<LDT::Address> {
-        let mut ret: Option<LDT::Address> = None;
+    pub fn get_first_token_address(&self) -> Option<EntityAddress> {
+        let mut ret: Option<EntityAddress> = None;
         for sp in self.swap_line_vec.iter() {
             match sp.get_first_token() {
                 Some(token) => match ret {
@@ -293,7 +270,7 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
         ret
     }
 
-    pub fn get_first_pool(&self) -> Option<&PoolWrapper<LDT>> {
+    pub fn get_first_pool(&self) -> Option<&PoolWrapper> {
         if self.swap_line_vec.len() == 1 {
             self.swap_line_vec.first().and_then(|x| x.path.pools.first())
         } else {
@@ -301,7 +278,7 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
         }
     }
 
-    pub fn get_last_pool(&self) -> Option<&PoolWrapper<LDT>> {
+    pub fn get_last_pool(&self) -> Option<&PoolWrapper> {
         if self.swap_line_vec.len() == 1 {
             self.swap_line_vec.first().and_then(|x| x.path.pools.last())
         } else {
@@ -309,8 +286,8 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
         }
     }
 
-    pub fn get_first_token(&self) -> Option<&Arc<Token<LDT>>> {
-        let mut ret: Option<&Arc<Token<LDT>>> = None;
+    pub fn get_first_token(&self) -> Option<&Arc<Token>> {
+        let mut ret: Option<&Arc<Token>> = None;
         for sp in self.swap_line_vec.iter() {
             match sp.get_first_token() {
                 Some(token) => match &ret {
@@ -353,12 +330,7 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
         Ok(out_amount)
     }
 
-    pub fn calculate_with_in_amount<DB: DatabaseRef<Error = ErrReport>>(
-        &mut self,
-        state: &DB,
-        env: Env,
-        in_ammount: Option<U256>,
-    ) -> Result<(U256, u64)> {
+    pub fn calculate_with_in_amount<EVM: LoomExecuteEvm>(&mut self, evm: &mut EVM, in_ammount: Option<U256>) -> Result<(U256, u64)> {
         let mut out_amount = U256::ZERO;
         let mut gas_used = 0;
 
@@ -374,7 +346,7 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
             };
             swap_path.amount_in = SwapAmountType::Set(cur_in_amount);
 
-            match swap_path.calculate_with_in_amount(state, env.clone(), cur_in_amount) {
+            match swap_path.calculate_with_in_amount(evm, cur_in_amount) {
                 Ok((amount, gas, calculation_results)) => {
                     out_amount += amount;
                     swap_path.amount_out = SwapAmountType::Set(amount);
@@ -388,7 +360,7 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
         Ok((out_amount, gas_used))
     }
 
-    pub fn calculate_with_out_amount(&mut self, state: &LoomDBType, env: Env, out_amount: Option<U256>) -> Result<(U256, u64)> {
+    pub fn calculate_with_out_amount<EVM: LoomExecuteEvm>(&mut self, evm: &mut EVM, out_amount: Option<U256>) -> Result<(U256, u64)> {
         let mut in_amount = U256::ZERO;
         let mut gas_used = 0;
 
@@ -405,7 +377,7 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
 
             swap_path.amount_out = SwapAmountType::Set(cur_out_amount);
 
-            match swap_path.calculate_with_out_amount(state, env.clone(), cur_out_amount) {
+            match swap_path.calculate_with_out_amount(evm, cur_out_amount) {
                 Ok((amount, gas, calculation_results)) => {
                     in_amount += amount;
                     gas_used += gas;
@@ -439,7 +411,7 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
 
     }*/
 
-    pub fn profit(swap_step_0: &SwapStep<LDT>, swap_step_1: &SwapStep<LDT>) -> I256 {
+    pub fn arb_result(swap_step_0: &SwapStep, swap_step_1: &SwapStep) -> I256 {
         let in_amount: I256 = I256::try_from(swap_step_0.get_in_amount().unwrap_or(U256::MAX)).unwrap_or(I256::MAX);
         let out_amount: I256 = I256::try_from(swap_step_1.get_out_amount().unwrap_or(U256::ZERO)).unwrap_or(I256::ZERO);
         if in_amount.is_negative() {
@@ -449,7 +421,7 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
         }
     }
 
-    pub fn abs_profit(swap_step_0: &SwapStep<LDT>, swap_step_1: &SwapStep<LDT>) -> U256 {
+    pub fn arb_profit(swap_step_0: &SwapStep, swap_step_1: &SwapStep) -> U256 {
         let in_amount: U256 = swap_step_0.get_in_amount().unwrap_or(U256::MAX);
         let out_amount: U256 = swap_step_1.get_out_amount().unwrap_or(U256::ZERO);
         if in_amount >= out_amount {
@@ -459,44 +431,42 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
         }
     }
 
-    pub fn abs_profit_eth(swap_step_0: &SwapStep<LDT>, swap_step_1: &SwapStep<LDT>) -> U256 {
+    pub fn arb_profit_eth(swap_step_0: &SwapStep, swap_step_1: &SwapStep) -> U256 {
         match swap_step_0.get_first_token() {
             Some(t) => {
-                let profit = Self::abs_profit(swap_step_0, swap_step_1);
+                let profit = Self::arb_profit(swap_step_0, swap_step_1);
                 t.calc_eth_value(profit).unwrap_or_default()
             }
             _ => U256::ZERO,
         }
     }
 
-    pub fn optimize_swap_steps<DB: DatabaseRef<Error = ErrReport>>(
-        state: &DB,
-        env: Env,
-        swap_step_0: &SwapStep<LDT>,
-        swap_step_1: &SwapStep<LDT>,
+    pub fn optimize_swap_steps<EVM: LoomExecuteEvm>(
+        evm: &mut EVM,
+        swap_step_0: &SwapStep,
+        swap_step_1: &SwapStep,
         middle_amount: Option<U256>,
-    ) -> Result<(SwapStep<LDT>, SwapStep<LDT>)> {
+    ) -> Result<(SwapStep, SwapStep)> {
         if swap_step_0.can_calculate_in_amount() {
-            SwapStep::optimize_with_middle_amount(state, env, swap_step_0, swap_step_1, middle_amount)
+            SwapStep::optimize_with_middle_amount(evm, swap_step_0, swap_step_1, middle_amount)
         } else {
-            SwapStep::optimize_with_in_amount(state, env, swap_step_0, swap_step_1, middle_amount)
+            SwapStep::optimize_with_in_amount(evm, swap_step_0, swap_step_1, middle_amount)
         }
     }
 
-    pub fn optimize_with_middle_amount<DB: DatabaseRef<Error = ErrReport>>(
-        state: &DB,
-        env: Env,
-        swap_step_0: &SwapStep<LDT>,
-        swap_step_1: &SwapStep<LDT>,
+    pub fn optimize_with_middle_amount<EVM: LoomExecuteEvm>(
+        evm: &mut EVM,
+        swap_step_0: &SwapStep,
+        swap_step_1: &SwapStep,
         middle_amount: Option<U256>,
-    ) -> Result<(SwapStep<LDT>, SwapStep<LDT>)> {
+    ) -> Result<(SwapStep, SwapStep)> {
         let mut step_0 = swap_step_0.clone();
         let mut step_1 = swap_step_1.clone();
         let mut best_profit: Option<I256> = None;
 
         let (middle_amount, _) = match middle_amount {
-            Some(amount) => step_0.calculate_with_in_amount(state, env.clone(), Some(amount))?,
-            _ => step_0.calculate_with_in_amount(state, env.clone(), None)?,
+            Some(amount) => step_0.calculate_with_in_amount(evm, Some(amount))?,
+            _ => step_0.calculate_with_in_amount(evm, None)?,
         };
 
         let step_0_out_amount = step_0.get_out_amount()?;
@@ -507,9 +477,9 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
             swap_path_1.amount_in = SwapAmountType::Set(in_amount);
         }
 
-        step_1.calculate_with_in_amount(state, env.clone(), None);
+        step_1.calculate_with_in_amount(evm, None);
 
-        let cur_profit = Self::profit(&step_0, &step_1);
+        let cur_profit = Self::arb_result(&step_0, &step_1);
         if cur_profit.is_positive() {
             best_profit = Some(cur_profit);
         }
@@ -534,14 +504,14 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
         loop {
             counter += 1;
             if counter > 30 {
-                return if Self::profit(&step_0, &step_1).is_positive() { Ok((step_0, step_1)) } else { Err(eyre!("TOO_MANY_STEPS")) };
+                return if Self::arb_result(&step_0, &step_1).is_positive() { Ok((step_0, step_1)) } else { Err(eyre!("TOO_MANY_STEPS")) };
             }
 
             let step0in = step_0.get_in_amount()?;
             let step0out = step_0.get_out_amount()?;
             let step1in = step_1.get_in_amount()?;
             let step1out = step_1.get_out_amount()?;
-            let profit = Self::profit(&step_0, &step_1);
+            let profit = Self::arb_result(&step_0, &step_1);
 
             //debug!("middle_amount Steps :  {} in {} out {} in {} out {} profit {}", counter, step0in, step0out, step1in, step1out, profit);
 
@@ -557,9 +527,8 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
                     Some(new_out_amount) => {
                         if swap_path_0_calc.amount_out.unwrap() != new_out_amount {
                             let new_amount_out = amount_out + step;
-                            let (in_amount, gas, calculation_results) = swap_path_0_calc
-                                .calculate_with_out_amount(state, env.clone(), new_amount_out)
-                                .unwrap_or((U256::MAX, 0, vec![]));
+                            let (in_amount, gas, calculation_results) =
+                                swap_path_0_calc.calculate_with_out_amount(evm, new_amount_out).unwrap_or((U256::MAX, 0, vec![]));
                             swap_path_0_calc.amount_in = SwapAmountType::Set(in_amount);
                             swap_path_0_calc.amount_out = SwapAmountType::Set(new_amount_out);
                             swap_path_0_calc.gas_used = Some(gas);
@@ -584,9 +553,8 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
                 match new_amount_in {
                     Some(new_amount_in) => {
                         if swap_path_1_calc.amount_in.unwrap() != new_amount_in {
-                            let (out_amount, gas, calculation_results) = swap_path_1_calc
-                                .calculate_with_in_amount(state, env.clone(), new_amount_in)
-                                .unwrap_or((U256::ZERO, 0, vec![]));
+                            let (out_amount, gas, calculation_results) =
+                                swap_path_1_calc.calculate_with_in_amount(evm, new_amount_in).unwrap_or((U256::ZERO, 0, vec![]));
                             swap_path_1_calc.amount_out = SwapAmountType::Set(out_amount);
                             swap_path_1_calc.amount_in = SwapAmountType::Set(new_amount_in);
                             swap_path_1_calc.gas_used = Some(gas);
@@ -598,7 +566,7 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
                 }
             }
 
-            let mut best_merged_step_0: Option<SwapStep<LDT>> = None;
+            let mut best_merged_step_0: Option<SwapStep> = None;
 
             for i in 0..step_0.swap_line_vec.len() {
                 let mut merged_step_0 = SwapStep::new(step_0.swap_to);
@@ -610,7 +578,7 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
                 }
             }
 
-            let mut best_merged_step_1: Option<SwapStep<LDT>> = None;
+            let mut best_merged_step_1: Option<SwapStep> = None;
 
             for i in 0..step_1.swap_line_vec.len() {
                 let mut merged_step_1 = SwapStep::new(step_1.swap_to);
@@ -626,7 +594,7 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
 
             if best_merged_step_0.is_none() || best_merged_step_1.is_none() {
                 //debug!("optimize_swap_steps_middle_amount {} {}", counter, Self::profit(&step_0, &step_1)  );
-                return if Self::profit(&step_0, &step_1).is_positive() {
+                return if Self::arb_result(&step_0, &step_1).is_positive() {
                     Ok((step_0, step_1))
                 } else {
                     Err(eyre!("CANNOT_OPTIMIZE_SWAP_STEP"))
@@ -636,7 +604,7 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
             let best_merged_step_0 = best_merged_step_0.unwrap();
             let best_merged_step_1 = best_merged_step_1.unwrap();
 
-            let cur_profit = Self::profit(&best_merged_step_0, &best_merged_step_1);
+            let cur_profit = Self::arb_result(&best_merged_step_0, &best_merged_step_1);
 
             if best_profit.is_none() || best_profit.unwrap() < cur_profit {
                 step_0 = best_merged_step_0;
@@ -644,7 +612,7 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
                 best_profit = Some(cur_profit);
             } else {
                 //debug!("optimize_swap_steps_middle_amount {} {} {}", counter, Self::profit(&step_0, &step_1), Self::profit(&best_merged_step_0, &best_merged_step_1)  );
-                return if Self::profit(&step_0, &step_1).is_positive() {
+                return if Self::arb_result(&step_0, &step_1).is_positive() {
                     Ok((step_0, step_1))
                 } else {
                     Err(eyre!("CANNOT_OPTIMIZE_SWAP_STEP"))
@@ -653,20 +621,19 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
         }
     }
 
-    pub fn optimize_with_in_amount<DB: DatabaseRef<Error = ErrReport>>(
-        state: &DB,
-        env: Env,
-        swap_step_0: &SwapStep<LDT>,
-        swap_step_1: &SwapStep<LDT>,
+    pub fn optimize_with_in_amount<EVM: LoomExecuteEvm>(
+        evm: &mut EVM,
+        swap_step_0: &SwapStep,
+        swap_step_1: &SwapStep,
         in_amount: Option<U256>,
-    ) -> Result<(SwapStep<LDT>, SwapStep<LDT>)> {
+    ) -> Result<(SwapStep, SwapStep)> {
         let mut step_0 = swap_step_0.clone();
         let mut step_1 = swap_step_1.clone();
         let mut best_profit: Option<I256> = None;
 
         match in_amount {
-            Some(amount) => step_0.calculate_with_in_amount(state, env.clone(), Some(amount))?,
-            _ => step_0.calculate_with_in_amount(state, env.clone(), None)?,
+            Some(amount) => step_0.calculate_with_in_amount(evm, Some(amount))?,
+            _ => step_0.calculate_with_in_amount(evm, None)?,
         };
         let in_amount = step_0.get_in_amount()?;
 
@@ -677,12 +644,12 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
             let in_amount = step_0_out_amount * swap_path_1.amount_out.unwrap() / step_1_out_amount;
             swap_path_1.amount_in = SwapAmountType::Set(in_amount);
         }
-        let _ = step_1.calculate_with_in_amount(state, env.clone(), None)?;
+        let _ = step_1.calculate_with_in_amount(evm, None)?;
 
         //debug!("AfterCalc SwapStep0 {:?}", step_0);
         //debug!("AfterCalc SwapStep1 {:?}", step_1);
 
-        let cur_profit = Self::profit(&step_0, &step_1);
+        let cur_profit = Self::arb_result(&step_0, &step_1);
         if cur_profit.is_positive() {
             best_profit = Some(cur_profit);
         }
@@ -708,14 +675,14 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
         loop {
             counter += 1;
             if counter > 30 {
-                return if Self::profit(&step_0, &step_1).is_positive() { Ok((step_0, step_1)) } else { Err(eyre!("TOO_MANY_STEPS")) };
+                return if Self::arb_result(&step_0, &step_1).is_positive() { Ok((step_0, step_1)) } else { Err(eyre!("TOO_MANY_STEPS")) };
             }
 
             let step0in = step_0.get_in_amount()?;
             let step0out = step_0.get_out_amount()?;
             let step1in = step_1.get_in_amount()?;
             let step1out = step_1.get_out_amount()?;
-            let profit = Self::profit(&step_0, &step_1);
+            let profit = Self::arb_result(&step_0, &step_1);
 
             //debug!("in_amount Steps :  {} in {} out {} in {} out {} profit {}", counter, step0in, step0out, step1in, step1out, profit);
 
@@ -725,7 +692,7 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
                 {
                     let new_amount_in = step_0.swap_line_vec[i].amount_in.unwrap() + step;
                     let (amount_out, gas, calculation_results) =
-                        swap_path_0_calc.calculate_with_in_amount(state, env.clone(), new_amount_in).unwrap_or((U256::ZERO, 0, vec![]));
+                        swap_path_0_calc.calculate_with_in_amount(evm, new_amount_in).unwrap_or((U256::ZERO, 0, vec![]));
                     swap_path_0_calc.amount_in = SwapAmountType::Set(new_amount_in);
                     swap_path_0_calc.amount_out = SwapAmountType::Set(amount_out);
                     swap_path_0_calc.gas_used = Some(gas);
@@ -733,7 +700,7 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
                 }
             }
 
-            let mut best_merged_step_0: Option<SwapStep<LDT>> = None;
+            let mut best_merged_step_0: Option<SwapStep> = None;
 
             for i in 0..step_0.swap_line_vec.len() {
                 let mut merged_step_0 = SwapStep::new(step_0.swap_to);
@@ -763,7 +730,7 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
                 {
                     let new_amount_in = step_1.swap_line_vec[i].amount_in.unwrap() + middle_amount_step;
                     let (out_amount, gas, calculation_results) =
-                        swap_path_1_calc.calculate_with_in_amount(state, env.clone(), new_amount_in).unwrap_or_default();
+                        swap_path_1_calc.calculate_with_in_amount(evm, new_amount_in).unwrap_or_default();
                     swap_path_1_calc.amount_out = SwapAmountType::Set(out_amount);
                     swap_path_1_calc.amount_in = SwapAmountType::Set(new_amount_in);
                     swap_path_1_calc.gas_used = Some(gas);
@@ -771,7 +738,7 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
                 }
             }
 
-            let mut best_merged_step_1: Option<SwapStep<LDT>> = None;
+            let mut best_merged_step_1: Option<SwapStep> = None;
 
             for i in 0..step_1.swap_line_vec.len() {
                 let mut merged_step_1 = SwapStep::new(step_1.swap_to);
@@ -792,7 +759,7 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
             if best_merged_step_0.is_none() || best_merged_step_1.is_none() {
                 //debug!("optimize_swap_steps_in_amount {} {}", counter, Self::profit(&step_0, &step_1)  );
 
-                return if Self::profit(&step_0, &step_1).is_positive() {
+                return if Self::arb_result(&step_0, &step_1).is_positive() {
                     Ok((step_0, step_1))
                 } else {
                     //continue
@@ -802,7 +769,7 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
             let best_merged_step_0 = best_merged_step_0.unwrap();
             let best_merged_step_1 = best_merged_step_1.unwrap();
 
-            let cur_profit = Self::profit(&best_merged_step_0, &best_merged_step_1);
+            let cur_profit = Self::arb_result(&best_merged_step_0, &best_merged_step_1);
 
             if best_profit.is_none() || best_profit.unwrap() < cur_profit {
                 step_0 = best_merged_step_0;
@@ -811,7 +778,7 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
             } else {
                 //debug!("optimize_swap_steps_in_amount {} {} {}", counter, Self::profit(&step_0, &step_1), Self::profit(&best_merged_step_0, &best_merged_step_1)  );
 
-                return if Self::profit(&step_0, &step_1).is_positive() {
+                return if Self::arb_result(&step_0, &step_1).is_positive() {
                     Ok((step_0, step_1))
                 } else {
                     Err(eyre!("CANNOT_OPTIMIZE_SWAP_STEP"))
@@ -819,7 +786,7 @@ impl<LDT: LoomDataTypes> SwapStep<LDT> {
             }
         }
 
-        if Self::profit(&step_0, &step_1).is_positive() {
+        if Self::arb_result(&step_0, &step_1).is_positive() {
             Ok((step_0, step_1))
         } else {
             Err(eyre!("OPTIMIZATION_FAILED"))

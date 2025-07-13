@@ -2,15 +2,13 @@ use crate::protocols::{fetch_uni3_factory, UniswapV3Protocol};
 use crate::{pool_loader, MaverickPool, PancakeV3Pool, UniswapV3Pool};
 use alloy::primitives::Bytes;
 use alloy::primitives::Log as EVMLog;
-use alloy::providers::network::Ethereum;
 use alloy::sol_types::SolEventInterface;
-use eyre::{eyre, ErrReport};
+use eyre::eyre;
 use futures::Stream;
 use loom_defi_abi::uniswap3::IUniswapV3Pool::IUniswapV3PoolEvents;
-use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEthereum};
-use loom_types_entities::{get_protocol_by_factory, PoolClass, PoolId, PoolLoader, PoolProtocol, PoolWrapper};
-use revm::primitives::Env;
-use revm::DatabaseRef;
+use loom_evm_utils::LoomExecuteEvm;
+use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEVM, LoomDataTypesEthereum};
+use loom_types_entities::{get_protocol_by_factory, EntityAddress, PoolClass, PoolLoader, PoolProtocol, PoolWrapper};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -18,14 +16,13 @@ use tracing::error;
 
 pool_loader!(UniswapV3PoolLoader);
 
-impl<P> PoolLoader<P, Ethereum, LoomDataTypesEthereum> for UniswapV3PoolLoader<P, Ethereum, LoomDataTypesEthereum>
+impl<P, N, LDT> PoolLoader<P, N, LDT> for UniswapV3PoolLoader<P, N, LDT>
 where
-    P: Provider<Ethereum> + Clone + 'static,
+    N: Network,
+    P: Provider<N> + Clone + 'static,
+    LDT: LoomDataTypesEVM + 'static,
 {
-    fn get_pool_class_by_log(
-        &self,
-        log_entry: &<LoomDataTypesEthereum as LoomDataTypes>::Log,
-    ) -> Option<(PoolId<LoomDataTypesEthereum>, PoolClass)> {
+    fn get_pool_class_by_log(&self, log_entry: &LDT::Log) -> Option<(EntityAddress, PoolClass)> {
         let log_entry: Option<EVMLog> = EVMLog::new(log_entry.address(), log_entry.topics().to_vec(), log_entry.data().data.clone());
         match log_entry {
             Some(log_entry) => match IUniswapV3PoolEvents::decode_log(&log_entry, false) {
@@ -33,7 +30,7 @@ where
                     IUniswapV3PoolEvents::Swap(_)
                     | IUniswapV3PoolEvents::Mint(_)
                     | IUniswapV3PoolEvents::Burn(_)
-                    | IUniswapV3PoolEvents::Initialize(_) => Some((PoolId::Address(log_entry.address), PoolClass::UniswapV3)),
+                    | IUniswapV3PoolEvents::Initialize(_) => Some((EntityAddress::Address(log_entry.address), PoolClass::UniswapV3)),
                     _ => None,
                 },
                 Err(_) => None,
@@ -42,10 +39,7 @@ where
         }
     }
 
-    fn fetch_pool_by_id<'a>(
-        &'a self,
-        pool_id: PoolId<LoomDataTypesEthereum>,
-    ) -> Pin<Box<dyn Future<Output = eyre::Result<PoolWrapper<LoomDataTypesEthereum>>> + Send + 'a>> {
+    fn fetch_pool_by_id<'a>(&'a self, pool_id: EntityAddress) -> Pin<Box<dyn Future<Output = eyre::Result<PoolWrapper>> + Send + 'a>> {
         Box::pin(async move {
             if let Some(provider) = &self.provider {
                 self.fetch_pool_by_id_from_provider(pool_id, provider.clone()).await
@@ -57,9 +51,9 @@ where
 
     fn fetch_pool_by_id_from_provider<'a>(
         &'a self,
-        pool_id: PoolId<LoomDataTypesEthereum>,
+        pool_id: EntityAddress,
         provider: P,
-    ) -> Pin<Box<dyn Future<Output = eyre::Result<PoolWrapper<LoomDataTypesEthereum>>> + Send + 'a>> {
+    ) -> Pin<Box<dyn Future<Output = eyre::Result<PoolWrapper>> + Send + 'a>> {
         Box::pin(async move {
             let pool_address = pool_id.address()?;
 
@@ -82,20 +76,15 @@ where
         })
     }
 
-    fn fetch_pool_by_id_from_evm(
-        &self,
-        pool_id: PoolId<LoomDataTypesEthereum>,
-        db: &dyn DatabaseRef<Error = ErrReport>,
-        env: Env,
-    ) -> eyre::Result<PoolWrapper<LoomDataTypesEthereum>> {
-        Ok(PoolWrapper::new(Arc::new(UniswapV3Pool::fetch_pool_data_evm(db, env, pool_id.address()?)?)))
+    fn fetch_pool_by_id_from_evm(&self, pool_id: EntityAddress, evm: &mut dyn LoomExecuteEvm) -> eyre::Result<PoolWrapper> {
+        Ok(PoolWrapper::new(Arc::new(UniswapV3Pool::fetch_pool_data_evm(evm, pool_id.address()?)?)))
     }
 
     fn is_code(&self, code: &Bytes) -> bool {
         UniswapV3Protocol::is_code(code)
     }
 
-    fn protocol_loader(&self) -> eyre::Result<Pin<Box<dyn Stream<Item = (PoolId, PoolClass)> + Send>>> {
+    fn protocol_loader(&self) -> eyre::Result<Pin<Box<dyn Stream<Item = (EntityAddress, PoolClass)> + Send>>> {
         Err(eyre!("NOT_IMPLEMENTED"))
     }
 }

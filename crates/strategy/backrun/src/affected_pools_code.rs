@@ -2,18 +2,18 @@ use alloy_eips::BlockNumberOrTag;
 use alloy_network::Network;
 use alloy_provider::Provider;
 use eyre::eyre;
-use revm::primitives::Env;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use tracing::{debug, error};
 
 use loom_core_actors::SharedState;
 use loom_defi_pools::protocols::{UniswapV2Protocol, UniswapV3Protocol};
-use loom_defi_pools::state_readers::UniswapV3StateReader;
+use loom_defi_pools::state_readers::UniswapV3EvmStateReader;
 use loom_defi_pools::{MaverickPool, PancakeV3Pool, UniswapV2Pool, UniswapV3Pool};
 use loom_evm_db::{AlloyDB, LoomDB};
+use loom_evm_utils::LoomEVMWrapper;
 use loom_types_blockchain::GethStateUpdateVec;
-use loom_types_entities::{get_protocol_by_factory, Market, MarketState, Pool, PoolId, PoolProtocol, PoolWrapper, SwapDirection};
+use loom_types_entities::{get_protocol_by_factory, EntityAddress, Market, MarketState, Pool, PoolProtocol, PoolWrapper, SwapDirection};
 
 pub async fn get_affected_pools_from_code<P, N>(
     client: P,
@@ -34,10 +34,9 @@ where
         for (address, state_update_entry) in state_update_record.iter() {
             if let Some(code) = &state_update_entry.code {
                 if UniswapV2Protocol::is_code(code) {
-                    match market.read().await.get_pool(&PoolId::Address(*address)) {
+                    match market.read().await.get_pool(&EntityAddress::Address(*address)) {
                         None => {
                             debug!(?address, "Loading UniswapV2 class pool");
-                            let env = Env::default();
 
                             let ext_db = AlloyDB::new(client.clone(), BlockNumberOrTag::Latest.into());
 
@@ -48,8 +47,10 @@ where
 
                             let state_db = market_state.state_db.clone().with_ext_db(ext_db);
 
-                            match UniswapV3StateReader::factory(&state_db, env.clone(), *address) {
-                                Ok(_factory_address) => match UniswapV2Pool::fetch_pool_data_evm(&state_db, env.clone(), *address) {
+                            let mut evm = LoomEVMWrapper::new(state_db);
+
+                            match UniswapV3EvmStateReader::factory(evm.get_mut(), *address) {
+                                Ok(_factory_address) => match UniswapV2Pool::fetch_pool_data_evm(evm.get_mut(), *address) {
                                     Ok(pool) => {
                                         let pool = PoolWrapper::new(Arc::new(pool));
                                         let protocol = pool.get_protocol();
@@ -74,10 +75,9 @@ where
                 }
 
                 if UniswapV3Protocol::is_code(code) {
-                    match market.read().await.get_pool(&PoolId::Address(*address)) {
+                    match market.read().await.get_pool(&EntityAddress::Address(*address)) {
                         None => {
                             debug!(%address, "Loading UniswapV3 class pool");
-                            let env = Env::default();
 
                             let ext_db = AlloyDB::new(client.clone(), BlockNumberOrTag::Latest.into());
 
@@ -88,11 +88,13 @@ where
 
                             let state_db = market_state.state_db.clone().with_ext_db(ext_db);
 
-                            match UniswapV3StateReader::factory(&state_db, env.clone(), *address) {
+                            let mut evm = LoomEVMWrapper::new(state_db);
+
+                            match UniswapV3EvmStateReader::factory(evm.get_mut(), *address) {
                                 Ok(factory_address) => {
                                     match get_protocol_by_factory(factory_address) {
                                         PoolProtocol::PancakeV3 => {
-                                            let pool = PancakeV3Pool::fetch_pool_data_evm(&state_db, env.clone(), *address);
+                                            let pool = PancakeV3Pool::fetch_pool_data_evm(evm.get_mut(), *address);
                                             match pool {
                                                 Ok(pool) => {
                                                     let swap_directions = pool.get_swap_directions();
@@ -106,7 +108,7 @@ where
                                             }
                                         }
                                         PoolProtocol::Maverick => {
-                                            let pool = MaverickPool::fetch_pool_data_evm(&state_db, env.clone(), *address);
+                                            let pool = MaverickPool::fetch_pool_data_evm(evm.get_mut(), *address);
                                             match pool {
                                                 Ok(pool) => {
                                                     let pool = PoolWrapper::new(Arc::new(pool));
@@ -121,7 +123,7 @@ where
                                                 }
                                             }
                                         }
-                                        _ => match UniswapV3Pool::fetch_pool_data_evm(&state_db, env.clone(), *address) {
+                                        _ => match UniswapV3Pool::fetch_pool_data_evm(evm.get_mut(), *address) {
                                             Ok(pool) => {
                                                 let pool = PoolWrapper::new(Arc::new(pool));
                                                 let swap_directions = pool.get_swap_directions();

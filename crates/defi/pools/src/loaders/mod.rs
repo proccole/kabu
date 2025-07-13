@@ -5,8 +5,8 @@ mod uniswap3;
 
 use crate::loaders::curve::CurvePoolLoader;
 use alloy::providers::network::Ethereum;
-use alloy::providers::{Network, Provider, RootProvider};
-use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEthereum};
+use alloy::providers::{Network, Provider};
+use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEVM, LoomDataTypesEthereum};
 use loom_types_entities::pool_config::PoolsLoadingConfig;
 use loom_types_entities::{PoolClass, PoolLoader, PoolLoaders};
 pub use maverick::MaverickPoolLoader;
@@ -77,8 +77,8 @@ where
     P: Provider<N> + 'static,
     LDT: LoomDataTypes,
 {
-    pub fn new() -> PoolLoadersBuilder<RootProvider<Ethereum>, Ethereum, LoomDataTypesEthereum> {
-        PoolLoadersBuilder { inner: PoolLoaders::<RootProvider<Ethereum>, Ethereum, LoomDataTypesEthereum>::new() }
+    pub fn new() -> PoolLoadersBuilder<P, N, LDT> {
+        PoolLoadersBuilder { inner: PoolLoaders::<P, N, LDT>::new() }
     }
 
     pub fn with_provider<NP: Provider<N>>(self, provider: NP) -> PoolLoadersBuilder<NP, N, LDT> {
@@ -109,23 +109,23 @@ where
     }
 }
 
-impl<P> PoolLoadersBuilder<P, Ethereum, LoomDataTypesEthereum>
+impl<P, N, LDT> PoolLoadersBuilder<P, N, LDT>
 where
-    P: Provider<Ethereum> + 'static,
+    N: Network,
+    P: Provider<N> + Clone + 'static,
+    LDT: LoomDataTypesEVM + 'static,
 {
-    pub fn default_pool_loaders(provider: P, config: PoolsLoadingConfig) -> PoolLoaders<P, Ethereum, LoomDataTypesEthereum>
+    pub fn default_pool_loaders(provider: P, config: PoolsLoadingConfig) -> PoolLoaders<P, N, LDT>
     where
-        P: Provider<Ethereum> + Clone,
+        P: Provider<N> + Clone,
     {
-        let pool_loader = PoolLoadersBuilder::<P>::new()
+        PoolLoadersBuilder::<P, N, LDT>::new()
             .with_provider(provider.clone())
             .with_config(config)
             .add_loader(PoolClass::Maverick, MaverickPoolLoader::with_provider(provider.clone()))
             .add_loader(PoolClass::UniswapV2, UniswapV2PoolLoader::with_provider(provider.clone()))
             .add_loader(PoolClass::UniswapV3, UniswapV3PoolLoader::with_provider(provider.clone()))
             .add_loader(PoolClass::Curve, CurvePoolLoader::with_provider(provider.clone()))
-            .build();
-
-        pool_loader
+            .build()
     }
 }

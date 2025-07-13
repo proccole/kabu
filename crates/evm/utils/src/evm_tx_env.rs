@@ -1,10 +1,5 @@
-use alloy::consensus::Transaction as TransactionTrait;
-use alloy::consensus::{TxEip4844Variant, TxEnvelope};
 use alloy::primitives::private::alloy_rlp;
-use alloy::primitives::{Bytes, SignatureError, TxKind, U256};
-use alloy::rlp::Decodable;
-use alloy::rpc::types::Transaction;
-use revm::primitives::{AuthorizationList, TxEnv};
+use alloy::primitives::SignatureError;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -16,7 +11,7 @@ pub enum EnvError {
     #[error("Unsupported transaction type")]
     UnsupportedTransactionType,
 }
-
+/*
 pub fn env_from_signed_tx(rpl_bytes: Bytes) -> Result<TxEnv, EnvError> {
     match TxEnvelope::decode(&mut rpl_bytes.iter().as_slice())? {
         TxEnvelope::Legacy(tx) => {
@@ -122,6 +117,7 @@ pub fn env_from_signed_tx(rpl_bytes: Bytes) -> Result<TxEnv, EnvError> {
 }
 
 pub fn tx_to_evm_tx(tx: &Transaction) -> TxEnv {
+    let tx = &tx.inner;
     TxEnv {
         transact_to: match tx.to() {
             Some(to) => TxKind::Call(to),
@@ -131,7 +127,7 @@ pub fn tx_to_evm_tx(tx: &Transaction) -> TxEnv {
         chain_id: tx.chain_id(),
         data: tx.input().clone(),
         value: tx.value(),
-        caller: tx.from,
+        caller: tx.signer(),
         gas_limit: tx.gas_limit(),
 
         // support type 1 and 2
@@ -145,3 +141,5 @@ pub fn tx_to_evm_tx(tx: &Transaction) -> TxEnv {
         authorization_list: None,
     }
 }
+
+ */

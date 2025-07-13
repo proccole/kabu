@@ -1,11 +1,11 @@
-use alloy_network::primitives::BlockTransactionsKind;
-use alloy_primitives::{Address, BlockNumber, Bytes, U256};
+use alloy_primitives::{Address, BlockNumber, Bytes};
 use alloy_provider::Provider;
 use alloy_rpc_types::{BlockNumberOrTag, TransactionInput, TransactionRequest};
 use clap::Parser;
 use colored::*;
 use eyre::{OptionExt, Result};
-use revm::primitives::Env;
+use revm::context::BlockEnv;
+use revm::database::CacheDB;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use std::env;
@@ -21,12 +21,12 @@ use crate::soltest::create_sol_test;
 use loom_node_debug_provider::AnvilDebugProviderFactory;
 
 use loom_defi_address_book::UniswapV2PoolAddress;
-use loom_types_entities::{Market, MarketState, PoolId, PoolWrapper, Swap, SwapAmountType, SwapLine};
+use loom_types_entities::{EntityAddress, Market, MarketState, PoolWrapper, Swap, SwapAmountType, SwapDirection, SwapLine};
 
 use loom_core_actors::SharedState;
 use loom_defi_preloader::preload_market_state;
 use loom_evm_db::LoomDBType;
-use loom_evm_utils::{BalanceCheater, NWETH};
+use loom_evm_utils::{BalanceCheater, LoomEVMWrapper, NWETH};
 use loom_execution_multicaller::pool_opcodes_encoder::ProtocolSwapOpcodesEncoderV2;
 use loom_execution_multicaller::{
     MulticallerDeployer, MulticallerEncoder, MulticallerSwapEncoder, ProtocolABIEncoderV2, SwapLineEncoder, SwapStepEncoder,
@@ -56,8 +56,7 @@ async fn main() -> Result<()> {
 
     let client = AnvilDebugProviderFactory::from_node_on_block(node_url, BlockNumber::from(block_number)).await?;
 
-    let block_header =
-        client.get_block_by_number(BlockNumberOrTag::Number(block_number), BlockTransactionsKind::Hashes).await?.unwrap().header;
+    let block_header = client.get_block_by_number(BlockNumberOrTag::Number(block_number)).await?.unwrap().header;
 
     let operator_address = Address::repeat_byte(0x12);
     let multicaller_address = Address::repeat_byte(0x78);
@@ -92,21 +91,21 @@ async fn main() -> Result<()> {
     let swap_encoder = Arc::new(MulticallerSwapEncoder::new(multicaller_address, swap_step_encoder));
 
     //preload state
-    preload_market_state(client.clone(), vec![multicaller_address], vec![], vec![], market_state_instance.clone(), None).await?;
+    preload_market_state(client.clone(), vec![multicaller_address.into()], vec![], vec![], market_state_instance.clone(), None).await?;
 
     //Preloading market
-    preload_pools(client.clone(), market_instance.clone(), market_state_instance.clone()).await?;
+    preload_pools::<_, _>(client.clone(), market_instance.clone(), market_state_instance.clone()).await?;
 
     let market = market_instance.read().await;
 
     // Getting swap directions
     let pool_address: Address = UniswapV2PoolAddress::WETH_USDT;
 
-    let pool = market.get_pool(&PoolId::Address(pool_address)).ok_or_eyre("POOL_NOT_FOUND")?;
+    let pool = market.get_pool(&EntityAddress::Address(pool_address)).ok_or_eyre("POOL_NOT_FOUND")?;
 
     let swap_directions = pool.get_swap_directions();
 
-    let mut btree_map: BTreeMap<PoolWrapper, Vec<(Address, Address)>> = BTreeMap::new();
+    let mut btree_map: BTreeMap<PoolWrapper, Vec<SwapDirection>> = BTreeMap::new();
 
     btree_map.insert(pool.clone(), swap_directions);
 
@@ -116,11 +115,14 @@ async fn main() -> Result<()> {
 
     let db = market_state_instance.read().await.state_db.clone();
 
-    let mut env = Env::default();
+    let block_env = BlockEnv {
+        number: block_number,
+        timestamp: block_header.timestamp,
+        //basefee: block_header.base_fee_per_gas.unwrap_or_default(),
+        ..Default::default()
+    };
 
-    env.block.number = U256::from(block_header.number);
-    env.block.timestamp = U256::from(block_header.timestamp);
-    //env.block.basefee = U256::from(block_header.base_fee_per_gas.unwrap_or_default());
+    let mut evm = LoomEVMWrapper::new(CacheDB::new(db)).with_block_env(block_env);
 
     let in_amount_f64 = 1.0;
     let in_amount = NWETH::from_float(in_amount_f64);
@@ -137,17 +139,17 @@ async fn main() -> Result<()> {
 
         let sp = swap_path.clone();
         let sp_dto: SwapLineDTO = (&sp).into();
-        println!("Checking {}", sp_dto);
+        println!("Checking {sp_dto}");
         if let Some(filter) = &cli.filter.clone() {
-            if !format!("{}", sp_dto).contains(filter) {
-                println!("Skipping {}", sp_dto);
+            if !format!("{sp_dto}").contains(filter) {
+                println!("Skipping {sp_dto}");
                 continue;
             }
         }
 
         let mut swapline = SwapLine { path: sp, amount_in: SwapAmountType::Set(in_amount), ..SwapLine::default() };
 
-        match swapline.calculate_with_in_amount(&db, env.clone(), in_amount) {
+        match swapline.calculate_with_in_amount(evm.get_mut(), in_amount) {
             Ok((out_amount, gas_used, _)) => {
                 println!("{} gas: {}  amount {} -> {}", sp_dto, gas_used, in_amount_f64, NWETH::to_float(out_amount));
                 swapline.amount_out = SwapAmountType::Set(out_amount)
@@ -165,7 +167,7 @@ async fn main() -> Result<()> {
 
         let tx_request = TransactionRequest::default().to(to).from(operator_address).input(TransactionInput::new(payload));
 
-        let gas_used = match client.estimate_gas(&tx_request).await {
+        let gas_used = match client.estimate_gas(tx_request).await {
             Ok(gas_needed) => {
                 //info!("Gas required:  {gas_needed}");
                 gas_needed
@@ -186,7 +188,7 @@ async fn main() -> Result<()> {
             calldata_vec.sort_by(|a, b| a.0.cmp(&b.0));
             let calldata_vec: Vec<(String, Bytes)> = calldata_vec.into_iter().map(|(k, v)| (k.to_string(), v)).collect();
             let test_data = create_sol_test(calldata_vec);
-            println!("{}", test_data);
+            println!("{test_data}");
             let mut file = File::create(bench_file).await?;
             file.write_all(test_data.as_bytes()).await?;
         } else if cli.save {
@@ -223,7 +225,7 @@ async fn main() -> Result<()> {
                             }
                         };
 
-                        println!("{} : {} {} - {} ", change, current_entry, gas, stored_gas,);
+                        println!("{change} : {current_entry} {gas} - {stored_gas} ",);
                     }
                     None => {
                         if *gas < 40000 {

@@ -1,8 +1,8 @@
 use alloy_network::Ethereum;
 use alloy_primitives::{Address, B256, U256};
-use alloy_provider::{Provider, RootProvider};
+use alloy_provider::Provider;
 use axum::Router;
-use eyre::{eyre, ErrReport, Result};
+use eyre::{eyre, Result};
 use loom_broadcast_accounts::{InitializeSignersOneShotBlockingActor, NonceAndBalanceMonitorActor, TxSignersActor};
 use loom_broadcast_broadcaster::FlashbotsBroadcastActor;
 use loom_broadcast_flashbots::client::RelayConfig;
@@ -20,7 +20,7 @@ use loom_defi_market::{
 use loom_defi_pools::{PoolLoadersBuilder, PoolsLoadingConfig};
 use loom_defi_preloader::MarketStatePreloadedOneShotActor;
 use loom_defi_price::PriceActor;
-use loom_evm_db::DatabaseLoomExt;
+use loom_evm_db::{DatabaseLoomExt, LoomDBError};
 use loom_evm_utils::NWETH;
 use loom_execution_estimator::{EvmEstimatorActor, GethEstimatorActor};
 use loom_execution_multicaller::MulticallerSwapEncoder;
@@ -37,19 +37,27 @@ use loom_strategy_backrun::{
     BackrunConfig, BlockStateChangeProcessorActor, PendingTxStateChangeProcessorActor, StateChangeArbSearcherActor,
 };
 use loom_strategy_merger::{ArbSwapPathMergerActor, DiffPathMergerActor, SamePathMergerActor};
+use loom_types_blockchain::{LoomDataTypesEVM, LoomDataTypesEthereum};
 use loom_types_entities::required_state::RequiredState;
 use loom_types_entities::{BlockHistoryState, PoolClass, SwapEncoder, TxSigners};
 use revm::{Database, DatabaseCommit, DatabaseRef};
 use std::collections::HashMap;
+use std::marker::PhantomData;
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
 
-pub struct BlockchainActors<P, DB: Clone + Send + Sync + 'static, E: Clone = MulticallerSwapEncoder> {
+pub struct BlockchainActors<
+    P,
+    N,
+    DB: Clone + Send + Sync + 'static,
+    E: Clone = MulticallerSwapEncoder,
+    LDT: LoomDataTypesEVM + 'static = LoomDataTypesEthereum,
+> {
     provider: P,
-    bc: Blockchain,
-    state: BlockchainState<DB>,
-    strategy: Strategy<DB>,
-    pub signers: SharedState<TxSigners>,
+    bc: Blockchain<LDT>,
+    state: BlockchainState<DB, LDT>,
+    strategy: Strategy<DB, LDT>,
+    pub signers: SharedState<TxSigners<LDT>>,
     actor_manager: ActorsManager,
     encoder: Option<E>,
     has_mempool: bool,
@@ -57,16 +65,17 @@ pub struct BlockchainActors<P, DB: Clone + Send + Sync + 'static, E: Clone = Mul
     has_signers: bool,
     mutlicaller_address: Option<Address>,
     relays: Vec<RelayConfig>,
+    _n: PhantomData<N>,
 }
 
-impl<P, DB, E> BlockchainActors<P, DB, E>
+impl<P, DB, E> BlockchainActors<P, Ethereum, DB, E, LoomDataTypesEthereum>
 where
     P: Provider<Ethereum> + DebugProviderExt<Ethereum> + Send + Sync + Clone + 'static,
-    DB: DatabaseRef<Error = ErrReport>
-        + Database<Error = ErrReport>
+    DB: DatabaseRef<Error = LoomDBError>
+        + Database<Error = LoomDBError>
         + DatabaseCommit
         + DatabaseLoomExt
-        + BlockHistoryState
+        + BlockHistoryState<LoomDataTypesEthereum>
         + Send
         + Sync
         + Clone
@@ -77,9 +86,9 @@ where
     pub fn new(
         provider: P,
         encoder: E,
-        bc: Blockchain,
-        state: BlockchainState<DB>,
-        strategy: Strategy<DB>,
+        bc: Blockchain<LoomDataTypesEthereum>,
+        state: BlockchainState<DB, LoomDataTypesEthereum>,
+        strategy: Strategy<DB, LoomDataTypesEthereum>,
         relays: Vec<RelayConfig>,
     ) -> Self {
         Self {
@@ -95,6 +104,7 @@ where
             has_signers: false,
             mutlicaller_address: None,
             relays,
+            _n: PhantomData,
         }
     }
 
@@ -174,7 +184,9 @@ where
     pub fn with_swap_encoder(&mut self, swap_encoder: E) -> Result<&mut Self> {
         self.mutlicaller_address = Some(swap_encoder.address());
         self.encoder = Some(swap_encoder);
-        self.actor_manager.start(SwapRouterActor::<DB>::new().with_signers(self.signers.clone()).on_bc(&self.bc, &self.strategy))?;
+        self.actor_manager.start(
+            SwapRouterActor::<DB, LoomDataTypesEthereum>::new().with_signers(self.signers.clone()).on_bc(&self.bc, &self.strategy),
+        )?;
         Ok(self)
     }
 
@@ -183,7 +195,7 @@ where
         let mut address_vec = self.signers.inner().try_read()?.get_address_vec();
 
         if let Some(loom_multicaller) = self.mutlicaller_address {
-            address_vec.push(loom_multicaller);
+            address_vec.push(loom_multicaller.into());
         }
 
         self.actor_manager.start_and_wait(
@@ -200,9 +212,9 @@ where
 
         for address in address_vec {
             //            market_state_preloader = market_state_preloader.with_new_account(address, 0, NWETH::from_float(10.0), None);
-            market_state_preloader = market_state_preloader.with_copied_account(address).with_token_balance(
+            market_state_preloader = market_state_preloader.with_copied_account(address.into()).with_token_balance(
                 TokenAddressEth::ETH_NATIVE,
-                address,
+                address.into(),
                 NWETH::from_float(10.0),
             );
         }
@@ -234,7 +246,7 @@ where
         Ok(self)
     }
 
-    pub fn with_nonce_and_balance_monitor_only_events(&mut self) -> Result<&mut Self> {
+    pub fn with_nonce_and_balance_monitor_only_once(&mut self) -> Result<&mut Self> {
         self.actor_manager.start(NonceAndBalanceMonitorActor::new(self.provider.clone()).only_once().on_bc(&self.bc))?;
         Ok(self)
     }
@@ -337,28 +349,34 @@ where
 
     /// Start pool loader from new block events
     pub fn with_new_pool_loader(&mut self, pools_config: PoolsLoadingConfig) -> Result<&mut Self> {
-        let pool_loader = Arc::new(PoolLoadersBuilder::default_pool_loaders(self.provider.clone(), pools_config));
+        let pool_loader =
+            Arc::new(PoolLoadersBuilder::<P, Ethereum, LoomDataTypesEthereum>::default_pool_loaders(self.provider.clone(), pools_config));
         self.actor_manager.start(NewPoolLoaderActor::new(pool_loader).on_bc(&self.bc))?;
         Ok(self)
     }
 
     /// Start pool loader for last 10000 blocks
     pub fn with_pool_history_loader(&mut self, pools_config: PoolsLoadingConfig) -> Result<&mut Self> {
-        let pool_loaders = Arc::new(PoolLoadersBuilder::default_pool_loaders(self.provider.clone(), pools_config));
+        let pool_loaders =
+            Arc::new(PoolLoadersBuilder::<P, Ethereum, LoomDataTypesEthereum>::default_pool_loaders(self.provider.clone(), pools_config));
         self.actor_manager.start(HistoryPoolLoaderOneShotActor::new(self.provider.clone(), pool_loaders).on_bc(&self.bc))?;
         Ok(self)
     }
 
     /// Start pool loader from new block events
     pub fn with_pool_loader(&mut self, pools_config: PoolsLoadingConfig) -> Result<&mut Self> {
-        let pool_loaders = Arc::new(PoolLoadersBuilder::default_pool_loaders(self.provider.clone(), pools_config.clone()));
+        let pool_loaders = Arc::new(PoolLoadersBuilder::<P, Ethereum, LoomDataTypesEthereum>::default_pool_loaders(
+            self.provider.clone(),
+            pools_config.clone(),
+        ));
         self.actor_manager.start(PoolLoaderActor::new(self.provider.clone(), pool_loaders, pools_config).on_bc(&self.bc, &self.state))?;
         Ok(self)
     }
 
     /// Start pool loader for curve + steth + wsteth
     pub fn with_curve_pool_protocol_loader(&mut self, pools_config: PoolsLoadingConfig) -> Result<&mut Self> {
-        let pool_loaders = Arc::new(PoolLoadersBuilder::default_pool_loaders(self.provider.clone(), pools_config));
+        let pool_loaders =
+            Arc::new(PoolLoadersBuilder::<P, Ethereum, LoomDataTypesEthereum>::default_pool_loaders(self.provider.clone(), pools_config));
         self.actor_manager.start(ProtocolPoolLoaderOneShotActor::new(self.provider.clone(), pool_loaders).on_bc(&self.bc))?;
         Ok(self)
     }
@@ -377,7 +395,10 @@ where
 
     //
     pub fn with_preloaded_state(&mut self, pools: Vec<(Address, PoolClass)>, state_required: Option<RequiredState>) -> Result<&mut Self> {
-        let pool_loaders = Arc::new(PoolLoadersBuilder::default_pool_loaders(self.provider.clone(), PoolsLoadingConfig::default()));
+        let pool_loaders = Arc::new(PoolLoadersBuilder::<P, Ethereum, LoomDataTypesEthereum>::default_pool_loaders(
+            self.provider.clone(),
+            PoolsLoadingConfig::default(),
+        ));
         let mut actor = RequiredPoolLoaderActor::new(self.provider.clone(), pool_loaders);
 
         for (pool_address, pool_class) in pools {
@@ -401,9 +422,8 @@ where
 
     /// Starts EVM gas estimator and tips filler
     pub fn with_evm_estimator(&mut self) -> Result<&mut Self> {
-        self.actor_manager.start(
-            EvmEstimatorActor::<RootProvider, Ethereum, E, DB>::new(self.encoder.clone().unwrap()).on_bc(&self.bc, &self.strategy),
-        )?;
+        self.actor_manager
+            .start(EvmEstimatorActor::<P, Ethereum, E, DB>::new(self.encoder.clone().unwrap()).on_bc(&self.bc, &self.strategy))?;
         Ok(self)
     }
 
@@ -488,7 +508,8 @@ where
         S: Clone + Send + Sync + 'static,
         Router: From<Router<S>>,
     {
-        self.actor_manager.start(WebServerActor::new(host, router, db_pool, CancellationToken::new()).on_bc(&self.bc, &self.state))?;
+        self.actor_manager
+            .start(WebServerActor::<S, DB>::new(host, router, db_pool, CancellationToken::new()).on_bc(&self.bc, &self.state))?;
         Ok(self)
     }
 

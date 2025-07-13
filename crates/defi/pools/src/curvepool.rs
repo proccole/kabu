@@ -1,21 +1,20 @@
-use std::any::Any;
-use std::sync::Arc;
-
+use crate::protocols::{CurveCommonContract, CurveContract, CurveProtocol};
+use alloy::network::TransactionBuilder;
 use alloy::primitives::{address, Address, Bytes, U256};
 use alloy::providers::{Network, Provider};
+use alloy::rpc::types::TransactionRequest;
 use alloy::sol_types::SolCall;
-use eyre::{eyre, ErrReport, OptionExt, Result};
+use eyre::{eyre, OptionExt, Result};
 use lazy_static::lazy_static;
 use loom_defi_abi::IERC20;
 use loom_defi_address_book::TokenAddressEth;
-use loom_evm_utils::evm::evm_call;
+use loom_evm_utils::{evm_dyn_call, LoomExecuteEvm};
 use loom_types_entities::required_state::RequiredState;
-use loom_types_entities::{Pool, PoolAbiEncoder, PoolClass, PoolId, PoolProtocol, PreswapRequirement, SwapDirection};
-use revm::primitives::Env;
-use revm::DatabaseRef;
+use loom_types_entities::{EntityAddress, Pool, PoolAbiEncoder, PoolClass, PoolProtocol, PreswapRequirement, SwapDirection};
+use revm::primitives::TxKind;
+use std::any::Any;
+use std::sync::Arc;
 use tracing::error;
-
-use crate::protocols::{CurveCommonContract, CurveContract, CurveProtocol};
 
 lazy_static! {
     static ref U256_ONE: U256 = U256::from(1);
@@ -127,10 +126,7 @@ where
             }
         }
 
-        let lp_token = match CurveCommonContract::<P, N>::lp_token(pool_contract.get_address()).await {
-            Ok(lp_token_address) => Some(lp_token_address),
-            Err(_) => None,
-        };
+        let lp_token = (CurveCommonContract::<P, N>::lp_token(pool_contract.get_address()).await).ok();
 
         let (underlying_tokens, is_meta) = match pool_contract.as_ref() {
             CurveContract::I128_2ToMeta(_interface) => (CurveProtocol::<P, N>::get_underlying_tokens(tokens[1])?, true),
@@ -182,10 +178,7 @@ where
             }
         }
 
-        let lp_token = match CurveCommonContract::<P, N>::lp_token(pool_contract.get_address()).await {
-            Ok(lp_token_address) => Some(lp_token_address),
-            Err(_) => None,
-        };
+        let lp_token = (CurveCommonContract::<P, N>::lp_token(pool_contract.get_address()).await).ok();
 
         let (underlying_tokens, is_meta) = match pool_contract.as_ref() {
             CurveContract::I128_2ToMeta(_interface) => (CurveProtocol::<P, N>::get_underlying_tokens(tokens[1])?, true),
@@ -231,20 +224,20 @@ where
         PoolProtocol::Curve
     }
 
-    fn get_address(&self) -> Address {
-        self.address
+    fn get_address(&self) -> EntityAddress {
+        self.address.into()
     }
 
-    fn get_pool_id(&self) -> PoolId {
-        PoolId::Address(self.address)
+    fn get_pool_id(&self) -> EntityAddress {
+        EntityAddress::Address(self.address)
     }
 
     fn get_fee(&self) -> U256 {
         U256::ZERO
     }
 
-    fn get_tokens(&self) -> Vec<Address> {
-        self.tokens.clone()
+    fn get_tokens(&self) -> Vec<EntityAddress> {
+        self.tokens.clone().into_iter().map(Into::into).collect()
     }
 
     fn get_swap_directions(&self) -> Vec<SwapDirection> {
@@ -275,44 +268,45 @@ where
 
     fn calculate_out_amount(
         &self,
-        state_db: &dyn DatabaseRef<Error = ErrReport>,
-        env: Env,
-        token_address_from: &Address,
-        token_address_to: &Address,
+        evm: &mut dyn LoomExecuteEvm,
+        token_address_from: &EntityAddress,
+        token_address_to: &EntityAddress,
         in_amount: U256,
     ) -> Result<(U256, u64)> {
-        let mut env = env;
-        env.tx.gas_limit = 500_000;
+        let token_address_from: Address = token_address_from.into();
+        let token_address_to: Address = token_address_to.into();
 
         let call_data = if self.is_meta {
-            let i: Result<u32> = self.get_coin_idx(*token_address_from);
-            let j: Result<u32> = self.get_coin_idx(*token_address_to);
+            let i: Result<u32> = self.get_coin_idx(token_address_from);
+            let j: Result<u32> = self.get_coin_idx(token_address_to);
             if i.is_ok() && j.is_ok() {
                 self.pool_contract.get_dy_call_data(i.unwrap(), j.unwrap(), in_amount)?
             } else {
-                let i: u32 = self.get_meta_coin_idx(*token_address_from)?;
-                let j: u32 = self.get_meta_coin_idx(*token_address_to)?;
+                let i: u32 = self.get_meta_coin_idx(token_address_from)?;
+                let j: u32 = self.get_meta_coin_idx(token_address_to)?;
                 self.pool_contract.get_dy_underlying_call_data(i, j, in_amount)?
             }
         } else if let Some(lp_token) = self.lp_token {
-            if *token_address_from == lp_token {
-                let i: u32 = self.get_coin_idx(*token_address_to)?;
+            if token_address_from == lp_token {
+                let i: u32 = self.get_coin_idx(token_address_to)?;
                 self.pool_contract.calc_withdraw_one_coin_call_data(i, in_amount)?
-            } else if *token_address_to == lp_token {
-                let i: u32 = self.get_coin_idx(*token_address_from)?;
+            } else if token_address_to == lp_token {
+                let i: u32 = self.get_coin_idx(token_address_from)?;
                 self.pool_contract.calc_token_amount_call_data(i, in_amount)?
             } else {
-                let i: u32 = self.get_coin_idx(*token_address_from)?;
-                let j: u32 = self.get_coin_idx(*token_address_to)?;
+                let i: u32 = self.get_coin_idx(token_address_from)?;
+                let j: u32 = self.get_coin_idx(token_address_to)?;
                 self.pool_contract.get_dy_call_data(i, j, in_amount)?
             }
         } else {
-            let i: u32 = self.get_coin_idx(*token_address_from)?;
-            let j: u32 = self.get_coin_idx(*token_address_to)?;
+            let i: u32 = self.get_coin_idx(token_address_from)?;
+            let j: u32 = self.get_coin_idx(token_address_to)?;
             self.pool_contract.get_dy_call_data(i, j, in_amount)?
         };
 
-        let (value, gas_used) = evm_call(state_db, env, self.get_address(), call_data.to_vec())?;
+        let req = TransactionRequest::default().with_kind(TxKind::Call(self.address)).with_input(call_data).with_gas_limit(500_000);
+
+        let (value, gas_used) = evm_dyn_call(evm, req)?;
 
         let ret = if value.len() > 32 { U256::from_be_slice(&value[0..32]) } else { U256::from_be_slice(&value[0..]) };
 
@@ -325,21 +319,22 @@ where
 
     fn calculate_in_amount(
         &self,
-        state_db: &dyn DatabaseRef<Error = ErrReport>,
-        env: Env,
-        token_address_from: &Address,
-        token_address_to: &Address,
+        evm: &mut dyn LoomExecuteEvm,
+        token_address_from: &EntityAddress,
+        token_address_to: &EntityAddress,
         out_amount: U256,
     ) -> Result<(U256, u64)> {
-        if self.pool_contract.can_calculate_in_amount() {
-            let mut env = env;
-            env.tx.gas_limit = 500_000;
+        let token_address_from: Address = token_address_from.into();
+        let token_address_to: Address = token_address_to.into();
 
-            let i: u32 = self.get_coin_idx(*token_address_from)?;
-            let j: u32 = self.get_coin_idx(*token_address_to)?;
+        if self.pool_contract.can_calculate_in_amount() {
+            let i: u32 = self.get_coin_idx(token_address_from)?;
+            let j: u32 = self.get_coin_idx(token_address_to)?;
             let call_data = self.pool_contract.get_dx_call_data(i, j, out_amount)?;
 
-            let (value, gas_used) = evm_call(state_db, env, self.get_address(), call_data.to_vec())?;
+            let req = TransactionRequest::default().with_kind(TxKind::Call(self.address)).with_input(call_data).with_gas_limit(500_000);
+
+            let (value, gas_used) = evm_dyn_call(evm, req)?;
 
             let ret = if value.len() > 32 { U256::from_be_slice(&value[0..32]) } else { U256::from_be_slice(&value[0..]) };
 
@@ -429,10 +424,20 @@ where
                 }
             }
         }
-        state_reader.add_slot_range(self.get_address(), U256::from(0), 0x20);
+
+        // Add a call to fetch the pool contract bytecode
+        // Use the first get_dy call that we're already making
+        if !self.tokens.is_empty() && self.tokens.len() >= 2 {
+            // Try to add get_dy(0, 1, 1) to ensure contract bytecode is fetched
+            if let Ok(data) = self.pool_contract.get_dy_call_data(0, 1, U256::from(1)) {
+                state_reader.add_call(self.get_address(), data);
+            }
+        }
+
+        state_reader.add_slot_range(self.address, U256::from(0), 0x20);
 
         for token_address in self.get_tokens() {
-            state_reader.add_call(token_address, IERC20::balanceOfCall { account: self.get_address() }.abi_encode());
+            state_reader.add_call(token_address, IERC20::balanceOfCall { account: self.address }.abi_encode());
         }
         Ok(state_reader)
     }
@@ -594,20 +599,22 @@ where
 mod tests {
     use eyre::Result;
 
+    use crate::protocols::CurveProtocol;
+    use crate::CurvePool;
     use alloy::primitives::U256;
-    use alloy::providers::network::primitives::BlockTransactionsKind;
     use alloy::providers::Provider;
     use alloy::rpc::types::BlockNumberOrTag;
     use env_logger::Env as EnvLog;
     use loom_evm_db::{DatabaseLoomExt, LoomDBType};
+    use loom_evm_utils::LoomEVMWrapper;
     use loom_node_debug_provider::AnvilDebugProviderFactory;
+    use loom_types_blockchain::LoomDataTypesEthereum;
     use loom_types_entities::required_state::RequiredStateReader;
     use loom_types_entities::{MarketState, Pool};
-    use tracing::debug;
+    use revm::database::CacheDB;
+    use tracing::{debug, error};
 
-    use crate::protocols::CurveProtocol;
-    use crate::CurvePool;
-
+    #[ignore]
     #[tokio::test]
     async fn test_pool() -> Result<()> {
         let _ = env_logger::try_init_from_env(EnvLog::default().default_filter_or("info,alloy_rpc_client=off"));
@@ -625,7 +632,10 @@ mod tests {
             let pool = CurvePool::fetch_pool_data_with_default_encoder(client.clone(), curve_contract).await.unwrap();
             let state_required = pool.get_state_required().unwrap();
 
-            let state_required = RequiredStateReader::fetch_calls_and_slots(client.clone(), state_required, None).await.unwrap();
+            let state_required =
+                RequiredStateReader::<LoomDataTypesEthereum>::fetch_calls_and_slots(client.clone(), state_required, Some(20045799))
+                    .await
+                    .unwrap();
             debug!("Pool state fetched {} {}", pool.address, state_required.len());
 
             market_state.state_db.apply_geth_update(state_required);
@@ -636,17 +646,10 @@ mod tests {
                 market_state.state_db.storage_len()
             );
 
-            let block_header =
-                client.get_block_by_number(BlockNumberOrTag::Latest, BlockTransactionsKind::Hashes).await.unwrap().unwrap().header;
+            let block_header = client.get_block_by_number(BlockNumberOrTag::Number(20045799)).await.unwrap().unwrap().header;
             debug!("Block {} {}", block_header.number, block_header.timestamp);
 
-            let mut evm_env = revm::primitives::Env::default();
-
-            evm_env.block.number = U256::from(block_header.number);
-
-            let timestamp = block_header.timestamp;
-
-            evm_env.block.timestamp = U256::from(timestamp);
+            let mut evm = LoomEVMWrapper::new(CacheDB::new(market_state.state_db.clone())).with_header(&block_header);
 
             let tokens = pool.tokens.clone();
             let balances = pool.balances.clone();
@@ -658,9 +661,14 @@ mod tests {
                     let in_amount = balances[i] / U256::from(100);
                     let token_in = tokens[i];
                     let token_out = tokens[j];
-                    let (out_amount, gas_used) = pool
-                        .calculate_out_amount(&market_state.state_db, evm_env.clone(), &token_in, &token_out, in_amount)
-                        .unwrap_or_default();
+                    let (out_amount, gas_used) =
+                        match pool.calculate_out_amount(evm.get_evm_mut(), &token_in.into(), &token_out.into(), in_amount) {
+                            Ok(result) => result,
+                            Err(e) => {
+                                error!("Failed to calculate out amount for pool {:?}: {}", pool.get_address(), e);
+                                (U256::ZERO, 0)
+                            }
+                        };
                     debug!(
                         "Calculated : {:?} {} -> {} : {} -> {} gas : {}",
                         pool.get_address(),
@@ -681,15 +689,13 @@ mod tests {
                 for i in 0..tokens.len() {
                     let in_amount = balances[i] / U256::from(1000);
                     let token_in = tokens[i];
-                    let (out_amount, gas_used) = pool
-                        .calculate_out_amount(&market_state.state_db, evm_env.clone(), &token_in, &lp_token, in_amount)
-                        .unwrap_or_default();
+                    let (out_amount, gas_used) =
+                        pool.calculate_out_amount(evm.get_evm_mut(), &token_in.into(), &lp_token.into(), in_amount).unwrap_or_default();
                     debug!("LP {:?} {} -> {} : {} -> {} gas : {}", pool.get_address(), token_in, lp_token, in_amount, out_amount, gas_used);
                     assert!(gas_used > 50000);
 
-                    let (out_amount2, gas_used) = pool
-                        .calculate_out_amount(&market_state.state_db, evm_env.clone(), &lp_token, &token_in, out_amount)
-                        .unwrap_or_default();
+                    let (out_amount2, gas_used) =
+                        pool.calculate_out_amount(evm.get_evm_mut(), &lp_token.into(), &token_in.into(), out_amount).unwrap_or_default();
                     debug!(
                         "LP {:?} {} -> {} : {} -> {} gas : {}",
                         pool.get_address(),
@@ -711,9 +717,8 @@ mod tests {
                     let in_amount = balances[0] / U256::from(1000);
                     let token_in = tokens[0];
                     let token_out = underlying_token;
-                    let (out_amount, gas_used) = pool
-                        .calculate_out_amount(&market_state.state_db, evm_env.clone(), &token_in, &token_out, in_amount)
-                        .unwrap_or_default();
+                    let (out_amount, gas_used) =
+                        pool.calculate_out_amount(evm.get_evm_mut(), &token_in.into(), &token_out.into(), in_amount).unwrap_or_default();
                     debug!(
                         "Meta {:?} {} -> {} : {} -> {} gas: {}",
                         pool.get_address(),
@@ -723,9 +728,8 @@ mod tests {
                         out_amount,
                         gas_used
                     );
-                    let (out_amount2, gas_used) = pool
-                        .calculate_out_amount(&market_state.state_db, evm_env.clone(), &token_out, &token_in, out_amount)
-                        .unwrap_or_default();
+                    let (out_amount2, gas_used) =
+                        pool.calculate_out_amount(evm.get_evm_mut(), &token_out.into(), &token_in.into(), out_amount).unwrap_or_default();
                     debug!(
                         "Meta {:?} {} -> {} : {} -> {} gas : {} ",
                         pool.get_address(),

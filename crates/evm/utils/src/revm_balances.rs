@@ -56,7 +56,7 @@ impl BalanceCheater {
         let token_instance = IERC20Instance::new(token, client.clone());
 
         let new_balance = token_instance.balanceOf(owner).call_raw().await?;
-        println!("new_balance : {:?}", new_balance);
+        println!("new_balance : {new_balance:?}");
         if U256::from_be_slice(new_balance.as_ref()) != balance {
             return Err(eyre!("BALANCE_NOT_SET"));
         }

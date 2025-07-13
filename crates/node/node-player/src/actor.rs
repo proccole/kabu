@@ -7,14 +7,13 @@ use crate::worker::node_player_worker;
 use alloy_network::{Ethereum, Network};
 use alloy_primitives::BlockNumber;
 use alloy_provider::Provider;
-use eyre::ErrReport;
 use loom_core_actors::{Accessor, Actor, ActorResult, Broadcaster, Consumer, Producer, SharedState, WorkerResult};
 use loom_core_actors_macros::{Accessor, Consumer, Producer};
 use loom_core_blockchain::{Blockchain, BlockchainState};
-use loom_evm_db::DatabaseLoomExt;
+use loom_evm_db::{DatabaseLoomExt, LoomDBError};
 use loom_node_debug_provider::DebugProviderExt;
-use loom_types_blockchain::LoomDataTypesEthereum;
 use loom_types_blockchain::Mempool;
+use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEthereum};
 use loom_types_entities::MarketState;
 use loom_types_events::{MessageBlock, MessageBlockHeader, MessageBlockLogs, MessageBlockStateUpdate, MessageTxCompose};
 use tokio::task::JoinHandle;
@@ -45,7 +44,14 @@ impl<P, N, DB> NodeBlockPlayerActor<P, N, DB>
 where
     N: Network,
     P: Provider<N> + DebugProviderExt<N> + Send + Sync + Clone + 'static,
-    DB: Database<Error = ErrReport> + DatabaseRef<Error = ErrReport> + DatabaseCommit + DatabaseLoomExt + Send + Sync + Clone + 'static,
+    DB: Database<Error = loom_evm_db::LoomDBError>
+        + DatabaseRef<Error = loom_evm_db::LoomDBError>
+        + DatabaseCommit
+        + DatabaseLoomExt
+        + Send
+        + Sync
+        + Clone
+        + 'static,
 {
     pub fn new(client: P, start_block: BlockNumber, end_block: BlockNumber) -> NodeBlockPlayerActor<P, N, DB> {
         NodeBlockPlayerActor {
@@ -63,7 +69,7 @@ where
         }
     }
 
-    pub fn on_bc(self, bc: &Blockchain, state: &BlockchainState<DB>) -> Self {
+    pub fn on_bc<LDT: LoomDataTypes>(self, bc: &Blockchain, state: &BlockchainState<DB, LDT>) -> Self {
         Self {
             mempool: Some(bc.mempool()),
             block_header_channel: Some(bc.new_block_headers_channel()),
@@ -81,7 +87,7 @@ impl<P, N, DB> Actor for NodeBlockPlayerActor<P, N, DB>
 where
     P: Provider<Ethereum> + DebugProviderExt<Ethereum> + Send + Sync + Clone + 'static,
     N: Send + Sync,
-    DB: Database<Error = ErrReport> + DatabaseRef<Error = ErrReport> + DatabaseCommit + DatabaseLoomExt + Send + Sync + Clone + 'static,
+    DB: Database<Error = LoomDBError> + DatabaseRef<Error = LoomDBError> + DatabaseCommit + DatabaseLoomExt + Send + Sync + Clone + 'static,
 {
     fn start(&self) -> ActorResult {
         let mut handles: Vec<JoinHandle<WorkerResult>> = Vec::new();

@@ -16,7 +16,7 @@ pub async fn start_influxdb_worker(
     event_receiver: Broadcaster<WriteQuery>,
 ) -> WorkerResult {
     let client = Client::new(url, database.clone());
-    let create_db_stmt = format!("CREATE DATABASE {}", database);
+    let create_db_stmt = format!("CREATE DATABASE {database}");
     let result = client.query(ReadQuery::new(create_db_stmt)).await;
     match result {
         Ok(_) => info!("Database created with name: {}", database),

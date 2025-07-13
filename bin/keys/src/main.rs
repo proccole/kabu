@@ -50,7 +50,7 @@ fn main() -> Result<()> {
         Commands::GeneratePassword => {
             let mut rng = thread_rng();
             let pwd: Vec<u8> = (0..BLOCK_SIZE).map(|_| rng.gen::<u8>()).collect();
-            println!("{:?}", pwd);
+            println!("{pwd:?}");
         }
         Commands::Encrypt { key } => {
             let pwd = loom_types_entities::private::KEY_ENCRYPTION_PWD.to_vec();

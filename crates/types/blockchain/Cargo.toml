@@ -14,6 +14,7 @@ chrono.workspace = true
 eyre.workspace = true
 hex.workspace = true
 lazy_static.workspace = true
+serde.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 
@@ -29,6 +30,9 @@ alloy-rpc-types.workspace = true
 alloy-rpc-types-eth.workspace = true
 alloy-rpc-types-trace.workspace = true
 alloy-transport.workspace = true
+
+
+op-alloy.workspace = true
 
 [dev-dependencies]
 env_logger.workspace = true

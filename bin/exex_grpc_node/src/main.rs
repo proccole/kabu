@@ -234,7 +234,7 @@ where
 
     while let Some(tx_notification) = tx_listener.recv().await {
         let tx = tx_notification.transaction.to_consensus();
-        let _ = notifications.send(tx.tx().clone());
+        let _ = notifications.send(tx.inner().clone());
     }
     info!("Mempool worker finished");
 

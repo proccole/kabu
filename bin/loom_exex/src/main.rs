@@ -1,6 +1,6 @@
 use crate::arguments::{AppArgs, Command, LoomArgs};
 use alloy::eips::BlockId;
-use alloy::providers::{ProviderBuilder, WsConnect};
+use alloy::providers::{IpcConnect, ProviderBuilder, WsConnect};
 use alloy::rpc::client::ClientBuilder;
 use clap::{CommandFactory, FromArgMatches, Parser};
 use loom::core::blockchain::{Blockchain, BlockchainState, Strategy};
@@ -8,6 +8,7 @@ use loom::core::topology::TopologyConfig;
 use loom::evm::db::{AlloyDB, LoomDB};
 use loom::node::actor_config::NodeBlockActorConfig;
 use loom::node::exex::mempool_worker;
+use loom::types::blockchain::LoomDataTypesEthereum;
 use loom::types::entities::MarketState;
 use reth::builder::engine_tree_config::TreeConfig;
 use reth::builder::EngineNodeLauncher;
@@ -56,12 +57,12 @@ fn main() -> eyre::Result<()> {
 
             let mempool = handle.node.pool.clone();
             let ipc_provider =
-                ProviderBuilder::new().disable_recommended_fillers().on_builtin(handle.node.config.rpc.ipcpath.as_str()).await?;
+                ProviderBuilder::new().disable_recommended_fillers().on_ipc(IpcConnect::new(handle.node.config.rpc.ipcpath)).await?;
             let alloy_db = AlloyDB::new(ipc_provider.clone(), BlockId::latest()).unwrap();
 
             let state_db = LoomDB::new().with_ext_db(alloy_db);
 
-            let bc_state = BlockchainState::<LoomDB>::new_with_market_state(MarketState::new(state_db));
+            let bc_state = BlockchainState::<LoomDB, LoomDataTypesEthereum>::new_with_market_state(MarketState::new(state_db));
 
             let strategy = Strategy::<LoomDB>::new();
 
@@ -93,13 +94,13 @@ fn main() -> eyre::Result<()> {
                 let topology_config = TopologyConfig::load_from_file(loom_args.loom_config.clone())?;
 
                 let client_config = topology_config.clients.get("remote").unwrap();
-                let transport = WsConnect { url: client_config.url(), auth: None, config: None };
+                let transport = WsConnect { url: client_config.url.clone(), auth: None, config: None };
                 let client = ClientBuilder::default().ws(transport).await?;
                 let provider = ProviderBuilder::new().disable_recommended_fillers().on_client(client);
                 let bc = Blockchain::new(Chain::mainnet().id());
                 let bc_clone = bc.clone();
 
-                let bc_state = BlockchainState::<LoomDB>::new();
+                let bc_state = BlockchainState::<LoomDB, LoomDataTypesEthereum>::new();
 
                 let strategy = Strategy::<LoomDB>::new();
 

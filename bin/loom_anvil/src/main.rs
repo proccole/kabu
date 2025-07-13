@@ -14,11 +14,11 @@ use crate::test_config::TestConfig;
 use alloy_primitives::{address, TxHash, U256};
 use alloy_provider::network::eip2718::Encodable2718;
 use alloy_provider::Provider;
-use alloy_rpc_types::{BlockId, BlockNumberOrTag, BlockTransactionsKind};
+use alloy_rpc_types::{BlockId, BlockNumberOrTag};
 use clap::Parser;
 use loom::node::debug_provider::AnvilDebugProviderFactory;
 
-use eyre::{ErrReport, OptionExt, Result};
+use eyre::{OptionExt, Result};
 use influxdb::WriteQuery;
 use loom::broadcast::accounts::{InitializeSignersOneShotBlockingActor, NonceAndBalanceMonitorActor, TxSignersActor};
 use loom::broadcast::broadcaster::{AnvilBroadcastActor, FlashbotsBroadcastActor};
@@ -35,7 +35,6 @@ use loom::defi::pools::{CurvePool, PoolLoadersBuilder, PoolsLoadingConfig};
 use loom::defi::preloader::MarketStatePreloadedOneShotActor;
 use loom::defi::price::PriceActor;
 use loom::evm::db::LoomDBType;
-use loom::evm::utils::evm_tx_env::env_from_signed_tx;
 use loom::evm::utils::NWETH;
 use loom::execution::estimator::EvmEstimatorActor;
 use loom::execution::multicaller::{MulticallerDeployer, MulticallerSwapEncoder};
@@ -45,13 +44,12 @@ use loom::strategy::backrun::{BackrunConfig, StateChangeArbActor};
 use loom::strategy::merger::{ArbSwapPathMergerActor, DiffPathMergerActor, SamePathMergerActor};
 use loom::types::blockchain::{debug_trace_block, ChainParameters, LoomDataTypesEthereum, Mempool};
 use loom::types::entities::{
-    AccountNonceAndBalanceState, BlockHistory, LatestBlock, Market, MarketState, PoolClass, PoolId, Swap, Token, TxSigners,
+    AccountNonceAndBalanceState, BlockHistory, EntityAddress, LatestBlock, Market, MarketState, PoolClass, Swap, Token, TxSigners,
 };
 use loom::types::events::{
     MarketEvents, MempoolEvents, MessageBlock, MessageBlockHeader, MessageBlockLogs, MessageBlockStateUpdate, MessageHealthEvent,
     MessageSwapCompose, MessageTxCompose, SwapComposeMessage,
 };
-use revm::db::EmptyDBTyped;
 use tracing::{debug, error, info};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -79,8 +77,8 @@ impl Display for Stat {
                         "Found: {} Ok: {} Profit : {} / ProfitEth : {} Path : {} ",
                         self.found_counter,
                         self.sign_counter,
-                        token.to_float(swap.abs_profit()),
-                        NWETH::to_float(swap.abs_profit_eth()),
+                        token.to_float(swap.arb_profit()),
+                        NWETH::to_float(swap.arb_profit_eth()),
                         swap
                     )
                 }
@@ -90,8 +88,8 @@ impl Display for Stat {
                         "Found: {} Ok: {} Profit : {} / ProfitEth : {} Path : {} ",
                         self.found_counter,
                         self.sign_counter,
-                        swap.abs_profit(),
-                        swap.abs_profit_eth(),
+                        swap.arb_profit(),
+                        swap.arb_profit_eth(),
                         swap
                     )
                 }
@@ -159,12 +157,12 @@ async fn main() -> Result<()> {
     let block_number = client.get_block_number().await?;
     info!("Current block_number={}", block_number);
 
-    let block_header = client.get_block(block_number.into(), BlockTransactionsKind::Hashes).await?.unwrap().header;
+    let block_header = client.get_block(block_number.into()).await?.unwrap().header;
     info!("Current block_header={:?}", block_header);
 
-    let block_header_with_txes = client.get_block(block_number.into(), BlockTransactionsKind::Full).await?.unwrap();
+    let block_header_with_txes = client.get_block(block_number.into()).await?.unwrap();
 
-    let cache_db = LoomDBType::default().with_ext_db(EmptyDBTyped::<ErrReport>::new());
+    let cache_db = LoomDBType::default();
     let mut market_instance = Market::default();
     let market_state_instance = MarketState::new(cache_db.clone());
 
@@ -173,10 +171,10 @@ async fn main() -> Result<()> {
     let usdt_token = Token::new_with_data(TokenAddressEth::USDT, Some("USDT".to_string()), None, Some(6), true, false);
     let wbtc_token = Token::new_with_data(TokenAddressEth::WBTC, Some("WBTC".to_string()), None, Some(8), true, false);
     let dai_token = Token::new_with_data(TokenAddressEth::DAI, Some("DAI".to_string()), None, Some(18), true, false);
-    market_instance.add_token(usdc_token)?;
-    market_instance.add_token(usdt_token)?;
-    market_instance.add_token(wbtc_token)?;
-    market_instance.add_token(dai_token)?;
+    market_instance.add_token(usdc_token);
+    market_instance.add_token(usdt_token);
+    market_instance.add_token(wbtc_token);
+    market_instance.add_token(dai_token);
 
     let mempool_instance = Mempool::<LoomDataTypesEthereum>::new();
 
@@ -244,7 +242,7 @@ async fn main() -> Result<()> {
             token.set_eth_price(Some(price_u256));
         };
 
-        market_instance.write().await.add_token(token)?;
+        market_instance.write().await.add_token(token);
     }
 
     info!("Starting market state preload actor");
@@ -302,7 +300,8 @@ async fn main() -> Result<()> {
         _ => info!("Price actor has been initialized"),
     }
 
-    let pool_loaders = Arc::new(PoolLoadersBuilder::default_pool_loaders(client.clone(), PoolsLoadingConfig::default()));
+    let pool_loaders =
+        Arc::new(PoolLoadersBuilder::<_, _, LoomDataTypesEthereum>::default_pool_loaders(client.clone(), PoolsLoadingConfig::default()));
 
     for (pool_name, pool_config) in test_config.pools {
         match pool_config.class {
@@ -313,7 +312,7 @@ async fn main() -> Result<()> {
                     market_instance.clone(),
                     market_state.clone(),
                     pool_loaders.clone(),
-                    PoolId::Address(pool_config.address),
+                    EntityAddress::Address(pool_config.address),
                     pool_config.class,
                 )
                 .await?;
@@ -323,7 +322,13 @@ async fn main() -> Result<()> {
                 debug!("Loading curve pool");
                 if let Ok(curve_contract) = CurveProtocol::get_contract_from_code(client.clone(), pool_config.address).await {
                     let curve_pool = CurvePool::fetch_pool_data_with_default_encoder(client.clone(), curve_contract).await?;
-                    fetch_state_and_add_pool(client.clone(), market_instance.clone(), market_state.clone(), curve_pool.into()).await?
+                    fetch_state_and_add_pool::<_, _, _, LoomDataTypesEthereum>(
+                        client.clone(),
+                        market_instance.clone(),
+                        market_state.clone(),
+                        curve_pool.into(),
+                    )
+                    .await?;
                 } else {
                     error!("CURVE_POOL_NOT_LOADED");
                 }
@@ -333,7 +338,8 @@ async fn main() -> Result<()> {
                 error!("Unknown pool class")
             }
         }
-        let swap_path_len = market_instance.read().await.get_pool_paths(&PoolId::Address(pool_config.address)).unwrap_or_default().len();
+        let swap_path_len =
+            market_instance.read().await.get_pool_paths(&EntityAddress::Address(pool_config.address)).unwrap_or_default().len();
         info!(
             "Loaded pool '{}' with address={}, pool_class={}, swap_paths={}",
             pool_name, pool_config.address, pool_config.class, swap_path_len
@@ -394,7 +400,7 @@ async fn main() -> Result<()> {
             info!("Stuffing tx monitor actor started")
         }
         Err(e) => {
-            panic!("StuffingTxMonitorActor error {}", e)
+            panic!("StuffingTxMonitorActor error {e}")
         }
     }
 
@@ -548,21 +554,18 @@ async fn main() -> Result<()> {
     let market_events_channel_clone = market_events_channel.clone();
 
     // Sending block header update message
-    if let Err(e) = market_events_channel_clone
-        .send(MarketEvents::BlockHeaderUpdate {
-            block_number: block_header.number,
-            block_hash: block_header.hash,
-            timestamp: block_header.timestamp,
-            base_fee: block_header.base_fee_per_gas.unwrap_or_default(),
-            next_base_fee: next_block_base_fee,
-        })
-        .await
-    {
+    if let Err(e) = market_events_channel_clone.send(MarketEvents::BlockHeaderUpdate {
+        block_number: block_header.number,
+        block_hash: block_header.hash,
+        timestamp: block_header.timestamp,
+        base_fee: block_header.base_fee_per_gas.unwrap_or_default(),
+        next_base_fee: next_block_base_fee,
+    }) {
         error!("{}", e);
     }
 
     // Sending block state update message
-    if let Err(e) = market_events_channel_clone.send(MarketEvents::BlockStateUpdate { block_hash: block_header.hash }).await {
+    if let Err(e) = market_events_channel_clone.send(MarketEvents::BlockStateUpdate { block_hash: block_header.hash }) {
         error!("{}", e);
     }
 
@@ -578,7 +581,7 @@ async fn main() -> Result<()> {
                 panic!("Cannot get tx: {}", tx_config.hash);
             };
 
-            let from = tx.from;
+            let from = tx.from();
             let to = tx.to().unwrap_or_default();
 
             match tx_config.send.to_lowercase().as_str() {
@@ -587,7 +590,7 @@ async fn main() -> Result<()> {
                     let tx_hash: TxHash = tx.tx_hash();
 
                     mempool_guard.add_tx(tx.clone());
-                    if let Err(e) = mempool_events_channel.send(MempoolEvents::MempoolActualTxUpdate { tx_hash }).await {
+                    if let Err(e) = mempool_events_channel.send(MempoolEvents::MempoolActualTxUpdate { tx_hash }) {
                         error!("{e}");
                     }
                 }
@@ -608,7 +611,7 @@ async fn main() -> Result<()> {
 
     println!("Test '{}' is started!", args.config);
 
-    let mut tx_compose_sub = swap_compose_channel.subscribe().await;
+    let mut tx_compose_sub = swap_compose_channel.subscribe();
 
     let mut stat = Stat::default();
     let timeout_duration = Duration::from_secs(args.timeout);
@@ -622,8 +625,8 @@ async fn main() -> Result<()> {
                             debug!(swap=%ready_message.swap, "Ready message");
                             stat.sign_counter += 1;
 
-                            if stat.best_profit_eth < ready_message.swap.abs_profit_eth() {
-                                stat.best_profit_eth = ready_message.swap.abs_profit_eth();
+                            if stat.best_profit_eth < ready_message.swap.arb_profit_eth() {
+                                stat.best_profit_eth = ready_message.swap.arb_profit_eth();
                                 stat.best_swap = Some(ready_message.swap.clone());
                             }
 
@@ -668,10 +671,7 @@ async fn main() -> Result<()> {
                     );
                     // print all transactions
                     for bundle in bundle_request.params {
-                        for tx in bundle.transactions {
-                            let tx_env = env_from_signed_tx(tx)?;
-                            println!("tx={:?}", tx_env);
-                        }
+                        println!("Bundle with {} transactions", bundle.transactions.len());
                     }
                 }
             }
@@ -680,7 +680,7 @@ async fn main() -> Result<()> {
         }
     }
 
-    println!("\n\n-------------------\nStat : {}\n-------------------\n", stat);
+    println!("\n\n-------------------\nStat : {stat}\n-------------------\n");
 
     if let Some(swaps_encoded) = test_config.assertions.swaps_encoded {
         if swaps_encoded > stat.found_counter {

@@ -2,18 +2,19 @@ use alloy::network::Ethereum;
 use alloy::primitives::Address;
 use alloy::providers::Provider;
 use axum::Router;
-use eyre::{ErrReport, OptionExt};
+use eyre::OptionExt;
 use loom::core::blockchain::{Blockchain, BlockchainState, Strategy};
 use loom::core::blockchain_actors::BlockchainActors;
 use loom::core::topology::{BroadcasterConfig, EncoderConfig, TopologyConfig};
 use loom::defi::pools::PoolsLoadingConfig;
-use loom::evm::db::DatabaseLoomExt;
+use loom::evm::db::{DatabaseLoomExt, LoomDBError};
 use loom::execution::multicaller::MulticallerSwapEncoder;
 use loom::node::actor_config::NodeBlockActorConfig;
 use loom::node::debug_provider::DebugProviderExt;
 use loom::node::exex::loom_exex;
 use loom::storage::db::init_db_pool;
 use loom::strategy::backrun::{BackrunConfig, BackrunConfigSection};
+use loom::types::blockchain::LoomDataTypesEthereum;
 use loom::types::entities::strategy_config::load_from_file;
 use loom::types::entities::{BlockHistoryState, PoolClass};
 use reth::api::NodeTypes;
@@ -39,7 +40,7 @@ where
 pub async fn start_loom<P, DB>(
     provider: P,
     bc: Blockchain,
-    bc_state: BlockchainState<DB>,
+    bc_state: BlockchainState<DB, LoomDataTypesEthereum>,
     strategy: Strategy<DB>,
     topology_config: TopologyConfig,
     loom_config_filepath: String,
@@ -47,11 +48,11 @@ pub async fn start_loom<P, DB>(
 ) -> eyre::Result<()>
 where
     P: Provider<Ethereum> + DebugProviderExt<Ethereum> + Send + Sync + Clone + 'static,
-    DB: Database<Error = ErrReport>
-        + DatabaseRef<Error = ErrReport>
+    DB: Database<Error = LoomDBError>
+        + DatabaseRef<Error = LoomDBError>
         + DatabaseCommit
         + DatabaseLoomExt
-        + BlockHistoryState
+        + BlockHistoryState<LoomDataTypesEthereum>
         + Send
         + Sync
         + Clone
@@ -86,7 +87,8 @@ where
         })
         .unwrap_or_default();
 
-    let pools_config = PoolsLoadingConfig::disable_all().enable(PoolClass::UniswapV2).enable(PoolClass::UniswapV3);
+    let pools_config =
+        PoolsLoadingConfig::disable_all(PoolsLoadingConfig::default()).enable(PoolClass::UniswapV2).enable(PoolClass::UniswapV3);
 
     let backrun_config: BackrunConfigSection = load_from_file::<BackrunConfigSection>(loom_config_filepath.into()).await?;
     let backrun_config: BackrunConfig = backrun_config.backrun_strategy;

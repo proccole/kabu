@@ -129,7 +129,7 @@ mod test {
 
         let value = provider.get_storage_at(address, U256::from(1)).await?;
         if value != U256::from(2) {
-            panic!("Incorrect value {}", value);
+            panic!("Incorrect value {value}");
         }
 
         Ok(())

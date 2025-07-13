@@ -11,6 +11,7 @@ use reth::revm::db::states::StorageSlot;
 use reth::revm::db::{BundleAccount, StorageWithOriginalValues};
 use reth::rpc::eth::EthTxBuilder;
 use reth_exex::ExExNotification;
+use reth_primitives::transaction::SignedTransaction;
 use reth_rpc_types_compat::TransactionCompat;
 use reth_tracing::tracing::error;
 use std::collections::BTreeMap;
@@ -20,7 +21,6 @@ use tonic::transport::Channel;
 use crate::helpers::append_all_matching_block_logs_sealed;
 use crate::proto::remote_ex_ex_client::RemoteExExClient;
 use crate::proto::SubscribeRequest;
-use reth_primitives::transaction::SignedTransactionIntoRecoveredExt;
 
 #[derive(Debug, Clone)]
 pub struct ExExClient {
@@ -60,7 +60,7 @@ impl ExExClient {
                     }
                     Ok(None) => break, // Stream has ended
                     Err(err) => {
-                        eprintln!("Error receiving mempooltx.message: {:?}", err);
+                        eprintln!("Error receiving mempooltx.message: {err:?}");
                         break;
                     }
                 }
@@ -96,7 +96,7 @@ impl ExExClient {
 
                     } // Stream has ended
                     Err(err) => {
-                        eprintln!("Error receiving header.message: {:?}", err);
+                        eprintln!("Error receiving header.message: {err:?}");
                         break;
                     }
                 }
@@ -145,7 +145,7 @@ impl ExExClient {
                     },
                     Ok(None) => break, // Stream has ended
                     Err(err) => {
-                        eprintln!("Error receiving block.message: {:?}", err);
+                        eprintln!("Error receiving block.message: {err:?}");
                         break;
                     }
                 }
@@ -193,7 +193,7 @@ impl ExExClient {
                     },
                     Ok(None) => break, // Stream has ended
                     Err(err) => {
-                        eprintln!("Error receiving logs.message: {:?}", err);
+                        eprintln!("Error receiving logs.message: {err:?}");
                         break;
                     }
                 }
@@ -255,7 +255,7 @@ impl ExExClient {
                     },
                     Ok(None) => break, // Stream has ended
                     Err(err) => {
-                        eprintln!("Error receiving state_update.message: {:?}", err);
+                        eprintln!("Error receiving state_update.message: {err:?}");
                         break;
                     }
                 }
@@ -282,12 +282,12 @@ impl ExExClient {
                     Ok(Some(notification)) => {
                             match ExExNotification::try_from(&notification) {
                                 Ok(notification) => yield notification,
-                                Err(err) => eprintln!("Error converting notification: {:?}", err),
+                                Err(err) => eprintln!("Error converting notification: {err:?}"),
                             }
                         },
                     Ok(None) => break, // Stream has ended
                     Err(err) => {
-                        eprintln!("Error receiving exex.message: {:?}", err);
+                        eprintln!("Error receiving exex.message: {err:?}");
                         break;
                     }
                 }

@@ -1,14 +1,12 @@
-use alloy_consensus::constants::{EIP1559_TX_TYPE_ID, EIP2930_TX_TYPE_ID, EIP4844_TX_TYPE_ID, LEGACY_TX_TYPE_ID};
 use alloy_eips::BlockNumberOrTag;
-use alloy_network::{Network, TransactionBuilder, TransactionResponse};
+use alloy_network::Network;
 use alloy_primitives::{Address, BlockNumber, TxHash, U256};
 use alloy_provider::Provider;
 use alloy_rpc_types::state::StateOverride;
-use alloy_rpc_types::{BlockOverrides, TransactionRequest};
+use alloy_rpc_types::BlockOverrides;
 use alloy_rpc_types_trace::geth::GethDebugTracingCallOptions;
 use eyre::{eyre, Result};
 use lazy_static::lazy_static;
-use revm::primitives::bitvec::macros::internal::funty::Fundamental;
 use revm::{Database, DatabaseCommit, DatabaseRef};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
@@ -21,7 +19,7 @@ use loom_core_actors::{subscribe, Accessor, Actor, ActorResult, Broadcaster, Con
 use loom_core_actors_macros::{Accessor, Consumer, Producer};
 use loom_core_blockchain::{Blockchain, BlockchainState, Strategy};
 use loom_node_debug_provider::DebugProviderExt;
-use loom_types_blockchain::{debug_trace_call_diff, GethStateUpdateVec, Mempool, TRACING_CALL_OPTS};
+use loom_types_blockchain::{debug_trace_call_diff, GethStateUpdateVec, LoomDataTypesEVM, LoomTx, Mempool, TRACING_CALL_OPTS};
 use loom_types_entities::required_state::{accounts_vec_len, storage_vec_len};
 use loom_types_entities::{LatestBlock, Market, MarketState};
 use loom_types_events::{MarketEvents, MempoolEvents, StateUpdateEvent};
@@ -35,24 +33,25 @@ lazy_static! {
 
 /// Process a pending tx from the mempool
 #[allow(clippy::too_many_arguments)]
-pub async fn pending_tx_state_change_task<P, N, DB>(
+pub async fn pending_tx_state_change_task<P, N, DB, LDT>(
     client: P,
     tx_hash: TxHash,
     market: SharedState<Market>,
-    mempool: SharedState<Mempool>,
-    latest_block: SharedState<LatestBlock>,
+    mempool: SharedState<Mempool<LDT>>,
+    latest_block: SharedState<LatestBlock<LDT>>,
     market_state: SharedState<MarketState<DB>>,
     affecting_tx: Arc<RwLock<HashMap<TxHash, bool>>>,
     cur_block_number: BlockNumber,
     cur_block_time: u64,
     cur_next_base_fee: u64,
     cur_state_override: StateOverride,
-    state_updates_broadcaster: Broadcaster<StateUpdateEvent<DB>>,
+    state_updates_broadcaster: Broadcaster<StateUpdateEvent<DB, LDT>>,
 ) -> Result<()>
 where
-    N: Network,
+    N: Network<TransactionRequest = LDT::TransactionRequest>,
     P: Provider<N> + DebugProviderExt<N> + Send + Sync + Clone + 'static,
     DB: DatabaseRef + Database + DatabaseCommit + Clone + Send + Sync + 'static,
+    LDT: LoomDataTypesEVM,
 {
     let mut state_update_vec: GethStateUpdateVec = Vec::new();
     let mut state_required_vec: GethStateUpdateVec = Vec::new();
@@ -71,53 +70,53 @@ where
 
     let source = mempool_tx.source.clone();
 
-    let mut transaction_request: TransactionRequest = tx.clone().into_request();
+    let transaction_request: LDT::TransactionRequest = tx.to_transaction_request();
 
-    let transaction_type = transaction_request.transaction_type.unwrap_or_default();
-    if transaction_type == LEGACY_TX_TYPE_ID || transaction_type == EIP2930_TX_TYPE_ID {
-        match transaction_request.gas_price {
-            Some(g) => {
-                if g < cur_next_base_fee as u128 {
-                    transaction_request.set_gas_price(cur_next_base_fee as u128);
-                }
-            }
-            None => {
-                error!(
-                    "No gas price for gas_price={:?}, max_fee_per_gas={:?}, max_priority_fee_per_gas={:?}, hash={:?}",
-                    transaction_request.gas_price,
-                    transaction_request.max_fee_per_gas,
-                    transaction_request.max_priority_fee_per_gas,
-                    mempool_tx.tx_hash
-                );
-                return Err(eyre!("NO_GAS_PRICE"));
-            }
-        }
-    } else if transaction_type == EIP1559_TX_TYPE_ID {
-        match transaction_request.max_fee_per_gas {
-            Some(g) => {
-                if g < cur_next_base_fee as u128 {
-                    transaction_request.set_max_fee_per_gas(cur_next_base_fee as u128);
-                }
-            }
-            None => {
-                error!(
-                    "No base fee for gas_price={:?}, max_fee_per_gas={:?}, max_priority_fee_per_gas={:?}, hash={:?}",
-                    transaction_request.gas_price,
-                    transaction_request.max_fee_per_gas,
-                    transaction_request.max_priority_fee_per_gas,
-                    mempool_tx.tx_hash
-                );
-                return Err(eyre!("NO_BASE_FEE"));
-            }
-        }
-    } else if transaction_type == EIP4844_TX_TYPE_ID {
-        // ignore blob tx
-        debug!("Ignore EIP4844 transaction: hash={:?}", mempool_tx.tx_hash);
-        return Ok(());
-    } else {
-        warn!("Unknown transaction type: type={}, hash={:?}", transaction_type, mempool_tx.tx_hash);
-        return Err(eyre!("UNKNOWN_TX_TYPE"));
-    }
+    // let transaction_type = transaction_request.transaction_type.unwrap_or_default();
+    // if transaction_type == LEGACY_TX_TYPE_ID || transaction_type == EIP2930_TX_TYPE_ID {
+    //     match transaction_request.gas_price {
+    //         Some(g) => {
+    //             if g < cur_next_base_fee as u128 {
+    //                 transaction_request.set_gas_price(cur_next_base_fee as u128);
+    //             }
+    //         }
+    //         None => {
+    //             error!(
+    //                 "No gas price for gas_price={:?}, max_fee_per_gas={:?}, max_priority_fee_per_gas={:?}, hash={:?}",
+    //                 transaction_request.gas_price,
+    //                 transaction_request.max_fee_per_gas,
+    //                 transaction_request.max_priority_fee_per_gas,
+    //                 mempool_tx.tx_hash
+    //             );
+    //             return Err(eyre!("NO_GAS_PRICE"));
+    //         }
+    //     }
+    // } else if transaction_type == EIP1559_TX_TYPE_ID {
+    //     match transaction_request.max_fee_per_gas {
+    //         Some(g) => {
+    //             if g < cur_next_base_fee as u128 {
+    //                 transaction_request.set_max_fee_per_gas(cur_next_base_fee as u128);
+    //             }
+    //         }
+    //         None => {
+    //             error!(
+    //                 "No base fee for gas_price={:?}, max_fee_per_gas={:?}, max_priority_fee_per_gas={:?}, hash={:?}",
+    //                 transaction_request.gas_price,
+    //                 transaction_request.max_fee_per_gas,
+    //                 transaction_request.max_priority_fee_per_gas,
+    //                 mempool_tx.tx_hash
+    //             );
+    //             return Err(eyre!("NO_BASE_FEE"));
+    //         }
+    //     }
+    // } else if transaction_type == EIP4844_TX_TYPE_ID {
+    //     // ignore blob tx
+    //     debug!("Ignore EIP4844 transaction: hash={:?}", mempool_tx.tx_hash);
+    //     return Ok(());
+    // } else {
+    //     warn!("Unknown transaction type: type={}, hash={:?}", transaction_type, mempool_tx.tx_hash);
+    //     return Err(eyre!("UNKNOWN_TX_TYPE"));
+    // }
 
     let call_opts: GethDebugTracingCallOptions = GethDebugTracingCallOptions {
         block_overrides: Some(BlockOverrides {
@@ -146,7 +145,7 @@ where
             merged_state_update_vec.push(post);
         }
         Err(error) => {
-            let tx_hash = tx.tx_hash();
+            let tx_hash = tx.get_tx_hash();
             mempool.write().await.set_failed(tx_hash);
             debug!(block=cur_block_number, %tx_hash, %error, "debug_trace_call error for");
         }
@@ -163,8 +162,8 @@ where
 
     //TODO : Fix Latest header is empty
     if let Some(latest_header) = latest_block.read().await.block_header.clone() {
-        let next_block_number = latest_header.number.as_u64() + 1;
-        let next_block_timestamp = latest_header.timestamp.as_u64() + 12;
+        let next_block_number = latest_header.number + 1;
+        let next_block_timestamp = latest_header.timestamp + 12;
 
         if !affected_pools.is_empty() {
             let cur_state_db = market_state.read().await.state_db.clone();
@@ -206,8 +205,8 @@ where
                 debug!("Mempool code pools {} {} update len : {}", tx_hash, source, affected_pools.len());
 
                 if let Some(latest_header) = latest_block.read().await.block_header.clone() {
-                    let block_number = latest_header.number.as_u64() + 1;
-                    let block_timestamp = latest_header.timestamp.as_u64() + 12;
+                    let block_number = latest_header.number + 1;
+                    let block_timestamp = latest_header.timestamp + 12;
 
                     if !affected_pools.is_empty() {
                         let cur_state_db = market_state.read().await.state_db.clone();
@@ -242,20 +241,21 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-pub async fn pending_tx_state_change_worker<P, N, DB>(
+pub async fn pending_tx_state_change_worker<P, N, DB, LDT>(
     client: P,
     market: SharedState<Market>,
-    mempool: SharedState<Mempool>,
-    latest_block: SharedState<LatestBlock>,
+    mempool: SharedState<Mempool<LDT>>,
+    latest_block: SharedState<LatestBlock<LDT>>,
     market_state: SharedState<MarketState<DB>>,
-    mempool_events_rx: Broadcaster<MempoolEvents>,
-    market_events_rx: Broadcaster<MarketEvents>,
-    state_updates_broadcaster: Broadcaster<StateUpdateEvent<DB>>,
+    mempool_events_rx: Broadcaster<MempoolEvents<LDT>>,
+    market_events_rx: Broadcaster<MarketEvents<LDT>>,
+    state_updates_broadcaster: Broadcaster<StateUpdateEvent<DB, LDT>>,
 ) -> WorkerResult
 where
-    N: Network,
+    N: Network<TransactionRequest = LDT::TransactionRequest>,
     P: Provider<N> + DebugProviderExt<N> + Send + Sync + Clone + 'static,
     DB: DatabaseRef + Database + DatabaseCommit + Clone + Send + Sync + 'static,
+    LDT: LoomDataTypesEVM,
 {
     subscribe!(mempool_events_rx);
     subscribe!(market_events_rx);
@@ -270,10 +270,10 @@ where
         tokio::select! {
             msg = market_events_rx.recv() => {
                 if let Ok(msg) = msg {
-                    let market_event_msg : MarketEvents = msg;
+                    let market_event_msg : MarketEvents<LDT> = msg;
                     if let MarketEvents::BlockHeaderUpdate{ block_number, block_hash, timestamp, base_fee, next_base_fee } = market_event_msg {
                         debug!("Block header update {} {} base_fee {} ", block_number, block_hash, base_fee);
-                        cur_block_number = Some( block_number.as_u64() + 1);
+                        cur_block_number = Some( block_number + 1);
                         cur_block_time = Some(timestamp + 12 );
                         cur_next_base_fee = next_base_fee;
 
@@ -291,7 +291,7 @@ where
             }
             msg = mempool_events_rx.recv() => {
                 if let Ok(msg) = msg {
-                    let mempool_event_msg : MempoolEvents = msg;
+                    let mempool_event_msg : MempoolEvents<LDT> = msg;
                     if let MempoolEvents::MempoolActualTxUpdate{ tx_hash }  = mempool_event_msg {
                         if cur_block_number.is_none() {
                             warn!("Did not received block header update yet!");
@@ -322,32 +322,33 @@ where
 }
 
 #[derive(Accessor, Consumer, Producer)]
-pub struct PendingTxStateChangeProcessorActor<P, N, DB: Clone + Send + Sync + 'static> {
+pub struct PendingTxStateChangeProcessorActor<P, N, DB: Clone + Send + Sync + 'static, LDT: LoomDataTypesEVM + 'static> {
     client: P,
     #[accessor]
     market: Option<SharedState<Market>>,
     #[accessor]
-    mempool: Option<SharedState<Mempool>>,
+    mempool: Option<SharedState<Mempool<LDT>>>,
     #[accessor]
     market_state: Option<SharedState<MarketState<DB>>>,
     #[accessor]
-    latest_block: Option<SharedState<LatestBlock>>,
+    latest_block: Option<SharedState<LatestBlock<LDT>>>,
     #[consumer]
-    market_events_rx: Option<Broadcaster<MarketEvents>>,
+    market_events_rx: Option<Broadcaster<MarketEvents<LDT>>>,
     #[consumer]
-    mempool_events_rx: Option<Broadcaster<MempoolEvents>>,
+    mempool_events_rx: Option<Broadcaster<MempoolEvents<LDT>>>,
     #[producer]
-    state_updates_tx: Option<Broadcaster<StateUpdateEvent<DB>>>,
+    state_updates_tx: Option<Broadcaster<StateUpdateEvent<DB, LDT>>>,
     _n: PhantomData<N>,
 }
 
-impl<P, N, DB> PendingTxStateChangeProcessorActor<P, N, DB>
+impl<P, N, DB, LDT> PendingTxStateChangeProcessorActor<P, N, DB, LDT>
 where
     N: Network,
     P: Provider<N> + DebugProviderExt<N> + Send + Sync + Clone + 'static,
     DB: DatabaseRef + Send + Sync + Clone + 'static,
+    LDT: LoomDataTypesEVM + 'static,
 {
-    pub fn new(client: P) -> PendingTxStateChangeProcessorActor<P, N, DB> {
+    pub fn new(client: P) -> PendingTxStateChangeProcessorActor<P, N, DB, LDT> {
         PendingTxStateChangeProcessorActor {
             client,
             market: None,
@@ -361,7 +362,7 @@ where
         }
     }
 
-    pub fn on_bc(self, bc: &Blockchain, state: &BlockchainState<DB>, strategy: &Strategy<DB>) -> Self {
+    pub fn on_bc(self, bc: &Blockchain<LDT>, state: &BlockchainState<DB, LDT>, strategy: &Strategy<DB, LDT>) -> Self {
         Self {
             market: Some(bc.market()),
             mempool: Some(bc.mempool()),
@@ -375,11 +376,12 @@ where
     }
 }
 
-impl<P, N, DB> Actor for PendingTxStateChangeProcessorActor<P, N, DB>
+impl<P, N, DB, LDT> Actor for PendingTxStateChangeProcessorActor<P, N, DB, LDT>
 where
-    N: Network,
+    N: Network<TransactionRequest = LDT::TransactionRequest>,
     P: Provider<N> + DebugProviderExt<N> + Send + Sync + Clone + 'static,
     DB: DatabaseRef + Database + DatabaseCommit + Send + Sync + Clone + 'static,
+    LDT: LoomDataTypesEVM + 'static,
 {
     fn start(&self) -> ActorResult {
         let task = tokio::task::spawn(pending_tx_state_change_worker(

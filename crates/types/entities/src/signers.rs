@@ -1,7 +1,9 @@
+use crate::EntityAddress;
+use alloy_consensus::transaction::Recovered;
 use alloy_consensus::{SignableTransaction, TxEnvelope};
 use alloy_network::{TransactionBuilder, TxSigner as AlloyTxSigner, TxSignerSync};
 use alloy_primitives::{hex, Address, Bytes, B256};
-use alloy_rpc_types::Transaction;
+use alloy_rpc_types::{Transaction, TransactionRequest};
 use alloy_signer_local::PrivateKeySigner;
 use eyre::{eyre, OptionExt, Result};
 use indexmap::IndexMap;
@@ -16,7 +18,7 @@ use std::sync::Arc;
 pub trait LoomTxSigner<LDT: LoomDataTypes>: Send + Sync + Debug {
     fn sign<'a>(&'a self, tx: LDT::TransactionRequest) -> Pin<Box<dyn std::future::Future<Output = Result<LDT::Transaction>> + Send + 'a>>;
     fn sign_sync(&self, tx: LDT::TransactionRequest) -> Result<LDT::Transaction>;
-    fn address(&self) -> LDT::Address;
+    fn address(&self) -> EntityAddress;
 }
 
 #[derive(Clone)]
@@ -39,13 +41,10 @@ impl fmt::Debug for TxSignerEth {
 }
 
 impl LoomTxSigner<LoomDataTypesEthereum> for TxSignerEth {
-    fn address(&self) -> <LoomDataTypesEthereum as LoomDataTypes>::Address {
-        self.address
+    fn address(&self) -> EntityAddress {
+        self.address.into()
     }
-    fn sign<'a>(
-        &'a self,
-        tx_req: <LoomDataTypesEthereum as LoomDataTypes>::TransactionRequest,
-    ) -> Pin<Box<dyn Future<Output = Result<<LoomDataTypesEthereum as LoomDataTypes>::Transaction>> + Send + 'a>> {
+    fn sign<'a>(&'a self, tx_req: TransactionRequest) -> Pin<Box<dyn Future<Output = Result<Transaction>> + Send + 'a>> {
         let fut = async move {
             let mut typed_tx = tx_req
                 .build_typed_tx()
@@ -56,14 +55,11 @@ impl LoomTxSigner<LoomDataTypesEthereum> for TxSignerEth {
             let signature = self.wallet.sign_transaction(&mut typed_tx).await?;
             let signed_tx = typed_tx.clone().into_signed(signature);
             let tx_env: TxEnvelope = signed_tx.into();
-            let tx = Transaction {
-                inner: tx_env,
-                block_hash: None,
-                block_number: None,
-                transaction_index: None,
-                effective_gas_price: None,
-                from: self.address(),
-            };
+
+            let recovered = Recovered::new_unchecked(tx_env, self.address);
+
+            let tx =
+                Transaction { inner: recovered, block_hash: None, block_number: None, transaction_index: None, effective_gas_price: None };
             eyre::Result::<Transaction>::Ok(tx)
         };
         Box::pin(fut)
@@ -74,10 +70,7 @@ impl LoomTxSigner<LoomDataTypesEthereum> for TxSignerEth {
         //Ok((hash, Bytes::from(tx_data)))
     }
 
-    fn sign_sync(
-        &self,
-        tx_req: <LoomDataTypesEthereum as LoomDataTypes>::TransactionRequest,
-    ) -> Result<<LoomDataTypesEthereum as LoomDataTypes>::Transaction> {
+    fn sign_sync(&self, tx_req: TransactionRequest) -> Result<Transaction> {
         let mut typed_tx = tx_req
             .build_unsigned()
             .map_err(|e| eyre!(format!("CANNOT_BUILD_UNSIGNED with error: {}", e)))?
@@ -90,14 +83,10 @@ impl LoomTxSigner<LoomDataTypesEthereum> for TxSignerEth {
 
         let hash = signed_tx.signature_hash();
         let tx_env: TxEnvelope = signed_tx.into();
-        let tx = Transaction {
-            inner: tx_env,
-            block_hash: None,
-            block_number: None,
-            transaction_index: None,
-            effective_gas_price: None,
-            from: self.address(),
-        };
+
+        let recovered = Recovered::new_unchecked(tx_env, self.address);
+
+        let tx = Transaction { inner: recovered, block_hash: None, block_number: None, transaction_index: None, effective_gas_price: None };
         Ok(tx)
     }
 }
@@ -110,13 +99,13 @@ impl TxSignerEth {
 
 #[derive(Clone, Default)]
 pub struct TxSigners<LDT: LoomDataTypes = LoomDataTypesEthereum> {
-    signers: IndexMap<LDT::Address, Arc<dyn LoomTxSigner<LDT>>>,
+    signers: IndexMap<EntityAddress, Arc<dyn LoomTxSigner<LDT>>>,
 }
 
 impl TxSigners<LoomDataTypesEthereum> {
     pub fn add_privkey(&mut self, priv_key: Bytes) -> TxSignerEth {
         let wallet = PrivateKeySigner::from_bytes(&B256::from_slice(priv_key.as_ref())).unwrap();
-        self.signers.insert(wallet.address(), Arc::new(TxSignerEth::new(wallet.clone())));
+        self.signers.insert(wallet.address().into(), Arc::new(TxSignerEth::new(wallet.clone())));
         TxSignerEth::new(wallet)
     }
 
@@ -153,14 +142,14 @@ impl<LDT: LoomDataTypes> TxSigners<LDT> {
         }
     }
 
-    pub fn get_signer_by_address(&self, address: &LDT::Address) -> Result<Arc<dyn LoomTxSigner<LDT>>> {
+    pub fn get_signer_by_address(&self, address: &EntityAddress) -> Result<Arc<dyn LoomTxSigner<LDT>>> {
         match self.signers.get(address) {
             Some(s) => Ok(s.clone()),
             None => Err(eyre!("SIGNER_NOT_FOUND")),
         }
     }
 
-    pub fn get_address_vec(&self) -> Vec<LDT::Address> {
+    pub fn get_address_vec(&self) -> Vec<EntityAddress> {
         self.signers.keys().cloned().collect()
     }
 }
@@ -178,14 +167,14 @@ mod tests {
     fn test_new_signer() {
         let wallet = PrivateKeySigner::random();
         let signer = TxSignerEth::new(wallet.clone());
-        assert_eq!(signer.address(), wallet.address());
+        assert_eq!(signer.address(), EntityAddress::Address(wallet.address()));
     }
 
     #[test]
     fn test_address() {
         let wallet = PrivateKeySigner::random();
         let signer = TxSignerEth::new(wallet.clone());
-        assert_eq!(signer.address(), wallet.address());
+        assert_eq!(signer.address(), EntityAddress::Address(wallet.address()));
     }
 
     #[tokio::test]
@@ -199,7 +188,7 @@ mod tests {
             .with_max_fee_per_gas(1)
             .with_max_priority_fee_per_gas(1);
         let tx = signer.sign(tx_req).await?;
-        let tx_hash = tx.tx_hash();
+        let tx_hash = tx.get_tx_hash();
         let tx_rlp = tx.encode();
         assert_eq!(tx_hash, TxHash::from(hex!("a43d09cb299eb6269f5a63fb10ea078c649cbf6a5f159cfd5b6f4be7ad0dfcfd")));
         assert!(!tx_rlp.is_empty());
@@ -217,7 +206,7 @@ mod tests {
             .with_max_fee_per_gas(1)
             .with_max_priority_fee_per_gas(1);
         let tx = signer.sign_sync(tx_req)?;
-        let tx_hash = tx.tx_hash();
+        let tx_hash = tx.get_tx_hash();
         let tx_rlp = tx.encode();
         assert_eq!(tx_hash, TxHash::from(hex!("a43d09cb299eb6269f5a63fb10ea078c649cbf6a5f159cfd5b6f4be7ad0dfcfd")));
         assert!(!tx_rlp.is_empty());
@@ -255,7 +244,7 @@ mod tests {
         let signer = signers.add_privkey(priv_key);
         assert_eq!(signers.len(), 1);
         assert_eq!(signer.address(), signers.get_address_vec()[0]);
-        assert_eq!(signer.address(), address!("16Df4b25e4E37A9116eb224799c1e0Fb17fd8d30"));
+        assert_eq!(signer.address(), EntityAddress::Address(address!("16Df4b25e4E37A9116eb224799c1e0Fb17fd8d30")));
     }
 
     #[test]
@@ -292,7 +281,7 @@ mod tests {
         assert!(signers.get_signer_by_address(&address).is_ok());
         // test negative case
         let unknown_address = Address::random();
-        assert!(signers.get_signer_by_address(&unknown_address).is_err());
+        assert!(signers.get_signer_by_address(&EntityAddress::Address(unknown_address)).is_err());
     }
 
     #[test]

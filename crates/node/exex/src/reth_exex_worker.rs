@@ -8,9 +8,9 @@ use loom_core_actors::Broadcaster;
 use loom_core_blockchain::Blockchain;
 use loom_evm_utils::reth_types::append_all_matching_block_logs_sealed;
 use loom_node_actor_config::NodeBlockActorConfig;
-use loom_types_blockchain::{GethStateUpdate, MempoolTx};
+use loom_types_blockchain::{GethStateUpdate, LoomDataTypesEthereum, MempoolTx};
 use loom_types_events::{
-    BlockHeader, BlockLogs, BlockStateUpdate, BlockUpdate, Message, MessageBlock, MessageBlockHeader, MessageBlockLogs,
+    BlockHeaderEventData, BlockLogs, BlockStateUpdate, BlockUpdate, Message, MessageBlock, MessageBlockHeader, MessageBlockLogs,
     MessageBlockStateUpdate, MessageMempoolDataUpdate, NodeMempoolDataUpdate,
 };
 use reth_exex::{ExExContext, ExExEvent, ExExNotification};
@@ -20,8 +20,8 @@ use reth_provider::Chain;
 use reth_rpc::eth::EthTxBuilder;
 use reth_rpc_types_compat::TransactionCompat;
 use reth_transaction_pool::{EthPooledTransaction, TransactionPool};
-use revm::db::states::StorageSlot;
-use revm::db::{BundleAccount, StorageWithOriginalValues};
+use revm::database::states::StorageSlot;
+use revm::database::{BundleAccount, StorageWithOriginalValues};
 use std::sync::Arc;
 use tokio::select;
 use tracing::{debug, error, info};
@@ -43,7 +43,9 @@ async fn process_chain(
                 total_difficulty: None,
                 size: None,
             };
-            if let Err(e) = block_header_channel.send(MessageBlockHeader::new_with_time(BlockHeader::new(header))) {
+            if let Err(e) =
+                block_header_channel.send(MessageBlockHeader::new_with_time(BlockHeaderEventData::<LoomDataTypesEthereum>::new(header)))
+            {
                 error!(error=?e.to_string(), "block_header_channel.send")
             }
         }

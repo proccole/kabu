@@ -12,16 +12,14 @@ use tokio::sync::broadcast::error::RecvError;
 use tracing::{debug, error, info, trace};
 
 use loom_core_blockchain::{Blockchain, Strategy};
-use loom_evm_utils::NWETH;
+use loom_evm_utils::{LoomEVMWrapper, NWETH};
 use loom_types_entities::{EstimationError, Swap, SwapEncoder};
 
 use loom_core_actors::{subscribe, Actor, ActorResult, Broadcaster, Consumer, Producer, WorkerResult};
 use loom_core_actors_macros::{Consumer, Producer};
-use loom_evm_db::{AlloyDB, DatabaseLoomExt};
-use loom_evm_utils::evm::evm_access_list;
-use loom_evm_utils::evm_env::env_for_block;
+use loom_evm_db::{AlloyDB, DatabaseLoomExt, LoomDBError};
 use loom_types_events::{HealthEvent, MessageHealthEvent, MessageSwapCompose, SwapComposeData, SwapComposeMessage, TxComposeData, TxState};
-use revm::DatabaseRef;
+use revm::{Database, DatabaseCommit, DatabaseRef};
 
 async fn estimator_task<N, DB>(
     client: Option<impl Provider<N> + 'static>,
@@ -33,7 +31,7 @@ async fn estimator_task<N, DB>(
 ) -> Result<()>
 where
     N: Network,
-    DB: DatabaseRef + DatabaseLoomExt + Send + Sync + Clone + 'static,
+    DB: DatabaseRef<Error = LoomDBError> + Database<Error = LoomDBError> + DatabaseCommit + DatabaseLoomExt + Send + Sync + Clone + 'static,
 {
     debug!(
         gas_limit = estimate_request.tx_compose.gas,
@@ -53,14 +51,14 @@ where
         estimate_request.tips_pct,
         Some(estimate_request.tx_compose.next_block_number),
         None,
-        Some(tx_signer.address()),
+        Some(tx_signer.address().into()),
         Some(estimate_request.tx_compose.eth_balance),
     )?;
 
     let tx_request = TransactionRequest {
         transaction_type: Some(2),
         chain_id: Some(1),
-        from: Some(tx_signer.address()),
+        from: Some(tx_signer.address().into()),
         to: Some(TxKind::Call(to)),
         gas: Some(estimate_request.tx_compose.gas),
         value: call_value,
@@ -87,15 +85,19 @@ where
         }
     }
 
-    let evm_env = env_for_block(estimate_request.tx_compose.next_block_number, estimate_request.tx_compose.next_block_timestamp);
+    let mut evm = LoomEVMWrapper::new(db.clone());
+    evm.get_mut().modify_block(|block| {
+        block.number = estimate_request.tx_compose.next_block_number;
+        block.timestamp = estimate_request.tx_compose.next_block_timestamp;
+    });
 
-    let (gas_used, access_list) = match evm_access_list(&db, &evm_env, &tx_request) {
+    let (gas_used, access_list) = match evm.evm_access_list(tx_request) {
         Ok((gas_used, access_list)) => {
             let pool_id_vec = estimate_request.swap.get_pool_id_vec();
 
             tokio::task::spawn(async move {
                 for pool_id in pool_id_vec {
-                    let pool_id_string = format!("{}", pool_id);
+                    let pool_id_string = format!("{pool_id}");
                     let write_query = WriteQuery::new(Timestamp::from(start_time), "estimation")
                         .add_field("success", 1i64)
                         .add_tag("pool", pool_id_string);
@@ -159,7 +161,7 @@ where
         estimate_request.tips_pct,
         Some(estimate_request.tx_compose.next_block_number),
         Some(gas_cost),
-        Some(tx_signer.address()),
+        Some(tx_signer.address().into()),
         Some(estimate_request.tx_compose.eth_balance),
     ) {
         Ok((to, call_value, call_data, tips_vec)) => (to, call_value, call_data, tips_vec),
@@ -172,7 +174,7 @@ where
     let tx_request = TransactionRequest {
         transaction_type: Some(2),
         chain_id: Some(1),
-        from: Some(tx_signer.address()),
+        from: Some(tx_signer.address().into()),
         to: Some(TxKind::Call(to)),
         gas: Some((gas_used * 1500) / 1000),
         value: call_value,
@@ -196,12 +198,12 @@ where
     tx_with_state.push(TxState::SignatureRequired(tx_request));
 
     let total_tips = tips_vec.into_iter().map(|v| v.tips).sum();
-    let profit_eth = estimate_request.swap.abs_profit_eth();
+    let profit_eth = estimate_request.swap.arb_profit_eth();
     let gas_cost_f64 = NWETH::to_float(gas_cost);
     let tips_f64 = NWETH::to_float(total_tips);
     let profit_eth_f64 = NWETH::to_float(profit_eth);
     let profit_f64 = match estimate_request.swap.get_first_token() {
-        Some(token_in) => token_in.to_float(estimate_request.swap.abs_profit()),
+        Some(token_in) => token_in.to_float(estimate_request.swap.arb_profit()),
         None => profit_eth_f64,
     };
 
@@ -245,7 +247,7 @@ async fn estimator_worker<N, DB>(
 ) -> WorkerResult
 where
     N: Network,
-    DB: DatabaseRef + DatabaseLoomExt + Send + Sync + Clone + 'static,
+    DB: DatabaseRef<Error = LoomDBError> + Database<Error = LoomDBError> + DatabaseCommit + DatabaseLoomExt + Send + Sync + Clone + 'static,
 {
     subscribe!(compose_channel_rx);
 
@@ -346,7 +348,7 @@ where
     N: Network,
     P: Provider<N> + Send + Sync + Clone + 'static,
     E: SwapEncoder + Clone + Send + Sync + 'static,
-    DB: DatabaseRef + DatabaseLoomExt + Send + Sync + Clone,
+    DB: DatabaseRef<Error = LoomDBError> + Database<Error = LoomDBError> + DatabaseCommit + DatabaseLoomExt + Send + Sync + Clone,
 {
     fn start(&self) -> ActorResult {
         let task = tokio::task::spawn(estimator_worker(

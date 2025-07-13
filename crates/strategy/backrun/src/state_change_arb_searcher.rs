@@ -4,11 +4,11 @@ use std::sync::Arc;
 use alloy_primitives::U256;
 #[cfg(not(debug_assertions))]
 use chrono::TimeDelta;
-use eyre::{eyre, ErrReport, Result};
+use eyre::{eyre, Result};
 use influxdb::{Timestamp, WriteQuery};
 use rayon::prelude::*;
 use rayon::{ThreadPool, ThreadPoolBuilder};
-use revm::{DatabaseCommit, DatabaseRef};
+use revm::{Database, DatabaseCommit, DatabaseRef};
 use tokio::sync::broadcast::error::RecvError;
 #[cfg(not(debug_assertions))]
 use tracing::warn;
@@ -19,7 +19,9 @@ use crate::SwapCalculator;
 use loom_core_actors::{subscribe, Accessor, Actor, ActorResult, Broadcaster, Consumer, Producer, SharedState, WorkerResult};
 use loom_core_actors_macros::{Accessor, Consumer, Producer};
 use loom_core_blockchain::{Blockchain, Strategy};
-use loom_evm_db::DatabaseHelpers;
+use loom_evm_db::{DatabaseHelpers, LoomDBError};
+use loom_evm_utils::LoomEVMWrapper;
+use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEVM};
 use loom_types_entities::strategy_config::StrategyConfig;
 use loom_types_entities::{Market, PoolWrapper, Swap, SwapDirection, SwapError, SwapLine, SwapPath};
 use loom_types_events::{
@@ -27,13 +29,16 @@ use loom_types_events::{
     TxComposeData,
 };
 
-async fn state_change_arb_searcher_task<DB: DatabaseRef<Error = ErrReport> + DatabaseCommit + Send + Sync + Clone + Default + 'static>(
+async fn state_change_arb_searcher_task<
+    DB: DatabaseRef<Error = LoomDBError> + Database<Error = LoomDBError> + DatabaseCommit + Send + Sync + Clone + Default + 'static,
+    LDT: LoomDataTypesEVM,
+>(
     thread_pool: Arc<ThreadPool>,
     backrun_config: BackrunConfig,
-    state_update_event: StateUpdateEvent<DB>,
+    state_update_event: StateUpdateEvent<DB, LDT>,
     market: SharedState<Market>,
-    swap_request_tx: Broadcaster<MessageSwapCompose<DB>>,
-    pool_health_monitor_tx: Broadcaster<MessageHealthEvent>,
+    swap_request_tx: Broadcaster<MessageSwapCompose<DB, LDT>>,
+    pool_health_monitor_tx: Broadcaster<MessageHealthEvent<LDT>>,
     influxdb_write_channel_tx: Broadcaster<WriteQuery>,
 ) -> Result<()> {
     debug!("Message received {} stuffing : {:?}", state_update_event.origin, state_update_event.stuffing_tx_hash());
@@ -44,6 +49,7 @@ async fn state_change_arb_searcher_task<DB: DatabaseRef<Error = ErrReport> + Dat
     let start_time_utc = chrono::Utc::now();
 
     let start_time = std::time::Instant::now();
+    #[allow(clippy::mutable_key_type)]
     let mut swap_path_set: HashSet<SwapPath> = HashSet::new();
 
     let market_guard_read = market.read().await;
@@ -52,16 +58,6 @@ async fn state_change_arb_searcher_task<DB: DatabaseRef<Error = ErrReport> + Dat
     for (pool, v) in state_update_event.directions().iter() {
         let pool_paths: Vec<SwapPath> = match market_guard_read.get_pool_paths(&pool.get_pool_id()) {
             Some(paths) => {
-                let pool_paths = paths
-                    .into_iter()
-                    .enumerate()
-                    .filter(|(idx, swap_path)| {
-                        *idx < 100 || swap_path.score.unwrap_or_default() > 0.97
-                        //&& !swap_path.pools.iter().any(|pool| market_guard_read.is_pool_disabled(&pool.get_pool_id()))
-                    })
-                    .map(|(_, swap_path)| swap_path)
-                    .collect::<Vec<_>>();
-
                 // let pool_paths = pool_paths
                 //     .into_iter()
                 //     .enumerate()
@@ -69,7 +65,15 @@ async fn state_change_arb_searcher_task<DB: DatabaseRef<Error = ErrReport> + Dat
                 //     .map(|(idx, path)| path)
                 //     .collect::<Vec<_>>();
                 // pool_paths
-                pool_paths
+                paths
+                    .into_iter()
+                    .enumerate()
+                    .filter(|(idx, swap_path)| {
+                        *idx < 100 || swap_path.score.unwrap_or_default() > 0.97
+                        //&& !swap_path.pools.iter().any(|pool| market_guard_read.is_pool_disabled(&pool.get_pool_id()))
+                    })
+                    .map(|(_, swap_path)| swap_path)
+                    .collect::<Vec<_>>()
             }
 
             None => {
@@ -90,7 +94,7 @@ async fn state_change_arb_searcher_task<DB: DatabaseRef<Error = ErrReport> + Dat
 
     if swap_path_vec.is_empty() {
         debug!(
-            request=?state_update_event.stuffing_txs_hashes().first().unwrap_or_default(),
+            request=?state_update_event.stuffing_txs_hashes().first(),
             elapsed=start_time.elapsed().as_micros(),
             "No swap path built",
 
@@ -99,7 +103,7 @@ async fn state_change_arb_searcher_task<DB: DatabaseRef<Error = ErrReport> + Dat
     }
     info!("Calculation started: swap_path_vec_len={} elapsed={}", swap_path_vec.len(), start_time.elapsed().as_micros());
 
-    let env = state_update_event.evm_env();
+    let next_header = state_update_event.next_header();
 
     let channel_len = swap_path_vec.len();
     let (swap_path_tx, mut swap_line_rx) = tokio::sync::mpsc::channel(channel_len);
@@ -107,24 +111,19 @@ async fn state_change_arb_searcher_task<DB: DatabaseRef<Error = ErrReport> + Dat
     let market_state_clone = db.clone();
     let swap_path_vec_len = swap_path_vec.len();
 
-    tokio::task::spawn(async move {
+    //let evm = Arc::new(LoomEVMWrapper::new(market_state_clone));
+
+    let _tasks = tokio::task::spawn(async move {
         thread_pool.install(|| {
-            swap_path_vec.into_par_iter().for_each_with((&swap_path_tx, &market_state_clone, &env), |req, item| {
+            swap_path_vec.into_par_iter().for_each_with((&swap_path_tx, &market_state_clone, &next_header), |req, item| {
                 let mut mut_item: SwapLine = SwapLine { path: item, ..Default::default() };
-                //#[cfg(not(debug_assertions))]
-                //let start_time = chrono::Local::now();
-                let calc_result = SwapCalculator::calculate(&mut mut_item, req.1, req.2.clone());
-                //#[cfg(not(debug_assertions))]
-                //let took_time = chrono::Local::now() - start_time;
+
+                let mut evm = LoomEVMWrapper::new(req.1.clone()).with_header(req.2);
+
+                let calc_result = SwapCalculator::calculate(&mut mut_item, evm.get_mut());
 
                 match calc_result {
                     Ok(_) => {
-                        // #[cfg(not(debug_assertions))]
-                        // {
-                        //     if took_time > TimeDelta::new(0, 50 * 1000000).unwrap() {
-                        //         warn!("Took longer than expected {} {}", took_time, mut_item.clone())
-                        //     }
-                        // }
                         trace!("Calc result received: {}", mut_item);
 
                         if let Ok(profit) = mut_item.profit() {
@@ -138,12 +137,6 @@ async fn state_change_arb_searcher_task<DB: DatabaseRef<Error = ErrReport> + Dat
                         }
                     }
                     Err(e) => {
-                        // #[cfg(not(debug_assertions))]
-                        // {
-                        //     if took_time > TimeDelta::new(0, 10 * 5000000).unwrap() {
-                        //         warn!("Took longer than expected {:?} {}", e, mut_item.clone())
-                        //     }
-                        // }
                         trace!("Swap error: {:?}", e);
 
                         if let Err(error) = swap_path_tx.try_send(Err(e)) {
@@ -171,13 +164,13 @@ async fn state_change_arb_searcher_task<DB: DatabaseRef<Error = ErrReport> + Dat
         match swap_line_result {
             Ok(swap_line) => {
                 let prepare_request = SwapComposeMessage::Prepare(SwapComposeData {
-                    tx_compose: TxComposeData {
-                        eoa: backrun_config.eoa(),
+                    tx_compose: TxComposeData::<LDT> {
+                        eoa: backrun_config.eoa().map(Into::into),
                         next_block_number: state_update_event.next_block_number,
                         next_block_timestamp: state_update_event.next_block_timestamp,
                         next_block_base_fee: state_update_event.next_base_fee,
                         gas: swap_line.gas_used.unwrap_or(300000),
-                        stuffing_txs: state_update_event.stuffing_txs.clone(),
+                        stuffing_txs: state_update_event.stuffing_txs().clone(),
                         stuffing_txs_hashes: state_update_event.stuffing_txs_hashes.clone(),
                         ..TxComposeData::default()
                     },
@@ -233,13 +226,14 @@ async fn state_change_arb_searcher_task<DB: DatabaseRef<Error = ErrReport> + Dat
 }
 
 pub async fn state_change_arb_searcher_worker<
-    DB: DatabaseRef<Error = ErrReport> + DatabaseCommit + Send + Sync + Clone + Default + 'static,
+    DB: DatabaseRef<Error = LoomDBError> + Database<Error = LoomDBError> + DatabaseCommit + Send + Sync + Clone + Default + 'static,
+    LDT: LoomDataTypesEVM,
 >(
     backrun_config: BackrunConfig,
     market: SharedState<Market>,
-    search_request_rx: Broadcaster<StateUpdateEvent<DB>>,
-    swap_request_tx: Broadcaster<MessageSwapCompose<DB>>,
-    pool_health_monitor_tx: Broadcaster<MessageHealthEvent>,
+    search_request_rx: Broadcaster<StateUpdateEvent<DB, LDT>>,
+    swap_request_tx: Broadcaster<MessageSwapCompose<DB, LDT>>,
+    pool_health_monitor_tx: Broadcaster<MessageHealthEvent<LDT>>,
     influxdb_write_channel_tx: Broadcaster<WriteQuery>,
 ) -> WorkerResult {
     subscribe!(search_request_rx);
@@ -252,7 +246,7 @@ pub async fn state_change_arb_searcher_worker<
     loop {
         tokio::select! {
                 msg = search_request_rx.recv() => {
-                let pool_update_msg : Result<StateUpdateEvent<DB>, RecvError> = msg;
+                let pool_update_msg : Result<StateUpdateEvent<DB, LDT>, RecvError> = msg;
                 if let Ok(msg) = pool_update_msg {
                     tokio::task::spawn(
                         state_change_arb_searcher_task(
@@ -272,22 +266,26 @@ pub async fn state_change_arb_searcher_worker<
 }
 
 #[derive(Accessor, Consumer, Producer)]
-pub struct StateChangeArbSearcherActor<DB: Clone + Send + Sync + 'static> {
+pub struct StateChangeArbSearcherActor<DB: Clone + Send + Sync + 'static, LDT: LoomDataTypes + 'static> {
     backrun_config: BackrunConfig,
     #[accessor]
     market: Option<SharedState<Market>>,
     #[consumer]
-    state_update_rx: Option<Broadcaster<StateUpdateEvent<DB>>>,
+    state_update_rx: Option<Broadcaster<StateUpdateEvent<DB, LDT>>>,
     #[producer]
-    compose_tx: Option<Broadcaster<MessageSwapCompose<DB>>>,
+    compose_tx: Option<Broadcaster<MessageSwapCompose<DB, LDT>>>,
     #[producer]
-    pool_health_monitor_tx: Option<Broadcaster<MessageHealthEvent>>,
+    pool_health_monitor_tx: Option<Broadcaster<MessageHealthEvent<LDT>>>,
     #[producer]
     influxdb_write_channel_tx: Option<Broadcaster<WriteQuery>>,
 }
 
-impl<DB: DatabaseRef<Error = ErrReport> + Send + Sync + Clone + 'static> StateChangeArbSearcherActor<DB> {
-    pub fn new(backrun_config: BackrunConfig) -> StateChangeArbSearcherActor<DB> {
+impl<
+        DB: DatabaseRef<Error = LoomDBError> + Database<Error = LoomDBError> + DatabaseCommit + Send + Sync + Clone + 'static,
+        LDT: LoomDataTypesEVM + 'static,
+    > StateChangeArbSearcherActor<DB, LDT>
+{
+    pub fn new(backrun_config: BackrunConfig) -> StateChangeArbSearcherActor<DB, LDT> {
         StateChangeArbSearcherActor {
             backrun_config,
             market: None,
@@ -298,7 +296,7 @@ impl<DB: DatabaseRef<Error = ErrReport> + Send + Sync + Clone + 'static> StateCh
         }
     }
 
-    pub fn on_bc(self, bc: &Blockchain, strategy: &Strategy<DB>) -> Self {
+    pub fn on_bc(self, bc: &Blockchain<LDT>, strategy: &Strategy<DB, LDT>) -> Self {
         Self {
             market: Some(bc.market()),
             pool_health_monitor_tx: Some(bc.health_monitor_channel()),
@@ -310,8 +308,10 @@ impl<DB: DatabaseRef<Error = ErrReport> + Send + Sync + Clone + 'static> StateCh
     }
 }
 
-impl<DB: DatabaseRef<Error = ErrReport> + DatabaseCommit + Send + Sync + Clone + Default + 'static> Actor
-    for StateChangeArbSearcherActor<DB>
+impl<
+        DB: DatabaseRef<Error = LoomDBError> + Database<Error = LoomDBError> + DatabaseCommit + Send + Sync + Clone + Default + 'static,
+        LDT: LoomDataTypesEVM + 'static,
+    > Actor for StateChangeArbSearcherActor<DB, LDT>
 {
     fn start(&self) -> ActorResult {
         let task = tokio::task::spawn(state_change_arb_searcher_worker(

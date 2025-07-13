@@ -37,10 +37,11 @@ doc:
 	cargo +nightly doc --workspace --all-features --no-deps --document-private-items
 
 ## Development commands
-# Target to run all tests
+# Target to run all tests (excluding loom-defi-abi doc tests and flashbots env-dependent tests)
 .PHONY: test
 test:
-	cargo test --all --all-features
+	cargo test --all --all-features --workspace --exclude loom-defi-abi --lib --bins --tests -- --skip test_send_bundle --skip test_client_send_bundle
+	cargo test --all --all-features --workspace --exclude loom-defi-abi --doc
 
 # Target to run all benchmarks
 .PHONY: clean

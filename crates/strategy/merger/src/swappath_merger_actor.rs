@@ -1,27 +1,38 @@
-use alloy_primitives::{Address, U256};
-use eyre::{eyre, ErrReport, Result};
-use revm::primitives::Env;
-use revm::DatabaseRef;
+use alloy_primitives::Address;
+use alloy_rpc_types::Header;
+use eyre::{eyre, Result};
+use revm::{Database, DatabaseCommit, DatabaseRef};
 use tokio::sync::broadcast::error::RecvError;
 use tracing::{debug, error, info};
 
 use loom_core_actors::{subscribe, Accessor, Actor, ActorResult, Broadcaster, Consumer, Producer, SharedState, WorkerResult};
 use loom_core_actors_macros::{Accessor, Consumer, Producer};
 use loom_core_blockchain::{Blockchain, Strategy};
+use loom_evm_db::LoomDBError;
+use loom_evm_utils::LoomEVMWrapper;
 use loom_types_entities::{LatestBlock, Swap, SwapStep};
 use loom_types_events::{MarketEvents, MessageSwapCompose, SwapComposeData, SwapComposeMessage};
 
-async fn arb_swap_steps_optimizer_task<DB: DatabaseRef + Send + Sync + Clone>(
+async fn arb_swap_steps_optimizer_task<
+    DB: DatabaseRef<Error = LoomDBError> + Database<Error = LoomDBError> + DatabaseCommit + Send + Sync + Clone,
+>(
     compose_channel_tx: Broadcaster<MessageSwapCompose<DB>>,
-    state_db: &(dyn DatabaseRef<Error = ErrReport> + Send + Sync + 'static),
-    evm_env: Env,
+    state_db: DB,
+    header: Header,
     request: SwapComposeData<DB>,
 ) -> Result<()> {
     debug!("Step Simulation started");
 
     if let Swap::BackrunSwapSteps((sp0, sp1)) = request.swap {
         let start_time = chrono::Local::now();
-        match SwapStep::optimize_swap_steps(&state_db, evm_env, &sp0, &sp1, None) {
+
+        let mut evm = LoomEVMWrapper::new(state_db).with_header(&header);
+        evm.get_mut().modify_block(|block| {
+            block.number += 1;
+            block.timestamp += 12;
+        });
+
+        match SwapStep::optimize_swap_steps(evm.get_mut(), &sp0, &sp1, None) {
             Ok((s0, s1)) => {
                 let encode_request = MessageSwapCompose::prepare(SwapComposeData {
                     origin: Some("merger_searcher".to_string()),
@@ -45,7 +56,9 @@ async fn arb_swap_steps_optimizer_task<DB: DatabaseRef + Send + Sync + Clone>(
     Ok(())
 }
 
-async fn arb_swap_path_merger_worker<DB: DatabaseRef<Error = ErrReport> + Send + Sync + Clone + 'static>(
+async fn arb_swap_path_merger_worker<
+    DB: DatabaseRef<Error = LoomDBError> + Database<Error = LoomDBError> + DatabaseCommit + Send + Sync + Clone + 'static,
+>(
     multicaller_address: Address,
     latest_block: SharedState<LatestBlock>,
     market_events_rx: Broadcaster<MarketEvents>,
@@ -110,7 +123,7 @@ async fn arb_swap_path_merger_worker<DB: DatabaseRef<Error = ErrReport> + Send +
                             };
 
 
-                            match SwapStep::merge_swap_paths( req_swap.clone(), swap_path.clone(), multicaller_address ){
+                            match SwapStep::merge_swap_paths( req_swap.clone(), swap_path.clone(), multicaller_address.into() ){
                                 Ok((sp0, sp1)) => {
                                     let latest_block_guard = latest_block.read().await;
                                     let block_header = latest_block_guard.block_header.clone().unwrap();
@@ -121,21 +134,20 @@ async fn arb_swap_path_merger_worker<DB: DatabaseRef<Error = ErrReport> + Send +
                                         ..compose_data.clone()
                                     };
 
-                                    let mut evm_env = Env::default();
-                                    evm_env.block.number = U256::from(block_header.number + 1);
-                                    evm_env.block.timestamp = U256::from(block_header.timestamp + 12);
+
 
 
                                     if let Some(db) = compose_data.poststate.clone() {
                                         let db_clone = db.clone();
+
                                         let compose_channel_clone = compose_channel_tx.clone();
                                         tokio::task::spawn( async move {
                                                 arb_swap_steps_optimizer_task(
-                                                compose_channel_clone,
-                                                &db_clone,
-                                                evm_env,
-                                                request
-                                            ).await
+                                                    compose_channel_clone,
+                                                    db_clone,
+                                                    block_header,
+                                                    request
+                                                ).await
                                         });
                                     }
                                     break; // only first
@@ -146,7 +158,7 @@ async fn arb_swap_path_merger_worker<DB: DatabaseRef<Error = ErrReport> + Send +
                             }
                         }
                         ready_requests.push(compose_data.clone());
-                        ready_requests.sort_by(|r0,r1| r1.swap.abs_profit().cmp(&r0.swap.abs_profit())  )
+                        ready_requests.sort_by(|r0,r1| r1.swap.arb_profit().cmp(&r0.swap.arb_profit())  )
 
                     }
                     Err(e)=>{error!("{}",e)}
@@ -195,7 +207,7 @@ where
 
 impl<DB> Actor for ArbSwapPathMergerActor<DB>
 where
-    DB: DatabaseRef<Error = ErrReport> + Send + Sync + Clone + 'static,
+    DB: DatabaseRef<Error = LoomDBError> + Database<Error = LoomDBError> + DatabaseCommit + Send + Sync + Clone + 'static,
 {
     fn start(&self) -> ActorResult {
         let task = tokio::task::spawn(arb_swap_path_merger_worker(
@@ -227,7 +239,13 @@ mod test {
         let token = Arc::new(Token::new(Address::random()));
 
         let sp0 = SwapLine {
-            path: SwapPath { tokens: vec![token.clone(), token.clone()], pools: vec![], disabled: false },
+            path: SwapPath {
+                tokens: vec![token.clone(), token.clone()],
+                pools: vec![],
+                disabled: false,
+                disabled_pool: Default::default(),
+                score: None,
+            },
             amount_in: SwapAmountType::Set(U256::from(1)),
             amount_out: SwapAmountType::Set(U256::from(2)),
             ..Default::default()
@@ -235,7 +253,13 @@ mod test {
         ready_requests.push(SwapComposeData { swap: Swap::BackrunSwapLine(sp0), ..SwapComposeData::default() });
 
         let sp1 = SwapLine {
-            path: SwapPath { tokens: vec![token.clone(), token.clone()], pools: vec![], disabled: false },
+            path: SwapPath {
+                tokens: vec![token.clone(), token.clone()],
+                pools: vec![],
+                disabled: false,
+                disabled_pool: Default::default(),
+                score: None,
+            },
             amount_in: SwapAmountType::Set(U256::from(10)),
             amount_out: SwapAmountType::Set(U256::from(20)),
             ..Default::default()
@@ -243,17 +267,23 @@ mod test {
         ready_requests.push(SwapComposeData { swap: Swap::BackrunSwapLine(sp1), ..SwapComposeData::default() });
 
         let sp2 = SwapLine {
-            path: SwapPath { tokens: vec![token.clone(), token.clone()], pools: vec![], disabled: false },
+            path: SwapPath {
+                tokens: vec![token.clone(), token.clone()],
+                pools: vec![],
+                disabled: false,
+                disabled_pool: Default::default(),
+                score: None,
+            },
             amount_in: SwapAmountType::Set(U256::from(3)),
             amount_out: SwapAmountType::Set(U256::from(5)),
             ..Default::default()
         };
         ready_requests.push(SwapComposeData { swap: Swap::BackrunSwapLine(sp2), ..SwapComposeData::default() });
 
-        ready_requests.sort_by(|a, b| a.swap.abs_profit().cmp(&b.swap.abs_profit()));
+        ready_requests.sort_by(|a, b| a.swap.arb_profit().cmp(&b.swap.arb_profit()));
 
-        assert_eq!(ready_requests[0].swap.abs_profit(), U256::from(1));
-        assert_eq!(ready_requests[1].swap.abs_profit(), U256::from(2));
-        assert_eq!(ready_requests[2].swap.abs_profit(), U256::from(10));
+        assert_eq!(ready_requests[0].swap.arb_profit(), U256::from(1));
+        assert_eq!(ready_requests[1].swap.arb_profit(), U256::from(2));
+        assert_eq!(ready_requests[2].swap.arb_profit(), U256::from(10));
     }
 }

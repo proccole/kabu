@@ -8,6 +8,7 @@ use loom_defi_address_book::{
 use loom_defi_market::fetch_and_add_pool_by_pool_id;
 use loom_defi_pools::PoolLoadersBuilder;
 use loom_node_debug_provider::DebugProviderExt;
+use loom_types_blockchain::LoomDataTypesEthereum;
 use loom_types_entities::pool_config::PoolsLoadingConfig;
 use loom_types_entities::{Market, MarketState, PoolClass, Token};
 use revm::{Database, DatabaseCommit, DatabaseRef};
@@ -20,18 +21,21 @@ where
 {
     let mut market_instance = market.write().await;
 
-    market_instance.add_token(Token::new_with_data(TokenAddressEth::WETH, Some("WETH".to_string()), None, Some(18), true, false))?;
-    market_instance.add_token(Token::new_with_data(TokenAddressEth::USDC, Some("USDC".to_string()), None, Some(6), true, false))?;
-    market_instance.add_token(Token::new_with_data(TokenAddressEth::USDT, Some("USDT".to_string()), None, Some(6), true, false))?;
-    market_instance.add_token(Token::new_with_data(TokenAddressEth::DAI, Some("DAI".to_string()), None, Some(18), true, false))?;
-    market_instance.add_token(Token::new_with_data(TokenAddressEth::WBTC, Some("WBTC".to_string()), None, Some(8), true, false))?;
-    market_instance.add_token(Token::new_with_data(TokenAddressEth::THREECRV, Some("3Crv".to_string()), None, Some(18), false, true))?;
-    market_instance.add_token(Token::new_with_data(TokenAddressEth::CRV, Some("Crv".to_string()), None, Some(18), false, false))?;
-    market_instance.add_token(Token::new_with_data(TokenAddressEth::LUSD, Some("LUSD".to_string()), None, Some(18), false, false))?;
+    market_instance.add_token(Token::new_with_data(TokenAddressEth::WETH, Some("WETH".to_string()), None, Some(18), true, false));
+    market_instance.add_token(Token::new_with_data(TokenAddressEth::USDC, Some("USDC".to_string()), None, Some(6), true, false));
+    market_instance.add_token(Token::new_with_data(TokenAddressEth::USDT, Some("USDT".to_string()), None, Some(6), true, false));
+    market_instance.add_token(Token::new_with_data(TokenAddressEth::DAI, Some("DAI".to_string()), None, Some(18), true, false));
+    market_instance.add_token(Token::new_with_data(TokenAddressEth::WBTC, Some("WBTC".to_string()), None, Some(8), true, false));
+    market_instance.add_token(Token::new_with_data(TokenAddressEth::THREECRV, Some("3Crv".to_string()), None, Some(18), false, true));
+    market_instance.add_token(Token::new_with_data(TokenAddressEth::CRV, Some("Crv".to_string()), None, Some(18), false, false));
+    market_instance.add_token(Token::new_with_data(TokenAddressEth::LUSD, Some("LUSD".to_string()), None, Some(18), false, false));
 
     drop(market_instance);
 
-    let pool_loaders = Arc::new(PoolLoadersBuilder::default_pool_loaders(client.clone(), PoolsLoadingConfig::default()));
+    let pool_loaders = Arc::new(PoolLoadersBuilder::<P, Ethereum, LoomDataTypesEthereum>::default_pool_loaders(
+        client.clone(),
+        PoolsLoadingConfig::default(),
+    ));
 
     fetch_and_add_pool_by_pool_id(
         client.clone(),

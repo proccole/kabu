@@ -2,29 +2,26 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
+use crate::swap_path::SwapPath;
+use crate::{CalculationResult, EntityAddress, PoolWrapper, SwapError, SwapStep, Token};
 use alloy_primitives::{I256, U256};
-use eyre::{eyre, ErrReport, Report, Result};
-use loom_types_blockchain::{LoomDataTypes, LoomDataTypesEthereum};
-use revm::primitives::Env;
-use revm::DatabaseRef;
+use eyre::{eyre, Result};
+use loom_evm_utils::LoomExecuteEvm;
 use tracing::debug;
 
-use crate::swap_path::SwapPath;
-use crate::{CalculationResult, PoolId, PoolWrapper, SwapError, SwapStep, Token};
-
 #[derive(Debug, Clone, Default)]
-pub enum SwapAmountType<LDT: LoomDataTypes = LoomDataTypesEthereum> {
+pub enum SwapAmountType {
     #[default]
     NotSet,
     Set(U256),
     Stack0,
     RelativeStack(u32),
-    Balance(LDT::Address),
+    Balance(EntityAddress),
 }
 
-impl<LDT: LoomDataTypes> Copy for SwapAmountType<LDT> {}
+impl Copy for SwapAmountType {}
 
-impl<LDT: LoomDataTypes> SwapAmountType<LDT> {
+impl SwapAmountType {
     #[inline]
     pub fn unwrap(&self) -> U256 {
         match &self {
@@ -50,35 +47,22 @@ impl<LDT: LoomDataTypes> SwapAmountType<LDT> {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct SwapLine<LDT: LoomDataTypes = LoomDataTypesEthereum> {
-    pub path: SwapPath<LDT>,
+#[derive(Clone, Debug, Default)]
+pub struct SwapLine {
+    pub path: SwapPath,
     /// Input token amount of the swap
-    pub amount_in: SwapAmountType<LDT>,
+    pub amount_in: SwapAmountType,
     /// Output token amount of the swap
-    pub amount_out: SwapAmountType<LDT>,
+    pub amount_out: SwapAmountType,
     /// The in and out amounts for each swap step
     pub calculation_results: Vec<CalculationResult>,
     /// Output token of the swap
-    pub swap_to: Option<LDT::Address>,
+    pub swap_to: Option<EntityAddress>,
     /// Gas used for the swap
     pub gas_used: Option<u64>,
 }
 
-impl<LDT: LoomDataTypes> Default for SwapLine<LDT> {
-    fn default() -> Self {
-        SwapLine {
-            path: SwapPath::<LDT>::default(),
-            amount_in: SwapAmountType::default(),
-            amount_out: SwapAmountType::default(),
-            calculation_results: Vec::default(),
-            swap_to: None,
-            gas_used: None,
-        }
-    }
-}
-
-impl<LDT: LoomDataTypes> fmt::Display for SwapLine<LDT> {
+impl fmt::Display for SwapLine {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let token_in = self.tokens().first();
         let token_out = self.tokens().last();
@@ -98,7 +82,7 @@ impl<LDT: LoomDataTypes> fmt::Display for SwapLine<LDT> {
         let amount_in = match self.amount_in {
             SwapAmountType::Set(x) => match token_in {
                 Some(t) => format!("{:?}", t.to_float(x)),
-                _ => format!("{}", x),
+                _ => format!("{x}"),
             },
             _ => {
                 format!("{:?}", self.amount_in)
@@ -107,7 +91,7 @@ impl<LDT: LoomDataTypes> fmt::Display for SwapLine<LDT> {
         let amount_out = match self.amount_out {
             SwapAmountType::Set(x) => match token_out {
                 Some(t) => format!("{:?}", t.to_float(x)),
-                _ => format!("{}", x),
+                _ => format!("{x}"),
             },
             _ => {
                 format!("{:?}", self.amount_out)
@@ -115,7 +99,7 @@ impl<LDT: LoomDataTypes> fmt::Display for SwapLine<LDT> {
         };
 
         let calculation_results =
-            self.calculation_results.iter().map(|calculation_result| format!("{}", calculation_result)).collect::<Vec<String>>().join(", ");
+            self.calculation_results.iter().map(|calculation_result| format!("{calculation_result}")).collect::<Vec<String>>().join(", ");
 
         write!(
             f,
@@ -125,32 +109,32 @@ impl<LDT: LoomDataTypes> fmt::Display for SwapLine<LDT> {
     }
 }
 
-impl<LDT: LoomDataTypes> Hash for SwapLine<LDT> {
+impl Hash for SwapLine {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.tokens().hash(state);
         self.pools().hash(state);
     }
 }
 
-impl<LDT: LoomDataTypes> PartialEq for SwapLine<LDT> {
+impl PartialEq for SwapLine {
     fn eq(&self, other: &Self) -> bool {
         self.tokens() == other.tokens() && self.pools() == other.pools()
     }
 }
 
-impl<LDT: LoomDataTypes> From<SwapPath<LDT>> for SwapLine<LDT> {
-    fn from(value: SwapPath<LDT>) -> Self {
+impl From<SwapPath> for SwapLine {
+    fn from(value: SwapPath) -> Self {
         Self { path: value, ..Default::default() }
     }
 }
 
-impl<LDT: LoomDataTypes> SwapLine<LDT> {
-    pub fn to_error(&self, msg: String) -> SwapError<LDT> {
+impl SwapLine {
+    pub fn to_error(&self, msg: String) -> SwapError {
         SwapError {
             msg,
-            pool: self.get_first_pool().map_or(PoolId::<LDT>::default(), |x| x.get_pool_id()),
-            token_from: self.get_first_token().map_or(LDT::Address::default(), |x| x.get_address()),
-            token_to: self.get_last_token().map_or(LDT::Address::default(), |x| x.get_address()),
+            pool: self.get_first_pool().map_or(EntityAddress::default(), |x| x.get_pool_id()),
+            token_from: self.get_first_token().map_or(EntityAddress::default(), |x| x.get_address()),
+            token_to: self.get_last_token().map_or(EntityAddress::default(), |x| x.get_address()),
             is_in_amount: true,
             amount: self.amount_in.unwrap_or_default(),
         }
@@ -161,50 +145,50 @@ impl<LDT: LoomDataTypes> SwapLine<LDT> {
     }
 
     /// Check if the path contains a specific pool
-    pub fn contains_pool(&self, pool: &PoolWrapper<LDT>) -> bool {
+    pub fn contains_pool(&self, pool: &PoolWrapper) -> bool {
         self.path.contains_pool(pool)
     }
 
     /// Get all involved tokens in the swap line
-    pub fn tokens(&self) -> &Vec<Arc<Token<LDT>>> {
+    pub fn tokens(&self) -> &Vec<Arc<Token>> {
         &self.path.tokens
     }
 
     /// Get all used pools in the swap line
-    pub fn pools(&self) -> &Vec<PoolWrapper<LDT>> {
+    pub fn pools(&self) -> &Vec<PoolWrapper> {
         &self.path.pools
     }
 
     /// Get the first token in the swap line
-    pub fn get_first_token(&self) -> Option<&Arc<Token<LDT>>> {
+    pub fn get_first_token(&self) -> Option<&Arc<Token>> {
         self.tokens().first()
     }
 
     /// Get the last token in the swap line
-    pub fn get_last_token(&self) -> Option<&Arc<Token<LDT>>> {
+    pub fn get_last_token(&self) -> Option<&Arc<Token>> {
         self.tokens().last()
     }
 
     /// Get the first pool in the swap line
-    pub fn get_first_pool(&self) -> Option<&PoolWrapper<LDT>> {
+    pub fn get_first_pool(&self) -> Option<&PoolWrapper> {
         self.pools().first()
     }
 
     /// Get the last pool in the swap line
-    pub fn get_last_pool(&self) -> Option<&PoolWrapper<LDT>> {
+    pub fn get_last_pool(&self) -> Option<&PoolWrapper> {
         self.pools().last()
     }
 
     /// Convert the swap line to two swap steps for flash swapping
-    pub fn to_swap_steps(&self, multicaller: LDT::Address) -> Option<(SwapStep<LDT>, SwapStep<LDT>)> {
-        let mut sp0: Option<SwapLine<LDT>> = None;
-        let mut sp1: Option<SwapLine<LDT>> = None;
+    pub fn to_swap_steps(&self, multicaller: EntityAddress) -> Option<(SwapStep, SwapStep)> {
+        let mut sp0: Option<SwapLine> = None;
+        let mut sp1: Option<SwapLine> = None;
 
         for i in 1..self.path.pool_count() {
             let (head_path, mut tail_path) = self.split(i).unwrap();
             if head_path.can_flash_swap() || tail_path.can_flash_swap() {
                 if head_path.can_flash_swap() {
-                    tail_path.amount_in = SwapAmountType::<LDT>::Stack0;
+                    tail_path.amount_in = SwapAmountType::Stack0;
                 }
                 sp0 = Some(head_path);
                 sp1 = Some(tail_path);
@@ -218,10 +202,10 @@ impl<LDT: LoomDataTypes> SwapLine<LDT> {
             sp1 = Some(tail_path);
         }
 
-        let mut step_0 = SwapStep::<LDT>::new(multicaller);
+        let mut step_0 = SwapStep::new(multicaller);
         step_0.add(sp0.unwrap());
 
-        let mut step_1 = SwapStep::<LDT>::new(multicaller);
+        let mut step_1 = SwapStep::new(multicaller);
         let sp1 = sp1.unwrap();
         step_1.add(sp1);
 
@@ -229,8 +213,8 @@ impl<LDT: LoomDataTypes> SwapLine<LDT> {
     }
 
     /// Split the swap line into two swap lines at a specific pool index
-    pub fn split(&self, pool_index: usize) -> Result<(SwapLine<LDT>, SwapLine<LDT>)> {
-        let first = SwapLine::<LDT> {
+    pub fn split(&self, pool_index: usize) -> Result<(SwapLine, SwapLine)> {
+        let first = SwapLine {
             path: SwapPath::new(self.tokens()[0..pool_index + 1].to_vec(), self.pools()[0..pool_index].to_vec()),
             amount_in: self.amount_in,
             amount_out: SwapAmountType::NotSet,
@@ -238,7 +222,7 @@ impl<LDT: LoomDataTypes> SwapLine<LDT> {
             swap_to: None,
             gas_used: None,
         };
-        let second = SwapLine::<LDT> {
+        let second = SwapLine {
             path: SwapPath::new(self.tokens()[pool_index..].to_vec(), self.pools()[pool_index..].to_vec()),
             amount_in: SwapAmountType::NotSet,
             amount_out: self.amount_out,
@@ -316,12 +300,12 @@ impl<LDT: LoomDataTypes> SwapLine<LDT> {
     const MIN_VALID_OUT_AMOUNT: U256 = U256::from_limbs([0x100, 0, 0, 0]);
 
     /// Calculate the out amount for the swap line for a given in amount
-    pub fn calculate_with_in_amount<DB: DatabaseRef<Error = Report>>(
+    #[allow(clippy::result_large_err)]
+    pub fn calculate_with_in_amount(
         &self,
-        state: &DB,
-        env: Env,
+        evm: &mut dyn LoomExecuteEvm,
         in_amount: U256,
-    ) -> Result<(U256, u64, Vec<CalculationResult>), SwapError<LDT>> {
+    ) -> Result<(U256, u64, Vec<CalculationResult>), SwapError> {
         let mut current_in_amount = in_amount;
         let mut final_out_amount = U256::ZERO;
         let mut gas_used = 0;
@@ -330,10 +314,10 @@ impl<LDT: LoomDataTypes> SwapLine<LDT> {
         for (i, pool) in self.pools().iter().enumerate() {
             let token_from = &self.tokens()[i];
             let token_to = &self.tokens()[i + 1];
-            match pool.calculate_out_amount(state, env.clone(), &token_from.get_address(), &token_to.get_address(), current_in_amount) {
+            match pool.calculate_out_amount(evm, &token_from.get_address(), &token_to.get_address(), current_in_amount) {
                 Ok((out_amount_result, gas_result)) => {
                     if out_amount_result.is_zero() {
-                        return Err(SwapError::<LDT> {
+                        return Err(SwapError {
                             msg: "ZERO_OUT_AMOUNT".to_string(),
                             pool: pool.get_pool_id(),
                             token_from: token_from.get_address(),
@@ -343,7 +327,7 @@ impl<LDT: LoomDataTypes> SwapLine<LDT> {
                         });
                     }
                     if out_amount_result.lt(&Self::MIN_VALID_OUT_AMOUNT) {
-                        return Err(SwapError::<LDT> {
+                        return Err(SwapError {
                             msg: "ALMOST_ZERO_OUT_AMOUNT".to_string(),
                             pool: pool.get_pool_id(),
                             token_from: token_from.get_address(),
@@ -375,12 +359,12 @@ impl<LDT: LoomDataTypes> SwapLine<LDT> {
     }
 
     /// Calculate the in amount for the swap line for a given out amount
-    pub fn calculate_with_out_amount<DB: DatabaseRef<Error = Report>>(
+    #[allow(clippy::result_large_err)]
+    pub fn calculate_with_out_amount(
         &self,
-        state: &DB,
-        env: Env,
+        evm: &mut dyn LoomExecuteEvm,
         out_amount: U256,
-    ) -> Result<(U256, u64, Vec<CalculationResult>), SwapError<LDT>> {
+    ) -> Result<(U256, u64, Vec<CalculationResult>), SwapError> {
         let mut current_out_amount = out_amount;
         let mut final_in_amount = U256::ZERO;
         let mut gas_used = 0;
@@ -395,10 +379,10 @@ impl<LDT: LoomDataTypes> SwapLine<LDT> {
         for (i, pool) in pool_reverse.iter().enumerate() {
             let token_from = &tokens_reverse[i + 1];
             let token_to = &tokens_reverse[i];
-            match pool.calculate_in_amount(state, env.clone(), &token_from.get_address(), &token_to.get_address(), current_out_amount) {
+            match pool.calculate_in_amount(evm, &token_from.get_address(), &token_to.get_address(), current_out_amount) {
                 Ok((in_amount_result, gas_result)) => {
                     if in_amount_result == U256::MAX || in_amount_result == U256::ZERO {
-                        return Err(SwapError::<LDT> {
+                        return Err(SwapError {
                             msg: "ZERO_AMOUNT".to_string(),
                             pool: pool.get_pool_id(),
                             token_from: token_from.get_address(),
@@ -430,12 +414,8 @@ impl<LDT: LoomDataTypes> SwapLine<LDT> {
     }
 
     /// Optimize the swap line for a given in amount
-    pub fn optimize_with_in_amount<DB: DatabaseRef<Error = ErrReport>>(
-        &mut self,
-        state: &DB,
-        env: Env,
-        in_amount: U256,
-    ) -> Result<&mut Self, SwapError<LDT>> {
+    #[allow(clippy::result_large_err)]
+    pub fn optimize_with_in_amount(&mut self, evm: &mut dyn LoomExecuteEvm, in_amount: U256) -> Result<&mut Self, SwapError> {
         let mut current_in_amount = in_amount;
         let mut best_profit: Option<I256> = None;
         let mut current_step = U256::from(10000);
@@ -455,17 +435,16 @@ impl<LDT: LoomDataTypes> SwapLine<LDT> {
                 return Ok(self);
             }
 
-            let (current_out_amount, current_gas_used, calculation_results) =
-                match self.calculate_with_in_amount(state, env.clone(), next_amount) {
-                    Ok(ret) => ret,
-                    Err(e) => {
-                        if counter == 1 {
-                            // break if first swap already fails
-                            return Err(e);
-                        }
-                        (U256::ZERO, 0, vec![])
+            let (current_out_amount, current_gas_used, calculation_results) = match self.calculate_with_in_amount(evm, next_amount) {
+                Ok(ret) => ret,
+                Err(e) => {
+                    if counter == 1 {
+                        // break if first swap already fails
+                        return Err(e);
                     }
-                };
+                    (U256::ZERO, 0, vec![])
+                }
+            };
 
             let current_profit = I256::from_raw(current_out_amount) - I256::from_raw(next_amount);
 
@@ -539,7 +518,7 @@ mod tests {
     use loom_defi_address_book::{TokenAddressEth, UniswapV2PoolAddress, UniswapV3PoolAddress};
     use std::sync::Arc;
 
-    fn default_swap_line() -> (MockPool, MockPool, SwapLine<LoomDataTypesEthereum>) {
+    fn default_swap_line() -> (MockPool, MockPool, SwapLine) {
         let token0 = Arc::new(Token::new_with_data(TokenAddressEth::WETH, Some("WETH".to_string()), None, Some(18), true, false));
         let token1 = Arc::new(Token::new_with_data(TokenAddressEth::USDT, Some("USDT".to_string()), None, Some(6), true, false));
         let pool1 =
@@ -555,7 +534,7 @@ mod tests {
             amount_in: SwapAmountType::Set(parse_units("0.01", "ether").unwrap().get_absolute()),
             amount_out: SwapAmountType::Set(parse_units("0.03", "ether").unwrap().get_absolute()),
             calculation_results: vec![],
-            swap_to: Some(Address::default()),
+            swap_to: Some(Default::default()),
             gas_used: Some(10000),
         };
 
@@ -589,8 +568,8 @@ mod tests {
         let (_, _, swap_line) = default_swap_line();
 
         let tokens = swap_line.tokens();
-        assert_eq!(tokens.first().unwrap().get_address(), TokenAddressEth::WETH);
-        assert_eq!(tokens.get(1).unwrap().get_address(), TokenAddressEth::USDT);
+        assert_eq!(tokens.first().unwrap().get_address().address_or_zero(), TokenAddressEth::WETH);
+        assert_eq!(tokens.get(1).unwrap().get_address().address_or_zero(), TokenAddressEth::USDT);
     }
 
     #[test]
@@ -598,8 +577,8 @@ mod tests {
         let (pool1, pool2, swap_line) = default_swap_line();
 
         let pools = swap_line.pools();
-        assert_eq!(pools.first().unwrap().get_address(), pool1.address);
-        assert_eq!(pools.get(1).unwrap().get_address(), pool2.address);
+        assert_eq!(pools.first().unwrap().get_address().address_or_zero(), pool1.address);
+        assert_eq!(pools.get(1).unwrap().get_address().address_or_zero(), pool2.address);
     }
 
     #[test]
@@ -607,7 +586,7 @@ mod tests {
         let (_, _, swap_line) = default_swap_line();
 
         let token = swap_line.get_first_token();
-        assert_eq!(token.unwrap().get_address(), TokenAddressEth::WETH);
+        assert_eq!(token.unwrap().get_address().address_or_zero(), TokenAddressEth::WETH);
     }
 
     #[test]
@@ -615,7 +594,7 @@ mod tests {
         let (_, _, swap_line) = default_swap_line();
 
         let token = swap_line.get_last_token();
-        assert_eq!(token.unwrap().get_address(), TokenAddressEth::WETH);
+        assert_eq!(token.unwrap().get_address().address_or_zero(), TokenAddressEth::WETH);
     }
 
     #[test]
@@ -623,7 +602,7 @@ mod tests {
         let (pool1, _, swap_line) = default_swap_line();
 
         let pool = swap_line.get_first_pool();
-        assert_eq!(pool.unwrap().get_address(), pool1.address);
+        assert_eq!(pool.unwrap().get_address().address_or_zero(), pool1.address);
     }
 
     #[test]
@@ -631,6 +610,6 @@ mod tests {
         let (_, pool2, swap_line) = default_swap_line();
 
         let pool = swap_line.get_last_pool();
-        assert_eq!(pool.unwrap().get_address(), pool2.address);
+        assert_eq!(pool.unwrap().get_address().address_or_zero(), pool2.address);
     }
 }

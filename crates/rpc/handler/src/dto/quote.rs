@@ -9,6 +9,7 @@ pub struct Filter {
     pub protocol: Option<PoolProtocol>,
 }
 
+#[allow(unused)]
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct QuoteRequest {
     #[schema(schema_with = String::schema)]
