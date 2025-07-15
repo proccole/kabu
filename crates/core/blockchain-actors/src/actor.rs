@@ -192,7 +192,7 @@ where
         let mut address_vec = self.signers.inner().try_read()?.get_address_vec();
 
         if let Some(kabu_multicaller) = self.mutlicaller_address {
-            address_vec.push(kabu_multicaller.into());
+            address_vec.push(kabu_multicaller);
         }
 
         self.actor_manager.start_and_wait(
@@ -209,9 +209,9 @@ where
 
         for address in address_vec {
             //            market_state_preloader = market_state_preloader.with_new_account(address, 0, NWETH::from_float(10.0), None);
-            market_state_preloader = market_state_preloader.with_copied_account(address.into()).with_token_balance(
+            market_state_preloader = market_state_preloader.with_copied_account(address).with_token_balance(
                 TokenAddressEth::ETH_NATIVE,
-                address.into(),
+                address,
                 NWETH::from_float(10.0),
             );
         }

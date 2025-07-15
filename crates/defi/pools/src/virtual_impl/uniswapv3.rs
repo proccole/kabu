@@ -1,11 +1,11 @@
 use crate::db_reader::UniswapV3DbReader;
 use crate::virtual_impl::tick_provider::TickProviderEVMDB;
 use crate::UniswapV3Pool;
-use alloy::primitives::{I256, U256};
+use alloy::primitives::{Address, I256, U256};
 use eyre::eyre;
 use kabu_defi_uniswap_v3_math::tick_math::{MAX_SQRT_RATIO, MAX_TICK, MIN_SQRT_RATIO, MIN_TICK};
 use kabu_evm_db::KabuDBError;
-use kabu_types_entities::{EntityAddress, Pool};
+use kabu_types_entities::Pool;
 use revm::DatabaseRef;
 
 pub struct UniswapV3PoolVirtual;
@@ -84,19 +84,22 @@ impl UniswapV3PoolVirtual {
     pub fn simulate_swap_in_amount_provider<DB: DatabaseRef<Error = KabuDBError> + ?Sized>(
         db: &DB,
         pool: &UniswapV3Pool,
-        token_in: &EntityAddress,
+        token_in: &Address,
         amount_in: U256,
     ) -> eyre::Result<U256> {
         if amount_in.is_zero() {
             return Ok(U256::ZERO);
         }
 
-        let zero_for_one = token_in.eq(&pool.get_tokens()[0]);
+        let zero_for_one = *token_in == pool.get_tokens()[0];
 
         // Set sqrt_price_limit_x_96 to the max or min sqrt price in the pool depending on zero_for_one
         let sqrt_price_limit_x_96 = if zero_for_one { MIN_SQRT_RATIO + U256_1 } else { MAX_SQRT_RATIO - U256_1 };
 
-        let pool_address = pool.get_address().address_or_zero();
+        let pool_address = match pool.get_address() {
+            kabu_types_entities::PoolId::Address(addr) => addr,
+            kabu_types_entities::PoolId::B256(_) => return Err(eyre!("B256 pool ID variant not supported")),
+        };
 
         let slot0 = UniswapV3DbReader::slot0(&db, pool_address)?;
         let liquidity = UniswapV3DbReader::liquidity(&db, pool_address)?;
@@ -210,19 +213,22 @@ impl UniswapV3PoolVirtual {
     pub fn simulate_swap_out_amount_provided<DB: DatabaseRef<Error = KabuDBError> + ?Sized>(
         db: &DB,
         pool: &UniswapV3Pool,
-        token_in: &EntityAddress,
+        token_in: &Address,
         amount_out: U256,
     ) -> eyre::Result<U256> {
         if amount_out.is_zero() {
             return Ok(U256::ZERO);
         }
 
-        let zero_for_one = token_in.eq(&pool.get_tokens()[0]);
+        let zero_for_one = *token_in == pool.get_tokens()[0];
 
         // Set sqrt_price_limit_x_96 to the max or min sqrt price in the pool depending on zero_for_one
         let sqrt_price_limit_x_96 = if zero_for_one { MIN_SQRT_RATIO + U256_1 } else { MAX_SQRT_RATIO - U256_1 };
 
-        let pool_address = pool.get_address().address_or_zero();
+        let pool_address = match pool.get_address() {
+            kabu_types_entities::PoolId::Address(addr) => addr,
+            kabu_types_entities::PoolId::B256(_) => return Err(eyre!("B256 pool ID variant not supported")),
+        };
 
         let slot0 = UniswapV3DbReader::slot0(&db, pool_address)?;
         let liquidity = UniswapV3DbReader::liquidity(&db, pool_address)?;

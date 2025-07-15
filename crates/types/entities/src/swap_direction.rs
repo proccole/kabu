@@ -1,26 +1,26 @@
-use crate::EntityAddress;
+use crate::PoolId;
 use alloy_primitives::Address;
 use std::fmt::Debug;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 #[derive(Clone, Debug)]
 pub struct SwapDirection {
-    token_from: EntityAddress,
-    token_to: EntityAddress,
+    token_from: Address,
+    token_to: Address,
 }
 
 impl SwapDirection {
     #[inline]
-    pub fn new(token_from: EntityAddress, token_to: EntityAddress) -> Self {
+    pub fn new(token_from: Address, token_to: Address) -> Self {
         Self { token_from, token_to }
     }
 
     #[inline]
-    pub fn from(&self) -> &EntityAddress {
+    pub fn from(&self) -> &Address {
         &self.token_from
     }
     #[inline]
-    pub fn to(&self) -> &EntityAddress {
+    pub fn to(&self) -> &Address {
         &self.token_to
     }
 
@@ -32,7 +32,7 @@ impl SwapDirection {
     }
 
     #[inline]
-    pub fn get_hash_with_pool(&self, pool_id: &EntityAddress) -> u64 {
+    pub fn get_hash_with_pool(&self, pool_id: &PoolId) -> u64 {
         let mut hasher = DefaultHasher::new();
         self.hash(&mut hasher);
         pool_id.hash(&mut hasher);
@@ -55,14 +55,8 @@ impl PartialEq for SwapDirection {
 
 impl Eq for SwapDirection {}
 
-impl From<(EntityAddress, EntityAddress)> for SwapDirection {
-    fn from(value: (EntityAddress, EntityAddress)) -> Self {
-        Self { token_from: value.0, token_to: value.1 }
-    }
-}
-
 impl From<(Address, Address)> for SwapDirection {
     fn from(value: (Address, Address)) -> Self {
-        Self { token_from: value.0.into(), token_to: value.1.into() }
+        Self { token_from: value.0, token_to: value.1 }
     }
 }

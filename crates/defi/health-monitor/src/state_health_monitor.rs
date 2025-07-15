@@ -14,17 +14,20 @@ use kabu_core_actors_macros::{Accessor, Consumer};
 use kabu_core_blockchain::{Blockchain, BlockchainState};
 use kabu_evm_db::DatabaseKabuExt;
 use kabu_types_blockchain::KabuDataTypes;
-use kabu_types_entities::{EntityAddress, MarketState};
+use kabu_types_entities::{MarketState, PoolId};
 use kabu_types_events::{MarketEvents, MessageTxCompose, TxComposeMessageType};
 use revm::DatabaseRef;
 
 async fn verify_pool_state_task<P: Provider<Ethereum> + 'static, DB: DatabaseKabuExt>(
     client: P,
-    address: EntityAddress,
+    address: PoolId,
     market_state: SharedState<MarketState<DB>>,
 ) -> Result<()> {
     info!("Verifying state {address:?}");
-    let address = address.address()?;
+    let address = match address {
+        PoolId::Address(addr) => addr,
+        PoolId::B256(_) => return Err(eyre::eyre!("B256 pool ID not supported for verification")),
+    };
     let account = market_state.write().await.state_db.load_account(address).cloned()?;
     let read_only_cell_hash_set = market_state.read().await.config.read_only_cells.get(&address).cloned().unwrap_or_default();
 
@@ -65,8 +68,8 @@ pub async fn state_health_monitor_worker<
     let mut tx_compose_channel_rx: Receiver<MessageTxCompose> = tx_compose_channel_rx.subscribe();
     let mut market_events_rx: Receiver<MarketEvents> = market_events_rx.subscribe();
 
-    let mut check_time_map: HashMap<EntityAddress, DateTime<Local>> = HashMap::new();
-    let mut pool_address_to_verify_vec: Vec<EntityAddress> = Vec::new();
+    let mut check_time_map: HashMap<PoolId, DateTime<Local>> = HashMap::new();
+    let mut pool_address_to_verify_vec: Vec<PoolId> = Vec::new();
 
     loop {
         tokio::select! {

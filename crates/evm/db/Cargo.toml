@@ -25,6 +25,7 @@ serde-json = ["dep:serde_json", "serde"]
 [dev-dependencies]
 chrono.workspace = true
 criterion.workspace = true
+dotenvy.workspace = true
 env_logger.workspace = true
 tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter"] }

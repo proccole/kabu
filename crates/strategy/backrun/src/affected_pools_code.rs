@@ -9,7 +9,7 @@ use kabu_core_actors::SharedState;
 use kabu_defi_pools::protocols::{UniswapV2Protocol, UniswapV3Protocol};
 use kabu_evm_db::{AlloyDB, KabuDB};
 use kabu_types_blockchain::GethStateUpdateVec;
-use kabu_types_entities::{EntityAddress, Market, MarketState, PoolWrapper, SwapDirection};
+use kabu_types_entities::{Market, MarketState, PoolId, PoolWrapper, SwapDirection};
 
 pub async fn get_affected_pools_from_code<P, N>(
     client: P,
@@ -30,7 +30,7 @@ where
         for (address, state_update_entry) in state_update_record.iter() {
             if let Some(code) = &state_update_entry.code {
                 if UniswapV2Protocol::is_code(code) {
-                    match market.read().await.get_pool(&EntityAddress::Address(*address)) {
+                    match market.read().await.get_pool(&PoolId::Address(*address)) {
                         None => {
                             debug!(?address, "Loading UniswapV2 class pool");
 
@@ -75,7 +75,7 @@ where
                 }
 
                 if UniswapV3Protocol::is_code(code) {
-                    match market.read().await.get_pool(&EntityAddress::Address(*address)) {
+                    match market.read().await.get_pool(&PoolId::Address(*address)) {
                         None => {
                             debug!(%address, "Loading UniswapV3 class pool");
 

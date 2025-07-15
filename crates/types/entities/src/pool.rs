@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use crate::required_state::RequiredState;
 use crate::swap_direction::SwapDirection;
-use crate::EntityAddress;
+use crate::PoolId;
 use alloy_primitives::{Address, Bytes, U256};
 use eyre::{eyre, ErrReport, Result};
 use kabu_defi_address_book::FactoryAddress;
@@ -179,31 +179,31 @@ impl Eq for PoolWrapper {}
 
 impl Ord for PoolWrapper {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.get_address().cmp(&other.get_address())
+        self.get_pool_id().cmp(&other.get_pool_id())
     }
 }
 
 impl Display for PoolWrapper {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}@{:?}", self.get_protocol(), self.get_address())
+        write!(f, "{}@{}", self.get_protocol(), self.get_pool_id())
     }
 }
 
 impl Debug for PoolWrapper {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}@{:?}", self.get_protocol(), self.get_address())
+        write!(f, "{}@{}", self.get_protocol(), self.get_pool_id())
     }
 }
 
 impl Hash for PoolWrapper {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.get_address().hash(state)
+        self.get_pool_id().hash(state)
     }
 }
 
 impl PartialEq for PoolWrapper {
     fn eq(&self, other: &Self) -> bool {
-        self.pool.get_address() == other.pool.get_address()
+        self.pool.get_pool_id() == other.pool.get_pool_id()
     }
 }
 
@@ -246,21 +246,21 @@ pub trait Pool: Sync + Send {
 
     fn get_protocol(&self) -> PoolProtocol;
 
-    fn get_address(&self) -> EntityAddress;
+    fn get_address(&self) -> PoolId;
 
-    fn get_pool_id(&self) -> EntityAddress;
+    fn get_pool_id(&self) -> PoolId;
 
     fn get_fee(&self) -> U256;
 
-    fn get_tokens(&self) -> Vec<EntityAddress>;
+    fn get_tokens(&self) -> Vec<Address>;
 
     fn get_swap_directions(&self) -> Vec<SwapDirection>;
 
     fn calculate_out_amount(
         &self,
         db: &dyn DatabaseRef<Error = KabuDBError>,
-        token_address_from: &EntityAddress,
-        token_address_to: &EntityAddress,
+        token_address_from: &Address,
+        token_address_to: &Address,
         in_amount: U256,
     ) -> Result<(U256, u64), ErrReport>;
 
@@ -268,8 +268,8 @@ pub trait Pool: Sync + Send {
     fn calculate_in_amount(
         &self,
         db: &dyn DatabaseRef<Error = KabuDBError>,
-        token_address_from: &EntityAddress,
-        token_address_to: &EntityAddress,
+        token_address_from: &Address,
+        token_address_to: &Address,
         out_amount: U256,
     ) -> Result<(U256, u64), ErrReport>;
 

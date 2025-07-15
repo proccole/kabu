@@ -5,15 +5,14 @@ use std::string::ToString;
 use std::sync::Arc;
 use std::sync::RwLock;
 
-use crate::EntityAddress;
 use alloy_primitives::utils::Unit;
-use alloy_primitives::{I256, U256};
+use alloy_primitives::{Address, I256, U256};
 
 const ONE_ETHER: U256 = Unit::ETHER.wei_const();
 
 #[derive(Clone, Debug, Default)]
 pub struct Token {
-    address: EntityAddress,
+    address: Address,
     weth: bool,
     basic: bool,
     middle: bool,
@@ -56,16 +55,16 @@ impl PartialOrd for Token {
 
 impl Token {
     #[inline]
-    pub fn new<T: Into<EntityAddress>>(address: T) -> Token {
+    pub fn new<T: Into<Address>>(address: T) -> Token {
         Self::new_with_data(address, None, None, Some(18), false, false)
     }
 
     #[inline]
     pub fn zero() -> Token {
-        Self::new_with_data(EntityAddress::default(), None, None, Some(18), false, false)
+        Self::new_with_data(Address::default(), None, None, Some(18), false, false)
     }
 
-    pub fn new_with_data<T: Into<EntityAddress>>(
+    pub fn new_with_data<T: Into<Address>>(
         address: T,
         symbol: Option<String>,
         name: Option<String>,
@@ -110,7 +109,7 @@ impl Token {
     }
 
     #[inline]
-    pub fn get_address(&self) -> EntityAddress {
+    pub fn get_address(&self) -> Address {
         self.address
     }
 

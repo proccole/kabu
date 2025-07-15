@@ -196,6 +196,7 @@ mod test {
 
     #[tokio::test]
     async fn test_debug_block() -> Result<()> {
+        dotenvy::from_filename(".env.test").ok();
         let node_url = std::env::var("MAINNET_WS")?;
 
         let _ = env_logger::try_init_from_env(EnvLog::default().default_filter_or("info,tokio_tungstenite=off,tungstenite=off"));

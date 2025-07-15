@@ -2,7 +2,8 @@
 use std::collections::{BTreeMap, HashSet};
 use std::sync::Arc;
 
-use crate::{EntityAddress, Market, PoolWrapper, SwapDirection, SwapPath};
+use crate::{Market, PoolWrapper, SwapDirection, SwapPath};
+use alloy_primitives::Address;
 use eyre::Result;
 
 struct SwapPathSet {
@@ -32,8 +33,8 @@ impl SwapPathSet {
 fn build_swap_path_two_hopes_basic_in(
     market: &Market,
     pool: &PoolWrapper,
-    token_from_address: &EntityAddress,
-    token_to_address: &EntityAddress,
+    token_from_address: &Address,
+    token_to_address: &Address,
 ) -> Result<Vec<SwapPath>> {
     let mut ret: Vec<SwapPath> = Vec::new();
     let Some(token_token_pools) = market.get_token_token_pools(token_to_address, token_from_address) else {
@@ -60,8 +61,8 @@ fn build_swap_path_two_hopes_basic_in(
 fn build_swap_path_three_hopes_basic_in(
     market: &Market,
     pool: &PoolWrapper,
-    token_from_address: &EntityAddress,
-    token_to_address: &EntityAddress,
+    token_from_address: &Address,
+    token_to_address: &Address,
 ) -> Result<Vec<SwapPath>> {
     let mut ret: Vec<SwapPath> = Vec::new();
     if market.get_token_pools_len(token_to_address) < 2 {
@@ -119,8 +120,8 @@ fn build_swap_path_three_hopes_basic_in(
 fn build_swap_path_four_hopes_basic_in(
     market: &Market,
     pool: &PoolWrapper,
-    token_from_address: &EntityAddress,
-    token_to_address: &EntityAddress,
+    token_from_address: &Address,
+    token_to_address: &Address,
 ) -> Result<Vec<SwapPath>> {
     let mut ret: Vec<SwapPath> = Vec::new();
     if let Some(token_tokens) = market.get_token_tokens(token_to_address) {
@@ -200,8 +201,8 @@ fn build_swap_path_four_hopes_basic_in(
 fn build_swap_path_two_hopes_basic_out(
     market: &Market,
     pool: &PoolWrapper,
-    token_from_address: &EntityAddress,
-    token_to_address: &EntityAddress,
+    token_from_address: &Address,
+    token_to_address: &Address,
 ) -> Result<Vec<SwapPath>> {
     let mut ret: Vec<SwapPath> = Vec::new();
 
@@ -232,8 +233,8 @@ fn build_swap_path_two_hopes_basic_out(
 fn build_swap_path_three_hopes_basic_out(
     market: &Market,
     pool: &PoolWrapper,
-    token_from_address: &EntityAddress,
-    token_to_address: &EntityAddress,
+    token_from_address: &Address,
+    token_to_address: &Address,
 ) -> Result<Vec<SwapPath>> {
     let mut ret: Vec<SwapPath> = Vec::new();
     let Some(token_tokens) = market.get_token_tokens(token_from_address) else {
@@ -288,8 +289,8 @@ fn build_swap_path_three_hopes_basic_out(
 fn build_swap_path_four_hopes_basic_out(
     market: &Market,
     pool: &PoolWrapper,
-    token_from_address: &EntityAddress,
-    token_to_address: &EntityAddress,
+    token_from_address: &Address,
+    token_to_address: &Address,
 ) -> Result<Vec<SwapPath>> {
     let mut ret: Vec<SwapPath> = Vec::new();
     if let Some(token_tokens) = market.get_token_tokens(token_from_address) {
@@ -377,8 +378,8 @@ fn build_swap_path_four_hopes_basic_out(
 fn build_swap_path_three_hopes_no_basic(
     market: &Market,
     pool: &PoolWrapper,
-    token_from_address: &EntityAddress,
-    token_to_address: &EntityAddress,
+    token_from_address: &Address,
+    token_to_address: &Address,
 ) -> Result<Vec<SwapPath>> {
     let mut ret: Vec<SwapPath> = Vec::new();
 

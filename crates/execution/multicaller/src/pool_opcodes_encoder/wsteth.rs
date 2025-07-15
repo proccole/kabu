@@ -25,13 +25,16 @@ impl SwapOpcodesEncoderTrait for WstEthSwapEncoder {
         _payload: MulticallerOpcodesPayload,
         multicaller: Address,
     ) -> Result<()> {
-        let pool_address = cur_pool.get_address();
+        let pool_address = match cur_pool.get_address() {
+            kabu_types_entities::PoolId::Address(addr) => addr,
+            kabu_types_entities::PoolId::B256(_) => return Err(eyre!("Pool ID is B256, expected Address")),
+        };
 
         if token_from_address == TokenAddressEth::WETH && token_to_address == TokenAddressEth::WSTETH {
             let weth_withdraw_opcode =
                 MulticallerCall::new_call(token_from_address, &AbiEncoderHelper::encode_weth_withdraw(amount_in.unwrap_or_default()));
             let mut swap_opcode = MulticallerCall::new_call_with_value(
-                pool_address.into(),
+                pool_address,
                 &abi_encoder.encode_swap_in_amount_provided(
                     cur_pool,
                     token_from_address,
@@ -63,7 +66,7 @@ impl SwapOpcodesEncoderTrait for WstEthSwapEncoder {
             );
 
             let mut swap_opcode = MulticallerCall::new_call(
-                pool_address.into(),
+                pool_address,
                 &abi_encoder.encode_swap_in_amount_provided(
                     cur_pool,
                     token_from_address,

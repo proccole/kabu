@@ -1,7 +1,7 @@
 use alloy_consensus::Transaction;
 use alloy_eips::{BlockId, BlockNumberOrTag};
 use alloy_network::Network;
-use alloy_primitives::{Log, U256};
+use alloy_primitives::{Address, Log, U256};
 use alloy_provider::Provider;
 use alloy_rpc_types::eth::Log as EthLog;
 use alloy_rpc_types::TransactionTrait;
@@ -11,7 +11,7 @@ use kabu_core_actors_macros::{Accessor, Consumer};
 use kabu_core_blockchain::Blockchain;
 use kabu_defi_abi::IERC20::IERC20Events;
 use kabu_types_blockchain::{KabuBlock, KabuDataTypes, KabuTx};
-use kabu_types_entities::{AccountNonceAndBalanceState, EntityAddress, LatestBlock};
+use kabu_types_entities::{AccountNonceAndBalanceState, LatestBlock};
 use kabu_types_events::MarketEvents;
 use std::marker::PhantomData;
 use std::time::Duration;
@@ -28,13 +28,13 @@ where
     N: Network,
     P: Provider<N> + Send + Sync + Clone + 'static,
 {
-    let eth_addr = EntityAddress::default();
+    let eth_addr = Address::ZERO;
 
     loop {
         let accounts = accounts_state.read().await.get_accounts_vec();
         for addr in accounts.into_iter() {
-            let nonce = client.get_transaction_count(addr.into()).block_id(BlockId::Number(BlockNumberOrTag::Latest)).await;
-            let balance = client.get_balance(addr.into()).block_id(BlockId::Number(BlockNumberOrTag::Latest)).await;
+            let nonce = client.get_transaction_count(addr).block_id(BlockId::Number(BlockNumberOrTag::Latest)).await;
+            let balance = client.get_balance(addr).block_id(BlockId::Number(BlockNumberOrTag::Latest)).await;
 
             if let Some(acc) = accounts_state.write().await.get_mut_account(&addr) {
                 if let Ok(nonce) = nonce {
@@ -61,8 +61,7 @@ pub async fn nonce_and_balance_monitor_worker<LDT>(
     market_events_rx: Broadcaster<MarketEvents<LDT>>,
 ) -> WorkerResult
 where
-    LDT: KabuDataTypes<Log = EthLog>,
-    LDT::Address: Into<EntityAddress>,
+    LDT: KabuDataTypes<Log = EthLog, Address = Address>,
 {
     let mut market_events = market_events_rx.subscribe();
 
@@ -80,20 +79,21 @@ where
                                 let mut accounts_lock = accounts_state.write().await;
 
                                 for tx in txs {
-                                    let tx_from : LDT::Address = tx.get_from();
-                                    if accounts_lock.is_monitored(&tx_from.into()) {
-                                        if let Some(&mut ref mut account) = accounts_lock.get_mut_account(&tx_from.into()) {
+                                    let tx_from : Address = tx.get_from();
+                                    if accounts_lock.is_monitored(&tx_from) {
+                                        if let Some(&mut ref mut account) = accounts_lock.get_mut_account(&tx_from) {
                                             let spent = (TransactionTrait::max_fee_per_gas(&tx) + tx.max_priority_fee_per_gas().unwrap()) * tx.get_gas_limit() as u128 + tx.value().to::<u128>();
                                             let value = U256::from(spent);
-                                            account.sub_balance(EntityAddress::default(), value).set_nonce(tx.get_nonce()+1);
+                                            account.sub_balance(Address::ZERO, value).set_nonce(tx.get_nonce()+1);
                                             debug!("Account {} : sub ETH balance {} -> {} nonce {}", tx_from, value, account.get_eth_balance(), tx.get_nonce()+1);
                                         }
                                     }
 
                                     if let Some(to )  = tx.to() {
-                                        if accounts_lock.is_monitored(&to.into()) {
-                                            if let Some(&mut ref mut account) = accounts_lock.get_mut_account(&to.into()) {
-                                                account.add_balance(EntityAddress::default(), tx.value());
+                                        let to_addr: Address = to;
+                                        if accounts_lock.is_monitored(&to_addr) {
+                                            if let Some(&mut ref mut account) = accounts_lock.get_mut_account(&to_addr) {
+                                                account.add_balance(Address::ZERO, tx.value());
                                                 debug!("Account {} : add ETH balance {} -> {}", to, tx.value(), account.get_eth_balance());
                                             }
                                         }
@@ -115,15 +115,15 @@ where
                                             if let Ok(event) = IERC20Events::decode_log(&log_entry){
                                                 if let  IERC20Events::Transfer(event) = event.data {
                                                     //debug!("ERC20TransferEvent {} : {:?}", log_entry.address, event);
-                                                    if accounts_lock.is_monitored(&event.to.into()) {
-                                                        if let Some(&mut ref mut account) = accounts_lock.get_mut_account(&event.to.into()) {
-                                                            account.add_balance(log_entry.address.into(), event.value);
-                                                            debug!("Account {} : add ERC20 {} balance {} -> {}", event.to, log_entry.address, event.value, account.get_balance(&log_entry.address.into()));
+                                                    if accounts_lock.is_monitored(&event.to) {
+                                                        if let Some(&mut ref mut account) = accounts_lock.get_mut_account(&event.to) {
+                                                            account.add_balance(log_entry.address, event.value);
+                                                            debug!("Account {} : add ERC20 {} balance {} -> {}", event.to, log_entry.address, event.value, account.get_balance(&log_entry.address));
                                                         }
-                                                    } else if accounts_lock.is_monitored(&event.from.into()) {
-                                                        if let Some(&mut ref mut account) = accounts_lock.get_mut_account(&event.from.into()) {
-                                                            account.sub_balance(log_entry.address.into(), event.value);
-                                                            debug!("Account {} : sub ERC20 {} balance {} -> {}", event.from, log_entry.address, event.value, account.get_balance(&log_entry.address.into()));
+                                                    } else if accounts_lock.is_monitored(&event.from) {
+                                                        if let Some(&mut ref mut account) = accounts_lock.get_mut_account(&event.from) {
+                                                            account.sub_balance(log_entry.address, event.value);
+                                                            debug!("Account {} : sub ERC20 {} balance {} -> {}", event.from, log_entry.address, event.value, account.get_balance(&log_entry.address));
                                                         }
                                                     }
                                                 }
@@ -196,8 +196,7 @@ impl<P, N, LDT> Actor for NonceAndBalanceMonitorActor<P, N, LDT>
 where
     N: Network,
     P: Provider<N> + Send + Sync + Clone + 'static,
-    LDT: KabuDataTypes<Log = EthLog> + 'static,
-    LDT::Address: Into<EntityAddress>,
+    LDT: KabuDataTypes<Log = EthLog, Address = Address> + 'static,
 {
     fn start(&self) -> ActorResult {
         let mut handles = Vec::new();

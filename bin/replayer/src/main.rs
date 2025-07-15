@@ -25,7 +25,7 @@ use kabu_evm_utils::NWETH;
 use kabu_execution_multicaller::MulticallerSwapEncoder;
 use kabu_node_player::NodeBlockPlayerActor;
 use kabu_types_entities::required_state::RequiredState;
-use kabu_types_entities::{EntityAddress, MarketState, PoolClass, Swap, SwapAmountType, SwapLine};
+use kabu_types_entities::{MarketState, PoolClass, PoolId, Swap, SwapAmountType, SwapLine};
 use kabu_types_events::{MessageSwapCompose, SwapComposeData, TxComposeData};
 use tracing::{debug, error, info};
 use tracing_subscriber::layer::SubscriberExt;
@@ -134,7 +134,7 @@ async fn main() -> Result<()> {
                         if header.number % 10 == 0 {
                             info!("Composing swap: block_number={}, block_hash={}", header.number, header.hash);
 
-                            let swap_path = market.read().await.swap_path(vec![TokenAddressEth::WETH.into(), TokenAddressEth::USDC.into()], vec![EntityAddress::Address(UniswapV3PoolAddress::USDC_WETH_500)])?;
+                            let swap_path = market.read().await.swap_path(vec![TokenAddressEth::WETH, TokenAddressEth::USDC], vec![PoolId::Address(UniswapV3PoolAddress::USDC_WETH_500)])?;
                             let mut swap_line = SwapLine::from(swap_path);
                             swap_line.amount_in = SwapAmountType::Set( NWETH::from_float(0.1));
                             swap_line.gas_used = Some(300000);

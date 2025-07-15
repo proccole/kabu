@@ -7,7 +7,7 @@ use eyre::{eyre, Result};
 use kabu_defi_abi::AbiEncoderHelper;
 use kabu_defi_address_book::TokenAddressEth;
 use kabu_types_blockchain::{MulticallerCall, MulticallerCalls};
-use kabu_types_entities::{Pool, SwapAmountType};
+use kabu_types_entities::{Pool, PoolId, SwapAmountType};
 
 pub struct StEthSwapEncoder();
 
@@ -25,13 +25,17 @@ impl SwapOpcodesEncoderTrait for StEthSwapEncoder {
         _payload: MulticallerOpcodesPayload,
         multicaller: Address,
     ) -> Result<()> {
-        let pool_address = cur_pool.get_address();
+        let pool_id = cur_pool.get_address();
+        let pool_address = match pool_id {
+            PoolId::Address(addr) => addr,
+            PoolId::B256(_) => return Err(eyre!("stETH pool address must be an Address, not B256")),
+        };
 
         if token_from_address == TokenAddressEth::WETH && token_to_address == TokenAddressEth::STETH {
             let weth_withdraw_opcode =
                 MulticallerCall::new_call(token_from_address, &AbiEncoderHelper::encode_weth_withdraw(amount_in.unwrap_or_default()));
             let swap_opcode = MulticallerCall::new_call_with_value(
-                pool_address.into(),
+                pool_address,
                 &abi_encoder.encode_swap_in_amount_provided(
                     cur_pool,
                     token_from_address,

@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 
-use crate::{EntityAddress, Swap, Token};
+use crate::{Swap, Token};
 use alloy_primitives::utils::format_units;
-use alloy_primitives::U256;
+use alloy_primitives::{Address, U256};
 use eyre::{eyre, OptionExt, Result};
 use kabu_evm_utils::NWETH;
 use lazy_static::lazy_static;
@@ -117,7 +117,7 @@ pub fn tips_and_value_for_swap_type(
             Ok((vec![Tips { token_in, profit, profit_eth, tips, min_change }], value))
         }
         Swap::Multiple(swap_vec) => {
-            let mut tips_hashset: HashMap<EntityAddress, Tips> = HashMap::new();
+            let mut tips_hashset: HashMap<Address, Tips> = HashMap::new();
 
             let profit_eth = swap.arb_profit_eth();
 

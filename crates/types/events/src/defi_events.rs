@@ -1,6 +1,6 @@
 use alloy_primitives::BlockNumber;
 use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEthereum};
-use kabu_types_entities::EntityAddress;
+use kabu_types_entities::PoolId;
 
 #[derive(Clone, Debug)]
 pub enum MarketEvents<LDT: KabuDataTypes = KabuDataTypesEthereum> {
@@ -8,7 +8,7 @@ pub enum MarketEvents<LDT: KabuDataTypes = KabuDataTypesEthereum> {
     BlockTxUpdate { block_number: BlockNumber, block_hash: LDT::BlockHash },
     BlockLogsUpdate { block_number: BlockNumber, block_hash: LDT::BlockHash },
     BlockStateUpdate { block_hash: LDT::BlockHash },
-    NewPoolLoaded { pool_id: EntityAddress, swap_path_idx_vec: Vec<usize> },
+    NewPoolLoaded { pool_id: PoolId, swap_path_idx_vec: Vec<usize> },
 }
 
 #[derive(Clone, Debug)]

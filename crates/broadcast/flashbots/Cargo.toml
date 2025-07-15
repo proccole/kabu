@@ -34,3 +34,6 @@ alloy-rpc-types.workspace = true
 alloy-signer.workspace = true
 alloy-signer-local.workspace = true
 alloy-transport.workspace = true
+
+[dev-dependencies]
+dotenvy.workspace = true

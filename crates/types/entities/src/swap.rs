@@ -1,8 +1,8 @@
 use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 
-use crate::{EntityAddress, PoolWrapper, SwapLine, SwapStep, Token};
-use alloy_primitives::U256;
+use crate::{PoolId, PoolWrapper, SwapLine, SwapStep, Token};
+use alloy_primitives::{Address, U256};
 
 #[derive(Clone, Debug)]
 pub enum Swap {
@@ -26,7 +26,7 @@ impl Display for Swap {
 }
 
 impl Swap {
-    pub fn to_swap_steps(self: &Swap, multicaller: EntityAddress) -> Option<(SwapStep, SwapStep)> {
+    pub fn to_swap_steps(self: &Swap, multicaller: Address) -> Option<(SwapStep, SwapStep)> {
         match self {
             Swap::BackrunSwapLine(swap_line) => swap_line.to_swap_steps(multicaller),
             Swap::BackrunSwapSteps((sp0, sp1)) => Some((sp0.clone(), sp1.clone())),
@@ -77,7 +77,7 @@ impl Swap {
         }
     }
 
-    pub fn get_pool_id_vec(&self) -> Vec<EntityAddress> {
+    pub fn get_pool_id_vec(&self) -> Vec<PoolId> {
         match self {
             Swap::ExchangeSwapLine(swap_line) => swap_line.pools().iter().map(|item| item.get_pool_id()).collect(),
             Swap::BackrunSwapLine(swap_line) => swap_line.pools().iter().map(|item| item.get_pool_id()).collect(),
@@ -91,7 +91,7 @@ impl Swap {
         }
     }
 
-    pub fn get_pool_address_vec(&self) -> Vec<EntityAddress> {
+    pub fn get_pool_address_vec(&self) -> Vec<PoolId> {
         match self {
             Swap::ExchangeSwapLine(swap_line) => swap_line.pools().iter().map(|item| item.get_address()).collect(),
             Swap::BackrunSwapLine(swap_line) => swap_line.pools().iter().map(|item| item.get_address()).collect(),

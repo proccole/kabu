@@ -16,7 +16,7 @@ use kabu_defi_abi::IERC20;
 use kabu_defi_address_book::{FactoryAddress, PeripheryAddress};
 use kabu_evm_db::KabuDBError;
 use kabu_types_entities::required_state::RequiredState;
-use kabu_types_entities::{EntityAddress, Pool, PoolAbiEncoder, PoolClass, PoolProtocol, PreswapRequirement, SwapDirection};
+use kabu_types_entities::{Pool, PoolAbiEncoder, PoolClass, PoolId, PoolProtocol, PreswapRequirement, SwapDirection};
 use lazy_static::lazy_static;
 use revm::DatabaseRef;
 use tracing::debug;
@@ -232,19 +232,19 @@ impl Pool for UniswapV3Pool {
         self.protocol
     }
 
-    fn get_address(&self) -> EntityAddress {
-        self.address.into()
+    fn get_address(&self) -> PoolId {
+        PoolId::Address(self.address)
     }
-    fn get_pool_id(&self) -> EntityAddress {
-        EntityAddress::Address(self.address)
+    fn get_pool_id(&self) -> PoolId {
+        PoolId::Address(self.address)
     }
 
     fn get_fee(&self) -> U256 {
         U256::from(self.fee)
     }
 
-    fn get_tokens(&self) -> Vec<EntityAddress> {
-        vec![self.token0.into(), self.token1.into()]
+    fn get_tokens(&self) -> Vec<Address> {
+        vec![self.token0, self.token1]
     }
 
     fn get_swap_directions(&self) -> Vec<SwapDirection> {
@@ -254,8 +254,8 @@ impl Pool for UniswapV3Pool {
     fn calculate_out_amount(
         &self,
         db: &dyn DatabaseRef<Error = KabuDBError>,
-        token_address_from: &EntityAddress,
-        token_address_to: &EntityAddress,
+        token_address_from: &Address,
+        token_address_to: &Address,
         in_amount: U256,
     ) -> Result<(U256, u64), ErrReport> {
         let (ret, gas_used) = if self.get_protocol() == PoolProtocol::UniswapV3 {
@@ -267,8 +267,8 @@ impl Pool for UniswapV3Pool {
                 let (ret_evm, gas_used) = UniswapV3QuoterV2StateReader::quote_exact_input(
                     db,
                     PeripheryAddress::UNISWAP_V3_QUOTER_V2,
-                    token_address_from.into(),
-                    token_address_to.into(),
+                    *token_address_from,
+                    *token_address_to,
                     self.fee.try_into()?,
                     in_amount,
                 )?;
@@ -284,8 +284,8 @@ impl Pool for UniswapV3Pool {
             let (ret_evm, gas_used) = UniswapV3QuoterV2StateReader::quote_exact_input(
                 db,
                 PeripheryAddress::UNISWAP_V3_QUOTER_V2,
-                token_address_from.into(),
-                token_address_to.into(),
+                *token_address_from,
+                *token_address_to,
                 self.fee.try_into()?,
                 in_amount,
             )?;
@@ -303,8 +303,8 @@ impl Pool for UniswapV3Pool {
     fn calculate_in_amount(
         &self,
         db: &dyn DatabaseRef<Error = KabuDBError>,
-        token_address_from: &EntityAddress,
-        token_address_to: &EntityAddress,
+        token_address_from: &Address,
+        token_address_to: &Address,
         out_amount: U256,
     ) -> Result<(U256, u64), ErrReport> {
         let (ret, gas_used) = if self.get_protocol() == PoolProtocol::UniswapV3 {
@@ -316,8 +316,8 @@ impl Pool for UniswapV3Pool {
                 let (ret_evm, gas_used) = UniswapV3QuoterV2StateReader::quote_exact_output(
                     db,
                     PeripheryAddress::UNISWAP_V3_QUOTER_V2,
-                    token_address_from.into(),
-                    token_address_to.into(),
+                    *token_address_from,
+                    *token_address_to,
                     self.fee.try_into()?,
                     out_amount,
                 )?;
@@ -334,8 +334,8 @@ impl Pool for UniswapV3Pool {
             let (ret_evm, gas_used) = UniswapV3QuoterV2StateReader::quote_exact_output(
                 db,
                 PeripheryAddress::UNISWAP_V3_QUOTER_V2,
-                token_address_from.into(),
-                token_address_to.into(),
+                *token_address_from,
+                *token_address_to,
                 self.fee.try_into()?,
                 out_amount,
             )?;
@@ -378,7 +378,7 @@ impl Pool for UniswapV3Pool {
 
         let balance_call_data = IERC20::IERC20Calls::balanceOf(IERC20::balanceOfCall { account: self.address }).abi_encode();
 
-        let pool_address = self.get_address().address_or_zero();
+        let pool_address = self.address;
 
         state_required
             .add_call(pool_address, IUniswapV3Pool::IUniswapV3PoolCalls::slot0(IUniswapV3Pool::slot0Call {}).abi_encode())
@@ -538,6 +538,7 @@ mod test {
 
     #[tokio::test]
     async fn test_pool_tokens() -> Result<()> {
+        dotenvy::from_filename(".env.test").ok();
         let node_url = env::var("MAINNET_WS")?;
         let client = AnvilDebugProviderFactory::from_node_on_block(node_url, BlockNumber::from(BLOCK_NUMBER)).await?;
 
@@ -601,6 +602,7 @@ mod test {
     #[tokio::test]
     async fn test_calculate_out_amount() -> Result<()> {
         // Verify that the calculated out amount is the same as the contract's out amount
+        dotenvy::from_filename(".env.test").ok();
         let node_url = env::var("MAINNET_WS")?;
         let client = AnvilDebugProviderFactory::from_node_on_block(node_url, BlockNumber::from(BLOCK_NUMBER)).await?;
 
@@ -624,7 +626,7 @@ mod test {
                     .await?;
 
             // under test
-            let (amount_out, gas_used) = match pool.calculate_out_amount(&state_db, &pool.token0.into(), &pool.token1.into(), amount_in) {
+            let (amount_out, gas_used) = match pool.calculate_out_amount(&state_db, &pool.token0, &pool.token1, amount_in) {
                 Ok((amount_out, gas_used)) => (amount_out, gas_used),
                 Err(e) => {
                     panic!("Calculation error for pool={pool_address:?}, amount_in={amount_in}, e={e:?}");
@@ -644,7 +646,7 @@ mod test {
                     .await?;
 
             // under test
-            let (amount_out, gas_used) = match pool.calculate_out_amount(&state_db, &pool.token1.into(), &pool.token0.into(), amount_in) {
+            let (amount_out, gas_used) = match pool.calculate_out_amount(&state_db, &pool.token1, &pool.token0, amount_in) {
                 Ok((amount_out, gas_used)) => (amount_out, gas_used),
                 Err(e) => {
                     panic!("Calculation error for pool={pool_address:?}, amount_in={amount_in}, e={e:?}");
@@ -665,6 +667,7 @@ mod test {
     #[tokio::test]
     async fn test_calculate_in_amount() -> Result<()> {
         // Verify that the calculated out amount is the same as the contract's out amount
+        dotenvy::from_filename(".env.test").ok();
         let node_url = env::var("MAINNET_WS")?;
         let client = AnvilDebugProviderFactory::from_node_on_block(node_url, BlockNumber::from(BLOCK_NUMBER)).await?;
 
@@ -688,7 +691,7 @@ mod test {
                     .await?;
 
             // under test
-            let (amount_in, gas_used) = match pool.calculate_in_amount(&state_db, &pool.token0.into(), &pool.token1.into(), amount_out) {
+            let (amount_in, gas_used) = match pool.calculate_in_amount(&state_db, &pool.token0, &pool.token1, amount_out) {
                 Ok((amount_in, gas_used)) => (amount_in, gas_used),
                 Err(e) => {
                     panic!("Calculation error for pool={pool_address:?}, amount_out={amount_out}, e={e:?}");
@@ -708,7 +711,7 @@ mod test {
                     .await?;
 
             // under test
-            let (amount_in, gas_used) = match pool.calculate_in_amount(&state_db, &pool.token1.into(), &pool.token0.into(), amount_out) {
+            let (amount_in, gas_used) = match pool.calculate_in_amount(&state_db, &pool.token1, &pool.token0, amount_out) {
                 Ok((amount_in, gas_used)) => (amount_in, gas_used),
                 Err(e) => {
                     panic!("Calculation error for pool={pool_address:?}, amount_out={amount_out}, e={e:?}");
@@ -729,6 +732,7 @@ mod test {
     #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn test_calculate_in_amount_with_ext_db() -> Result<()> {
         // Verify that the calculated out amount is the same as the contract's out amount
+        dotenvy::from_filename(".env.test").ok();
         let node_url = env::var("MAINNET_WS")?;
         let client = AnvilDebugProviderFactory::from_node_on_block(node_url, BlockNumber::from(BLOCK_NUMBER)).await?;
 
@@ -749,7 +753,7 @@ mod test {
                     .await?;
 
             // under test
-            let (amount_in, gas_used) = match pool.calculate_in_amount(&state_db, &pool.token0.into(), &pool.token1.into(), amount_out) {
+            let (amount_in, gas_used) = match pool.calculate_in_amount(&state_db, &pool.token0, &pool.token1, amount_out) {
                 Ok((amount_in, gas_used)) => (amount_in, gas_used),
                 Err(e) => {
                     panic!("Calculation error for pool={pool_address:?}, amount_out={amount_out}, e={e:?}");
@@ -769,7 +773,7 @@ mod test {
                     .await?;
 
             // under test
-            let (amount_in, gas_used) = match pool.calculate_in_amount(&state_db, &pool.token1.into(), &pool.token0.into(), amount_out) {
+            let (amount_in, gas_used) = match pool.calculate_in_amount(&state_db, &pool.token1, &pool.token0, amount_out) {
                 Ok((amount_in, gas_used)) => (amount_in, gas_used),
                 Err(e) => {
                     panic!("Calculation error for pool={pool_address:?}, amount_out={amount_out}, e={e:?}");

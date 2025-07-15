@@ -413,6 +413,7 @@ mod test {
     async fn test_create_service() -> Result<()> {
         let _ = env_logger::try_init_from_env(env_logger::Env::default().default_filter_or("info"));
 
+        dotenvy::from_filename(".env.test").ok();
         let node_url = Url::parse(env::var("MAINNET_HTTP")?.as_str())?;
 
         let transport = HttpCachedTransport::new(node_url, Some("./.cache")).await;
@@ -436,6 +437,7 @@ mod test {
     async fn test_get_block_number() -> Result<()> {
         let _ = env_logger::try_init_from_env(env_logger::Env::default().default_filter_or("info,alloy_rpc_client=off,"));
 
+        dotenvy::from_filename(".env.test").ok();
         let node_url = Url::parse(env::var("MAINNET_HTTP")?.as_str())?;
 
         let transport = HttpCachedTransport::new(node_url, Some("./.cache")).await;

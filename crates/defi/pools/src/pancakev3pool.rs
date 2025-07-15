@@ -15,7 +15,7 @@ use kabu_defi_address_book::PeripheryAddress;
 use kabu_evm_db::KabuDBError;
 use kabu_evm_utils::evm_call;
 use kabu_types_entities::required_state::RequiredState;
-use kabu_types_entities::{EntityAddress, Pool, PoolAbiEncoder, PoolClass, PoolProtocol, PreswapRequirement, SwapDirection};
+use kabu_types_entities::{Pool, PoolAbiEncoder, PoolClass, PoolId, PoolProtocol, PreswapRequirement, SwapDirection};
 use revm::DatabaseRef;
 use std::any::Any;
 use std::fmt::Debug;
@@ -194,20 +194,20 @@ impl Pool for PancakeV3Pool {
         self.protocol
     }
 
-    fn get_address(&self) -> EntityAddress {
-        self.address.into()
+    fn get_address(&self) -> PoolId {
+        PoolId::Address(self.address)
     }
 
-    fn get_pool_id(&self) -> EntityAddress {
-        EntityAddress::Address(self.address)
+    fn get_pool_id(&self) -> PoolId {
+        PoolId::Address(self.address)
     }
 
     fn get_fee(&self) -> U256 {
         U256::from(self.fee)
     }
 
-    fn get_tokens(&self) -> Vec<EntityAddress> {
-        vec![self.token0.into(), self.token1.into()]
+    fn get_tokens(&self) -> Vec<Address> {
+        vec![self.token0, self.token1]
     }
 
     fn get_swap_directions(&self) -> Vec<SwapDirection> {
@@ -217,14 +217,14 @@ impl Pool for PancakeV3Pool {
     fn calculate_out_amount(
         &self,
         db: &dyn DatabaseRef<Error = KabuDBError>,
-        token_address_from: &EntityAddress,
-        token_address_to: &EntityAddress,
+        token_address_from: &Address,
+        token_address_to: &Address,
         in_amount: U256,
     ) -> Result<(U256, u64), ErrReport> {
         let call_data = IPancakeQuoterV2Calls::quoteExactInputSingle(IPancakeQuoterV2::quoteExactInputSingleCall {
             params: IPancakeQuoterV2::QuoteExactInputSingleParams {
-                tokenIn: token_address_from.into(),
-                tokenOut: token_address_to.into(),
+                tokenIn: *token_address_from,
+                tokenOut: *token_address_to,
                 amountIn: in_amount,
                 fee: self.fee,
                 sqrtPriceLimitX96: PancakeV3Pool::get_price_limit(token_address_from, token_address_to),
@@ -246,14 +246,14 @@ impl Pool for PancakeV3Pool {
     fn calculate_in_amount(
         &self,
         db: &dyn DatabaseRef<Error = KabuDBError>,
-        token_address_from: &EntityAddress,
-        token_address_to: &EntityAddress,
+        token_address_from: &Address,
+        token_address_to: &Address,
         out_amount: U256,
     ) -> Result<(U256, u64), ErrReport> {
         let call_data = IPancakeQuoterV2Calls::quoteExactOutputSingle(IPancakeQuoterV2::quoteExactOutputSingleCall {
             params: IPancakeQuoterV2::QuoteExactOutputSingleParams {
-                tokenIn: token_address_from.into(),
-                tokenOut: token_address_to.into(),
+                tokenIn: *token_address_from,
+                tokenOut: *token_address_to,
                 amount: out_amount,
                 fee: self.fee,
                 sqrtPriceLimitX96: PancakeV3Pool::get_price_limit(token_address_from, token_address_to),
@@ -318,12 +318,12 @@ impl Pool for PancakeV3Pool {
         })
         .abi_encode();
 
-        let pool_address = self.get_address().address_or_zero();
+        let pool_address = self.address;
 
         let mut state_required = RequiredState::new();
         state_required
-            .add_call(self.get_address(), IUniswapV3Pool::IUniswapV3PoolCalls::slot0(IUniswapV3Pool::slot0Call {}).abi_encode())
-            .add_call(self.get_address(), IUniswapV3Pool::IUniswapV3PoolCalls::liquidity(IUniswapV3Pool::liquidityCall {}).abi_encode())
+            .add_call(self.address, IUniswapV3Pool::IUniswapV3PoolCalls::slot0(IUniswapV3Pool::slot0Call {}).abi_encode())
+            .add_call(self.address, IUniswapV3Pool::IUniswapV3PoolCalls::liquidity(IUniswapV3Pool::liquidityCall {}).abi_encode())
             .add_call(
                 PeripheryAddress::PANCAKE_V3_TICK_LENS,
                 ITickLens::ITickLensCalls::getPopulatedTicksInWord(ITickLens::getPopulatedTicksInWordCall {
@@ -509,6 +509,7 @@ mod tests {
     #[tokio::test]
     async fn test_pool() {
         let _ = env_logger::try_init_from_env(EnvLog::default().default_filter_or("info"));
+        dotenvy::from_filename(".env.test").ok();
         let node_url = env::var("MAINNET_WS").unwrap();
 
         let client = AnvilDebugProviderFactory::from_node_on_block(node_url, 19931897).await.unwrap();
@@ -536,17 +537,15 @@ mod tests {
 
         let cache_db = CacheDB::new(market_state.state_db);
 
-        let (out_amount, gas_used) = pool
-            .calculate_out_amount(&cache_db, &pool.token0.into(), &pool.token1.into(), U256::from(pool.liquidity0 / U256::from(100)))
-            .unwrap();
+        let (out_amount, gas_used) =
+            pool.calculate_out_amount(&cache_db, &pool.token0, &pool.token1, U256::from(pool.liquidity0 / U256::from(100))).unwrap();
 
         debug!("{} {} ", out_amount, gas_used);
         assert_ne!(out_amount, U256::ZERO);
         assert!(gas_used > 100_000, "gas used check failed");
 
-        let (out_amount, gas_used) = pool
-            .calculate_out_amount(&cache_db, &pool.token1.into(), &pool.token0.into(), U256::from(pool.liquidity1 / U256::from(100)))
-            .unwrap();
+        let (out_amount, gas_used) =
+            pool.calculate_out_amount(&cache_db, &pool.token1, &pool.token0, U256::from(pool.liquidity1 / U256::from(100))).unwrap();
         debug!("{} {} ", out_amount, gas_used);
         assert_ne!(out_amount, U256::ZERO);
         assert!(gas_used > 100_000, "gas used check failed");

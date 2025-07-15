@@ -120,6 +120,7 @@ mod test {
             "info,kabu_types_entities::required_state=off,kabu_types_blockchain::state_update=off,alloy_rpc_client::call=off,tungstenite=off",
         ));
 
+        dotenvy::from_filename(".env.test").ok();
         let node_url = env::var("MAINNET_WS")?;
 
         let client = AnvilDebugProviderFactory::from_node_on_block(node_url, 20038285).await?;

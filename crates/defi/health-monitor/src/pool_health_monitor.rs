@@ -10,7 +10,7 @@ use kabu_core_actors::{subscribe, Accessor, Actor, ActorResult, Broadcaster, Con
 use kabu_core_actors_macros::{Accessor, Consumer, Producer};
 use kabu_core_blockchain::Blockchain;
 use kabu_defi_address_book::TokenAddressEth;
-use kabu_types_entities::{EntityAddress, Market, PoolProtocol};
+use kabu_types_entities::{Market, PoolId, PoolProtocol};
 use kabu_types_events::{HealthEvent, MessageHealthEvent};
 use lazy_static::lazy_static;
 
@@ -34,7 +34,7 @@ pub async fn pool_health_monitor_worker(
 ) -> WorkerResult {
     subscribe!(pool_health_monitor_rx);
 
-    let mut pool_errors_map: HashMap<EntityAddress, u32> = HashMap::new();
+    let mut pool_errors_map: HashMap<PoolId, u32> = HashMap::new();
     //let mut estimate_errors_map: HashMap<u64, u32> = HashMap::new();
 
     loop {

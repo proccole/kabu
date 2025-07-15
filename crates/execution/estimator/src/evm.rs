@@ -54,14 +54,14 @@ where
         estimate_request.tips_pct,
         Some(estimate_request.tx_compose.next_block_number),
         None,
-        Some(tx_signer.address().into()),
+        Some(tx_signer.address()),
         Some(estimate_request.tx_compose.eth_balance),
     )?;
 
     let tx_request = TransactionRequest {
         transaction_type: Some(2),
         chain_id: Some(1),
-        from: Some(tx_signer.address().into()),
+        from: Some(tx_signer.address()),
         to: Some(TxKind::Call(to)),
         gas: Some(estimate_request.tx_compose.gas),
         value: call_value,
@@ -169,7 +169,7 @@ where
         estimate_request.tips_pct,
         Some(estimate_request.tx_compose.next_block_number),
         Some(gas_cost),
-        Some(tx_signer.address().into()),
+        Some(tx_signer.address()),
         Some(estimate_request.tx_compose.eth_balance),
     ) {
         Ok((to, call_value, call_data, tips_vec)) => (to, call_value, call_data, tips_vec),
@@ -182,7 +182,7 @@ where
     let tx_request = TransactionRequest {
         transaction_type: Some(2),
         chain_id: Some(1),
-        from: Some(tx_signer.address().into()),
+        from: Some(tx_signer.address()),
         to: Some(TxKind::Call(to)),
         gas: Some((gas_used * 1500) / 1000),
         value: call_value,

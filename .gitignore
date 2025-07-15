@@ -7,3 +7,4 @@ private.rs
 config.toml
 *.bkp
 .claude
+.env.test

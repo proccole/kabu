@@ -9,7 +9,7 @@ use kabu_defi_address_book::TokenAddressEth;
 use kabu_evm_db::KabuDBError;
 use kabu_evm_utils::evm_call;
 use kabu_types_entities::required_state::RequiredState;
-use kabu_types_entities::{EntityAddress, Pool, PoolAbiEncoder, PoolClass, PoolProtocol, PreswapRequirement, SwapDirection};
+use kabu_types_entities::{Pool, PoolAbiEncoder, PoolClass, PoolId, PoolProtocol, PreswapRequirement, SwapDirection};
 use lazy_static::lazy_static;
 use revm::DatabaseRef;
 use std::any::Any;
@@ -224,20 +224,20 @@ where
         PoolProtocol::Curve
     }
 
-    fn get_address(&self) -> EntityAddress {
-        self.address.into()
+    fn get_address(&self) -> PoolId {
+        PoolId::Address(self.address)
     }
 
-    fn get_pool_id(&self) -> EntityAddress {
-        EntityAddress::Address(self.address)
+    fn get_pool_id(&self) -> PoolId {
+        PoolId::Address(self.address)
     }
 
     fn get_fee(&self) -> U256 {
         U256::ZERO
     }
 
-    fn get_tokens(&self) -> Vec<EntityAddress> {
-        self.tokens.clone().into_iter().map(Into::into).collect()
+    fn get_tokens(&self) -> Vec<Address> {
+        self.tokens.clone()
     }
 
     fn get_swap_directions(&self) -> Vec<SwapDirection> {
@@ -269,12 +269,12 @@ where
     fn calculate_out_amount(
         &self,
         db: &dyn DatabaseRef<Error = KabuDBError>,
-        token_address_from: &EntityAddress,
-        token_address_to: &EntityAddress,
+        token_address_from: &Address,
+        token_address_to: &Address,
         in_amount: U256,
     ) -> Result<(U256, u64)> {
-        let token_address_from: Address = token_address_from.into();
-        let token_address_to: Address = token_address_to.into();
+        let token_address_from = *token_address_from;
+        let token_address_to = *token_address_to;
 
         let call_data = if self.is_meta {
             let i: Result<u32> = self.get_coin_idx(token_address_from);
@@ -318,12 +318,12 @@ where
     fn calculate_in_amount(
         &self,
         db: &dyn DatabaseRef<Error = KabuDBError>,
-        token_address_from: &EntityAddress,
-        token_address_to: &EntityAddress,
+        token_address_from: &Address,
+        token_address_to: &Address,
         out_amount: U256,
     ) -> Result<(U256, u64)> {
-        let token_address_from: Address = token_address_from.into();
-        let token_address_to: Address = token_address_to.into();
+        let token_address_from = *token_address_from;
+        let token_address_to = *token_address_to;
 
         if self.pool_contract.can_calculate_in_amount() {
             let i: u32 = self.get_coin_idx(token_address_from)?;
@@ -371,7 +371,7 @@ where
                         let value = self.balances[0] / U256::from(10);
                         match self.pool_contract.get_dy_call_data(0_u32, (j + self.tokens.len()) as u32, value) {
                             Ok(data) => {
-                                state_reader.add_call(self.get_address(), data);
+                                state_reader.add_call(self.address, data);
                             }
                             Err(e) => {
                                 error!("{}", e);
@@ -389,7 +389,7 @@ where
                     let value = self.balances[i] / U256::from(10);
                     match self.pool_contract.get_add_liquidity_call_data(i as u32, value, Address::ZERO) {
                         Ok(data) => {
-                            state_reader.add_call(self.get_address(), data);
+                            state_reader.add_call(self.address, data);
                         }
                         Err(e) => {
                             error!("{}", e);
@@ -407,7 +407,7 @@ where
                         let value = balance / U256::from(100);
                         match self.pool_contract.get_dy_call_data(i as u32, j as u32, value) {
                             Ok(data) => {
-                                state_reader.add_call(self.get_address(), data);
+                                state_reader.add_call(self.address, data);
                             }
                             Err(e) => {
                                 error!("{}", e);
@@ -426,7 +426,7 @@ where
         if !self.tokens.is_empty() && self.tokens.len() >= 2 {
             // Try to add get_dy(0, 1, 1) to ensure contract bytecode is fetched
             if let Ok(data) = self.pool_contract.get_dy_call_data(0, 1, U256::from(1)) {
-                state_reader.add_call(self.get_address(), data);
+                state_reader.add_call(self.address, data);
             }
         }
 
@@ -614,6 +614,7 @@ mod tests {
     async fn test_pool() -> Result<()> {
         let _ = env_logger::try_init_from_env(EnvLog::default().default_filter_or("info,alloy_rpc_client=off"));
 
+        dotenvy::from_filename(".env.test").ok();
         let node_url = std::env::var("MAINNET_WS")?;
 
         let client = AnvilDebugProviderFactory::from_node_on_block(node_url, 20045799).await?;
@@ -656,8 +657,7 @@ mod tests {
                     let in_amount = balances[i] / U256::from(100);
                     let token_in = tokens[i];
                     let token_out = tokens[j];
-                    let (out_amount, gas_used) = match pool.calculate_out_amount(&cache_db, &token_in.into(), &token_out.into(), in_amount)
-                    {
+                    let (out_amount, gas_used) = match pool.calculate_out_amount(&cache_db, &token_in, &token_out, in_amount) {
                         Ok(result) => result,
                         Err(e) => {
                             error!("Failed to calculate out amount for pool {:?}: {}", pool.get_address(), e);
@@ -684,13 +684,12 @@ mod tests {
                 for i in 0..tokens.len() {
                     let in_amount = balances[i] / U256::from(1000);
                     let token_in = tokens[i];
-                    let (out_amount, gas_used) =
-                        pool.calculate_out_amount(&cache_db, &token_in.into(), &lp_token.into(), in_amount).unwrap_or_default();
+                    let (out_amount, gas_used) = pool.calculate_out_amount(&cache_db, &token_in, &lp_token, in_amount).unwrap_or_default();
                     debug!("LP {:?} {} -> {} : {} -> {} gas : {}", pool.get_address(), token_in, lp_token, in_amount, out_amount, gas_used);
                     assert!(gas_used > 50000);
 
                     let (out_amount2, gas_used) =
-                        pool.calculate_out_amount(&cache_db, &lp_token.into(), &token_in.into(), out_amount).unwrap_or_default();
+                        pool.calculate_out_amount(&cache_db, &lp_token, &token_in, out_amount).unwrap_or_default();
                     debug!(
                         "LP {:?} {} -> {} : {} -> {} gas : {}",
                         pool.get_address(),
@@ -712,8 +711,7 @@ mod tests {
                     let in_amount = balances[0] / U256::from(1000);
                     let token_in = tokens[0];
                     let token_out = underlying_token;
-                    let (out_amount, gas_used) =
-                        pool.calculate_out_amount(&cache_db, &token_in.into(), &token_out.into(), in_amount).unwrap_or_default();
+                    let (out_amount, gas_used) = pool.calculate_out_amount(&cache_db, &token_in, &token_out, in_amount).unwrap_or_default();
                     debug!(
                         "Meta {:?} {} -> {} : {} -> {} gas: {}",
                         pool.get_address(),
@@ -724,7 +722,7 @@ mod tests {
                         gas_used
                     );
                     let (out_amount2, gas_used) =
-                        pool.calculate_out_amount(&cache_db, &token_out.into(), &token_in.into(), out_amount).unwrap_or_default();
+                        pool.calculate_out_amount(&cache_db, &token_out, &token_in, out_amount).unwrap_or_default();
                     debug!(
                         "Meta {:?} {} -> {} : {} -> {} gas : {} ",
                         pool.get_address(),

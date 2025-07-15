@@ -6,7 +6,7 @@ use eyre::{eyre, Result};
 use kabu_defi_abi::maverick::IMaverickPool::IMaverickPoolEvents;
 use kabu_evm_db::KabuDBError;
 use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEVM, KabuDataTypesEthereum};
-use kabu_types_entities::{EntityAddress, PoolClass, PoolLoader, PoolWrapper};
+use kabu_types_entities::{PoolClass, PoolId, PoolLoader, PoolWrapper};
 use revm::DatabaseRef;
 use std::future::Future;
 use std::pin::Pin;
@@ -21,13 +21,13 @@ where
     P: Provider<N> + Clone + 'static,
     LDT: KabuDataTypesEVM + 'static,
 {
-    fn get_pool_class_by_log(&self, log_entry: &LDT::Log) -> Option<(EntityAddress, PoolClass)> {
+    fn get_pool_class_by_log(&self, log_entry: &LDT::Log) -> Option<(PoolId, PoolClass)> {
         let log_entry: Option<EVMLog> = EVMLog::new(log_entry.address(), log_entry.topics().to_vec(), log_entry.data().data.clone());
         match log_entry {
             Some(log_entry) => match IMaverickPoolEvents::decode_log(&log_entry) {
                 Ok(event) => match event.data {
                     IMaverickPoolEvents::Swap(_) | IMaverickPoolEvents::AddLiquidity(_) | IMaverickPoolEvents::RemoveLiquidity(_) => {
-                        Some((EntityAddress::Address(log_entry.address), PoolClass::Maverick))
+                        Some((PoolId::Address(log_entry.address), PoolClass::Maverick))
                     }
                     _ => None,
                 },
@@ -37,7 +37,7 @@ where
         }
     }
 
-    fn fetch_pool_by_id<'a>(&'a self, pool_id: EntityAddress) -> Pin<Box<dyn Future<Output = Result<PoolWrapper>> + Send + 'a>> {
+    fn fetch_pool_by_id<'a>(&'a self, pool_id: PoolId) -> Pin<Box<dyn Future<Output = Result<PoolWrapper>> + Send + 'a>> {
         Box::pin(async move {
             if let Some(provider) = self.provider.clone() {
                 self.fetch_pool_by_id_from_provider(pool_id, provider).await
@@ -47,23 +47,29 @@ where
         })
     }
 
-    fn fetch_pool_by_id_from_provider(
-        &self,
-        pool_id: EntityAddress,
-        provider: P,
-    ) -> Pin<Box<dyn Future<Output = Result<PoolWrapper>> + Send>> {
-        Box::pin(async move { Ok(PoolWrapper::new(Arc::new(MaverickPool::fetch_pool_data(provider.clone(), pool_id.address()?).await?))) })
+    fn fetch_pool_by_id_from_provider(&self, pool_id: PoolId, provider: P) -> Pin<Box<dyn Future<Output = Result<PoolWrapper>> + Send>> {
+        Box::pin(async move {
+            let address = match pool_id {
+                PoolId::Address(addr) => addr,
+                PoolId::B256(_) => return Err(eyre!("B256 pool ID variant not supported for Maverick pools")),
+            };
+            Ok(PoolWrapper::new(Arc::new(MaverickPool::fetch_pool_data(provider.clone(), address).await?)))
+        })
     }
 
-    fn fetch_pool_by_id_from_evm(&self, pool_id: EntityAddress, db: &dyn DatabaseRef<Error = KabuDBError>) -> Result<PoolWrapper> {
-        Ok(PoolWrapper::new(Arc::new(MaverickPool::fetch_pool_data_evm(db, pool_id.address()?)?)))
+    fn fetch_pool_by_id_from_evm(&self, pool_id: PoolId, db: &dyn DatabaseRef<Error = KabuDBError>) -> Result<PoolWrapper> {
+        let address = match pool_id {
+            PoolId::Address(addr) => addr,
+            PoolId::B256(_) => return Err(eyre!("B256 pool ID variant not supported for Maverick pools")),
+        };
+        Ok(PoolWrapper::new(Arc::new(MaverickPool::fetch_pool_data_evm(db, address)?)))
     }
 
     fn is_code(&self, _code: &Bytes) -> bool {
         false
     }
 
-    fn protocol_loader(&self) -> Result<Pin<Box<dyn Stream<Item = (EntityAddress, PoolClass)> + Send>>> {
+    fn protocol_loader(&self) -> Result<Pin<Box<dyn Stream<Item = (PoolId, PoolClass)> + Send>>> {
         Err(eyre!("NOT_IMPLEMENTED"))
     }
 }

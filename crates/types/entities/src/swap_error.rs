@@ -1,5 +1,5 @@
-use crate::{EntityAddress, SwapPath};
-use alloy_primitives::U256;
+use crate::{PoolId, SwapPath};
+use alloy_primitives::{Address, U256};
 use eyre::{eyre, Report};
 use std::hash::{Hash, Hasher};
 
@@ -20,9 +20,9 @@ impl Eq for EstimationError {}
 #[derive(Clone, Debug)]
 pub struct SwapError {
     pub msg: String,
-    pub pool: EntityAddress,
-    pub token_from: EntityAddress,
-    pub token_to: EntityAddress,
+    pub pool: PoolId,
+    pub token_from: Address,
+    pub token_to: Address,
     pub is_in_amount: bool,
     pub amount: U256,
 }

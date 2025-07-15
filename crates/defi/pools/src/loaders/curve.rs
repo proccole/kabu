@@ -6,7 +6,7 @@ use eyre::eyre;
 use futures::Stream;
 use kabu_evm_db::KabuDBError;
 use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEVM, KabuDataTypesEthereum};
-use kabu_types_entities::{EntityAddress, PoolClass, PoolLoader, PoolWrapper};
+use kabu_types_entities::{PoolClass, PoolId, PoolLoader, PoolWrapper};
 use revm::DatabaseRef;
 use std::future::Future;
 use std::pin::Pin;
@@ -21,11 +21,11 @@ where
     P: Provider<N> + Clone + 'static,
     LDT: KabuDataTypesEVM + 'static,
 {
-    fn get_pool_class_by_log(&self, _log_entry: &LDT::Log) -> Option<(EntityAddress, PoolClass)> {
+    fn get_pool_class_by_log(&self, _log_entry: &LDT::Log) -> Option<(PoolId, PoolClass)> {
         None
     }
 
-    fn fetch_pool_by_id<'a>(&'a self, pool_id: EntityAddress) -> Pin<Box<dyn Future<Output = eyre::Result<PoolWrapper>> + Send + 'a>> {
+    fn fetch_pool_by_id<'a>(&'a self, pool_id: PoolId) -> Pin<Box<dyn Future<Output = eyre::Result<PoolWrapper>> + Send + 'a>> {
         Box::pin(async move {
             if let Some(provider) = &self.provider {
                 self.fetch_pool_by_id_from_provider(pool_id, provider.clone()).await
@@ -37,11 +37,14 @@ where
 
     fn fetch_pool_by_id_from_provider<'a>(
         &'a self,
-        pool_id: EntityAddress,
+        pool_id: PoolId,
         provider: P,
     ) -> Pin<Box<dyn Future<Output = eyre::Result<PoolWrapper>> + Send + 'a>> {
         Box::pin(async move {
-            let pool_address = pool_id.address()?;
+            let pool_address = match pool_id {
+                PoolId::Address(addr) => addr,
+                _ => return Err(eyre!("Pool ID must be an address for Curve pools")),
+            };
             match CurveProtocol::get_contract_from_code(provider.clone(), pool_address).await {
                 Ok(curve_contract) => {
                     let curve_pool = CurvePool::<P, N>::fetch_pool_data_with_default_encoder(provider.clone(), curve_contract).await?;
@@ -56,7 +59,7 @@ where
         })
     }
 
-    fn fetch_pool_by_id_from_evm(&self, _pool_id: EntityAddress, _db: &dyn DatabaseRef<Error = KabuDBError>) -> eyre::Result<PoolWrapper> {
+    fn fetch_pool_by_id_from_evm(&self, _pool_id: PoolId, _db: &dyn DatabaseRef<Error = KabuDBError>) -> eyre::Result<PoolWrapper> {
         Err(eyre!("NOT_IMPLEMENTED"))
     }
 
@@ -64,14 +67,14 @@ where
         false
     }
 
-    fn protocol_loader(&self) -> eyre::Result<Pin<Box<dyn Stream<Item = (EntityAddress, PoolClass)> + Send>>> {
+    fn protocol_loader(&self) -> eyre::Result<Pin<Box<dyn Stream<Item = (PoolId, PoolClass)> + Send>>> {
         let provider_clone = self.provider.clone();
 
         if let Some(client) = provider_clone {
             Ok(Box::pin(stream! {
                 let curve_contracts = CurveProtocol::get_contracts_vec(client.clone());
                 for curve_contract in curve_contracts.iter() {
-                    yield (EntityAddress::Address(curve_contract.get_address()), PoolClass::Curve)
+                    yield (PoolId::Address(curve_contract.get_address()), PoolClass::Curve)
                 }
 
                 for factory_idx in 0..10 {
@@ -79,7 +82,7 @@ where
                         if let Ok(pool_count) = CurveProtocol::get_pool_count(client.clone(), factory_address).await {
                             for pool_id in 0..pool_count {
                                 if let Ok(addr) = CurveProtocol::get_pool_address(client.clone(), factory_address, pool_id).await {
-                                    yield (EntityAddress::Address(addr), PoolClass::Curve)
+                                    yield (PoolId::Address(addr), PoolClass::Curve)
                                 }
                             }
                         }

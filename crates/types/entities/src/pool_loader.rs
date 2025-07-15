@@ -1,5 +1,5 @@
 use crate::pool_config::PoolsLoadingConfig;
-use crate::{EntityAddress, PoolClass, PoolWrapper};
+use crate::{PoolClass, PoolId, PoolWrapper};
 use alloy_network::{Ethereum, Network};
 use alloy_primitives::Bytes;
 use alloy_provider::Provider;
@@ -20,16 +20,16 @@ where
     P: Provider<N>,
     LDT: Send + Sync + KabuDataTypes,
 {
-    fn get_pool_class_by_log(&self, log_entry: &LDT::Log) -> Option<(EntityAddress, PoolClass)>;
-    fn fetch_pool_by_id<'a>(&'a self, pool_id: EntityAddress) -> Pin<Box<dyn Future<Output = Result<PoolWrapper>> + Send + 'a>>;
+    fn get_pool_class_by_log(&self, log_entry: &LDT::Log) -> Option<(PoolId, PoolClass)>;
+    fn fetch_pool_by_id<'a>(&'a self, pool_id: PoolId) -> Pin<Box<dyn Future<Output = Result<PoolWrapper>> + Send + 'a>>;
     fn fetch_pool_by_id_from_provider<'a>(
         &'a self,
-        pool_id: EntityAddress,
+        pool_id: PoolId,
         provider: P,
     ) -> Pin<Box<dyn Future<Output = Result<PoolWrapper>> + Send + 'a>>;
-    fn fetch_pool_by_id_from_evm(&self, pool_id: EntityAddress, db: &dyn DatabaseRef<Error = KabuDBError>) -> Result<PoolWrapper>;
+    fn fetch_pool_by_id_from_evm(&self, pool_id: PoolId, db: &dyn DatabaseRef<Error = KabuDBError>) -> Result<PoolWrapper>;
     fn is_code(&self, code: &Bytes) -> bool;
-    fn protocol_loader(&self) -> Result<Pin<Box<dyn Stream<Item = (EntityAddress, PoolClass)> + Send>>>;
+    fn protocol_loader(&self) -> Result<Pin<Box<dyn Stream<Item = (PoolId, PoolClass)> + Send>>>;
 }
 
 pub struct PoolLoaders<P, N = Ethereum, LDT = KabuDataTypesEthereum>
@@ -85,7 +85,7 @@ where
     P: Provider<N> + 'static,
     LDT: KabuDataTypesEVM + 'static,
 {
-    pub fn determine_pool_class(&self, log_entry: &<KabuDataTypesEthereum as KabuDataTypes>::Log) -> Option<(EntityAddress, PoolClass)> {
+    pub fn determine_pool_class(&self, log_entry: &<KabuDataTypesEthereum as KabuDataTypes>::Log) -> Option<(PoolId, PoolClass)> {
         for (pool_class, pool_loader) in self.map.iter() {
             if let Some((pool_id, pool_class)) = pool_loader.get_pool_class_by_log(log_entry) {
                 return Some((pool_id, pool_class));
@@ -115,7 +115,7 @@ where
 
     pub fn load_pool_without_provider<'a>(
         &'a self,
-        pool_id: EntityAddress,
+        pool_id: PoolId,
         pool_class: &'a PoolClass,
     ) -> Pin<Box<dyn Future<Output = Result<PoolWrapper>> + Send + 'a>>
     where

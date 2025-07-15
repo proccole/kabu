@@ -44,7 +44,7 @@ use kabu::strategy::backrun::{BackrunConfig, StateChangeArbActor};
 use kabu::strategy::merger::{ArbSwapPathMergerActor, DiffPathMergerActor, SamePathMergerActor};
 use kabu::types::blockchain::{debug_trace_block, ChainParameters, KabuDataTypesEthereum, Mempool};
 use kabu::types::entities::{
-    AccountNonceAndBalanceState, BlockHistory, EntityAddress, LatestBlock, Market, MarketState, PoolClass, Swap, Token, TxSigners,
+    AccountNonceAndBalanceState, BlockHistory, LatestBlock, Market, MarketState, PoolClass, PoolId, Swap, Token, TxSigners,
 };
 use kabu::types::events::{
     MarketEvents, MempoolEvents, MessageBlock, MessageBlockHeader, MessageBlockLogs, MessageBlockStateUpdate, MessageHealthEvent,
@@ -312,7 +312,7 @@ async fn main() -> Result<()> {
                     market_instance.clone(),
                     market_state.clone(),
                     pool_loaders.clone(),
-                    EntityAddress::Address(pool_config.address),
+                    PoolId::Address(pool_config.address),
                     pool_config.class,
                 )
                 .await?;
@@ -338,8 +338,7 @@ async fn main() -> Result<()> {
                 error!("Unknown pool class")
             }
         }
-        let swap_path_len =
-            market_instance.read().await.get_pool_paths(&EntityAddress::Address(pool_config.address)).unwrap_or_default().len();
+        let swap_path_len = market_instance.read().await.get_pool_paths(&PoolId::Address(pool_config.address)).unwrap_or_default().len();
         info!(
             "Loaded pool '{}' with address={}, pool_class={}, swap_paths={}",
             pool_name, pool_config.address, pool_config.class, swap_path_len

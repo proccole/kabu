@@ -6,7 +6,7 @@ use alloy_primitives::{Address, Bytes, U256};
 use eyre::eyre;
 use kabu_defi_abi::AbiEncoderHelper;
 use kabu_types_blockchain::{MulticallerCall, MulticallerCalls};
-use kabu_types_entities::{Pool, PreswapRequirement, SwapAmountType};
+use kabu_types_entities::{Pool, PoolId, PreswapRequirement, SwapAmountType};
 use tracing::{trace, warn};
 
 pub struct UniswapV2SwapOpcodesEncoder;
@@ -36,10 +36,14 @@ impl SwapOpcodesEncoderTrait for UniswapV2SwapOpcodesEncoder {
         );
 
         // calculating out amount for in amount provided
+        let pool_address = match cur_pool.get_address() {
+            PoolId::Address(addr) => addr,
+            PoolId::B256(_) => return Err(eyre!("B256 pool ID not supported for UniswapV2")),
+        };
         let get_out_amount_opcode = MulticallerCall::new_internal_call(&AbiEncoderHelper::encode_multicaller_uni2_get_out_amount(
             token_from_address,
             token_to_address,
-            cur_pool.get_address().into(),
+            pool_address,
             amount_in.unwrap_or_default(),
             cur_pool.get_fee(),
         ));
@@ -49,7 +53,7 @@ impl SwapOpcodesEncoderTrait for UniswapV2SwapOpcodesEncoder {
 
         // abi encode and add uniswap swap opcode
         let mut swap_opcode = MulticallerCall::new_call(
-            cur_pool.get_address().into(),
+            pool_address,
             &abi_encoder.encode_swap_out_amount_provided(
                 cur_pool,
                 token_from_address,
@@ -100,6 +104,12 @@ impl SwapOpcodesEncoderTrait for UniswapV2SwapOpcodesEncoder {
         payload: MulticallerOpcodesPayload,
         multicaller_address: Address,
     ) -> eyre::Result<()> {
+        // Extract flash pool address early
+        let flash_pool_address = match flash_pool.get_address() {
+            PoolId::Address(addr) => addr,
+            PoolId::B256(_) => return Err(eyre!("B256 pool ID not supported for UniswapV2")),
+        };
+
         let payload = if let MulticallerOpcodesPayload::Opcodes(inside_opcodes) = &payload {
             let mut inside_opcodes = inside_opcodes.clone();
 
@@ -110,7 +120,7 @@ impl SwapOpcodesEncoderTrait for UniswapV2SwapOpcodesEncoder {
 
                     inside_opcodes.add(MulticallerCall::new_call(
                         token_from_address,
-                        &AbiEncoderHelper::encode_erc20_transfer(flash_pool.get_address().into(), amount),
+                        &AbiEncoderHelper::encode_erc20_transfer(flash_pool_address, amount),
                     ));
                 }
                 _ => {
@@ -141,7 +151,7 @@ impl SwapOpcodesEncoderTrait for UniswapV2SwapOpcodesEncoder {
         let mut get_out_amount_opcode = MulticallerCall::new_internal_call(&AbiEncoderHelper::encode_multicaller_uni2_get_out_amount(
             token_from_address,
             token_to_address,
-            flash_pool.get_address().into(),
+            flash_pool_address,
             amount_in.unwrap_or_default(),
             flash_pool.get_fee(),
         ));
@@ -153,7 +163,7 @@ impl SwapOpcodesEncoderTrait for UniswapV2SwapOpcodesEncoder {
 
         // abi encode uniswap2 out amount provided swap.
         let mut swap_opcode = MulticallerCall::new_call(
-            flash_pool.get_address().into(),
+            flash_pool_address,
             &abi_encoder.encode_swap_out_amount_provided(
                 flash_pool,
                 token_from_address,
@@ -189,6 +199,12 @@ impl SwapOpcodesEncoderTrait for UniswapV2SwapOpcodesEncoder {
         payload: MulticallerOpcodesPayload,
         multicaller_address: Address,
     ) -> eyre::Result<()> {
+        // Extract flash pool address early
+        let flash_pool_address = match flash_pool.get_address() {
+            PoolId::Address(addr) => addr,
+            PoolId::B256(_) => return Err(eyre!("B256 pool ID not supported for UniswapV2")),
+        };
+
         // getting address for token_to
         let swap_to = next_pool.and_then(|next_pool| next_pool.preswap_requirement().address()).unwrap_or(multicaller_address);
 
@@ -199,7 +215,7 @@ impl SwapOpcodesEncoderTrait for UniswapV2SwapOpcodesEncoder {
             let mut get_in_amount_opcode = MulticallerCall::new_internal_call(&AbiEncoderHelper::encode_multicaller_uni2_get_in_amount(
                 token_from_address,
                 token_to_address,
-                flash_pool.get_address().into(),
+                flash_pool_address,
                 amount_out.unwrap_or_default(),
                 flash_pool.get_fee(),
             ));
@@ -240,7 +256,7 @@ impl SwapOpcodesEncoderTrait for UniswapV2SwapOpcodesEncoder {
             inside_call_bytes.len()
         );
         let mut swap_opcode = MulticallerCall::new_call(
-            flash_pool.get_address().into(),
+            flash_pool_address,
             &abi_encoder.encode_swap_out_amount_provided(
                 flash_pool,
                 token_from_address,

@@ -1,6 +1,6 @@
-use kabu_types_entities::{EntityAddress, PoolClass};
+use kabu_types_entities::{PoolClass, PoolId};
 
 #[derive(Clone, Debug)]
 pub enum LoomTask {
-    FetchAndAddPools(Vec<(EntityAddress, PoolClass)>),
+    FetchAndAddPools(Vec<(PoolId, PoolClass)>),
 }

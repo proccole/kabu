@@ -6,7 +6,7 @@ use eyre::Result;
 use kabu_core_actors::SharedState;
 use kabu_defi_abi::uniswap4::IUniswapV4PoolManagerEvents::IUniswapV4PoolManagerEventsEvents;
 use kabu_defi_address_book::FactoryAddress;
-use kabu_types_entities::{EntityAddress, Market, PoolWrapper, SwapDirection};
+use kabu_types_entities::{Market, PoolId, PoolWrapper, SwapDirection};
 
 #[allow(dead_code)]
 pub async fn get_affected_pools_from_logs(market: SharedState<Market>, logs: &[Log]) -> Result<BTreeMap<PoolWrapper, Vec<SwapDirection>>> {
@@ -25,7 +25,7 @@ pub async fn get_affected_pools_from_logs(market: SharedState<Market>, logs: &[L
                 },
                 Err(_) => None,
             } {
-                if let Some(pool) = market_guard.get_pool(&EntityAddress::from(pool_id)) {
+                if let Some(pool) = market_guard.get_pool(&PoolId::B256(pool_id)) {
                     if !affected_pools.contains_key(pool) {
                         affected_pools.insert(pool.clone(), pool.get_swap_directions());
                     }

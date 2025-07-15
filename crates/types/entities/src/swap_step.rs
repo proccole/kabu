@@ -5,15 +5,16 @@ use alloy_primitives::{I256, U256};
 use eyre::{eyre, Result};
 use tracing::error;
 
-use crate::{EntityAddress, PoolWrapper, SwapAmountType, SwapLine, Token};
+use crate::{PoolWrapper, SwapAmountType, SwapLine, Token};
+use alloy_primitives::Address;
 use kabu_evm_db::KabuDBError;
 use revm::DatabaseRef;
 
 #[derive(Clone, Debug)]
 pub struct SwapStep {
     swap_line_vec: Vec<SwapLine>,
-    swap_from: Option<EntityAddress>,
-    swap_to: EntityAddress,
+    swap_from: Option<Address>,
+    swap_to: Address,
 }
 
 impl Display for SwapStep {
@@ -24,7 +25,7 @@ impl Display for SwapStep {
 }
 
 impl SwapStep {
-    pub fn new(swap_to: EntityAddress) -> Self {
+    pub fn new(swap_to: Address) -> Self {
         Self { swap_line_vec: Vec::new(), swap_to, swap_from: None }
     }
 
@@ -116,7 +117,7 @@ impl SwapStep {
         ret
     }
 
-    pub fn merge_swap_paths(swap_path_0: SwapLine, swap_path_1: SwapLine, multicaller: EntityAddress) -> Result<(SwapStep, SwapStep)> {
+    pub fn merge_swap_paths(swap_path_0: SwapLine, swap_path_1: SwapLine, multicaller: Address) -> Result<(SwapStep, SwapStep)> {
         let mut split_index_start = 0;
         let mut split_index_end = 0;
 
@@ -249,8 +250,8 @@ impl SwapStep {
         Err(eyre!("CANNOT_MERGE"))
     }
 
-    pub fn get_first_token_address(&self) -> Option<EntityAddress> {
-        let mut ret: Option<EntityAddress> = None;
+    pub fn get_first_token_address(&self) -> Option<Address> {
+        let mut ret: Option<Address> = None;
         for sp in self.swap_line_vec.iter() {
             match sp.get_first_token() {
                 Some(token) => match ret {

@@ -9,7 +9,7 @@ use kabu_evm_db::KabuDBType;
 use kabu_node_debug_provider::AnvilDebugProviderFactory;
 use kabu_strategy_backrun::SwapCalculator;
 use kabu_types_entities::required_state::RequiredStateReader;
-use kabu_types_entities::{EntityAddress, Market, PoolClass, PoolWrapper, SwapLine, SwapPath, Token};
+use kabu_types_entities::{Market, PoolClass, PoolId, PoolWrapper, SwapLine, SwapPath, Token};
 
 pub fn bench_swap_calculator(c: &mut Criterion) {
     let mut group = c.benchmark_group("swap_calculator");
@@ -52,7 +52,7 @@ pub fn bench_swap_calculator(c: &mut Criterion) {
 
             let mut directions = BTreeMap::new();
             let (pool_address, _) = pool_addresses.last().unwrap();
-            let last_pool = market.get_pool(&EntityAddress::Address(*pool_address)).unwrap();
+            let last_pool = market.get_pool(&PoolId::Address(*pool_address)).unwrap();
             directions.insert(last_pool.clone(), last_pool.get_swap_directions());
             let swap_path = market.build_swap_path_vec(&directions).unwrap().get(0).unwrap().clone();
 

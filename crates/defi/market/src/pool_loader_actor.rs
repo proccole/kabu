@@ -3,6 +3,7 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 
 use alloy_network::Network;
+use alloy_primitives::Address;
 use alloy_provider::Provider;
 use alloy_rpc_types::TransactionRequest;
 use eyre::Result;
@@ -14,7 +15,7 @@ use kabu_core_actors_macros::{Accessor, Consumer, Producer};
 use kabu_core_blockchain::{Blockchain, BlockchainState};
 use kabu_node_debug_provider::DebugProviderExt;
 use kabu_types_entities::required_state::RequiredStateReader;
-use kabu_types_entities::{EntityAddress, Market, MarketState, PoolClass, PoolLoaders, PoolWrapper, SwapDirection};
+use kabu_types_entities::{Market, MarketState, PoolClass, PoolId, PoolLoaders, PoolWrapper, SwapDirection};
 use kabu_types_events::{LoomTask, MarketEvents};
 
 use kabu_types_blockchain::{get_touched_addresses, KabuDataTypes, KabuDataTypesEVM};
@@ -100,9 +101,9 @@ pub async fn fetch_and_add_pool_by_pool_id<P, PL, N, DB, LDT>(
     market: SharedState<Market>,
     market_state: SharedState<MarketState<DB>>,
     pool_loaders: Arc<PoolLoaders<PL, N, LDT>>,
-    pool_id: EntityAddress,
+    pool_id: PoolId,
     pool_class: PoolClass,
-) -> Result<(EntityAddress, Vec<usize>)>
+) -> Result<(PoolId, Vec<usize>)>
 where
     N: Network<TransactionRequest = LDT::TransactionRequest>,
     P: Provider<N> + DebugProviderExt<N> + Send + Sync + Clone + 'static,
@@ -121,7 +122,7 @@ pub async fn fetch_state_and_add_pool<P, N, DB, LDT>(
     market: SharedState<Market>,
     market_state: SharedState<MarketState<DB>>,
     pool_wrapped: PoolWrapper,
-) -> Result<(EntityAddress, Vec<usize>)>
+) -> Result<(PoolId, Vec<usize>)>
 where
     N: Network<TransactionRequest = LDT::TransactionRequest>,
     P: Provider<N> + DebugProviderExt<N> + Send + Sync + Clone + 'static,
@@ -138,12 +139,16 @@ where
                     let mut market_state_write_guard = market_state.write().await;
                     market_state_write_guard.apply_geth_update(state);
                     // TODO : Fix disable cells
-                    market_state_write_guard.config.disable_cell_vec(pool_address.address_or_zero(), pool_wrapped.get_read_only_cell_vec());
+                    let address = match pool_address {
+                        PoolId::Address(addr) => addr,
+                        PoolId::B256(_) => Address::ZERO,
+                    };
+                    market_state_write_guard.config.disable_cell_vec(address, pool_wrapped.get_read_only_cell_vec());
 
                     let pool_tokens = pool_wrapped.get_tokens();
 
                     for updated_address in updated_addresses {
-                        if !pool_tokens.contains(&updated_address.into()) {
+                        if !pool_tokens.contains(&updated_address) {
                             market_state_write_guard.config.add_force_insert(updated_address);
                         }
                     }

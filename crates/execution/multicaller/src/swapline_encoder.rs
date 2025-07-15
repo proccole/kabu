@@ -62,8 +62,8 @@ impl SwapLineEncoder {
             self.opcodes_encoder.encode_flash_swap_in_amount_provided(
                 &mut flash_swap_opcodes,
                 self.abi_encoder.as_ref(),
-                token_from_address.into(),
-                token_to_address.into(),
+                token_from_address,
+                token_to_address,
                 amount_in,
                 flash_pool.as_ref(),
                 prev_pool.map(|v| v.as_ref()),
@@ -104,8 +104,8 @@ impl SwapLineEncoder {
             self.opcodes_encoder.encode_flash_swap_out_amount_provided(
                 &mut flash_swap_opcodes,
                 self.abi_encoder.as_ref(),
-                token_from_address.into(),
-                token_to_address.into(),
+                token_from_address,
+                token_to_address,
                 amount_out,
                 flash_pool.as_ref(),
                 next_pool.map(|v| v.as_ref()),
@@ -365,15 +365,20 @@ impl SwapLineEncoder {
                 funds_to
             };*/
 
-            let swap_to = next_pool.map(|x| x.get_address()).unwrap_or(self.multicaller_address.into());
+            let swap_to = next_pool
+                .map(|x| match x.get_address() {
+                    kabu_types_entities::PoolId::Address(addr) => addr,
+                    kabu_types_entities::PoolId::B256(_) => self.multicaller_address, // fallback to multicaller_address
+                })
+                .unwrap_or(self.multicaller_address);
 
             trace!("swap_to {:?}", swap_to);
 
             self.opcodes_encoder.encode_swap_in_amount_provided(
                 &mut swap_opcodes,
                 self.abi_encoder.as_ref(),
-                token_from_address.into(),
-                token_to_address.into(),
+                token_from_address,
+                token_to_address,
                 amount_in,
                 cur_pool.as_ref(),
                 next_pool.map(|next_pool| next_pool.as_ref()),

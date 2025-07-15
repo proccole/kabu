@@ -4,7 +4,7 @@ use alloy_eips::eip2718::Encodable2718;
 use alloy_primitives::{Bytes, U256};
 use eyre::{eyre, Result};
 use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEthereum};
-use kabu_types_entities::{EntityAddress, Swap};
+use kabu_types_entities::{PoolId, Swap};
 use revm::DatabaseRef;
 use std::ops::Deref;
 
@@ -74,7 +74,7 @@ impl<DB: Clone + 'static, LDT: KabuDataTypes> SwapComposeData<DB, LDT> {
         }
     }
 
-    pub fn cross_pools(&self, others_pools: &[EntityAddress]) -> bool {
+    pub fn cross_pools(&self, others_pools: &[PoolId]) -> bool {
         self.swap.get_pool_id_vec().iter().any(|x| others_pools.contains(x))
     }
 

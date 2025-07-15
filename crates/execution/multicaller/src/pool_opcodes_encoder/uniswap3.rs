@@ -35,8 +35,13 @@ impl SwapOpcodesEncoderTrait for UniswapV3SwapOpcodesEncoder {
             multicaller_address
         };
 
+        let pool_address = match cur_pool.get_address() {
+            kabu_types_entities::PoolId::Address(addr) => addr,
+            kabu_types_entities::PoolId::B256(_) => return Err(eyre!("Pool ID is B256, expected Address")),
+        };
+
         let mut swap_opcode = MulticallerCall::new_call(
-            cur_pool.get_address().into(),
+            pool_address,
             &abi_encoder.encode_swap_in_amount_provided(
                 cur_pool,
                 token_from_address,
@@ -119,7 +124,13 @@ impl SwapOpcodesEncoderTrait for UniswapV3SwapOpcodesEncoder {
                 let mut payload = payload;
                 let mut transfer_opcode = MulticallerCall::new_call(
                     token_from_address,
-                    &AbiEncoderHelper::encode_erc20_transfer(flash_pool.get_address().into(), amount_in.unwrap_or_default()),
+                    &AbiEncoderHelper::encode_erc20_transfer(
+                        match flash_pool.get_address() {
+                            kabu_types_entities::PoolId::Address(addr) => addr,
+                            kabu_types_entities::PoolId::B256(_) => return Err(eyre!("Pool ID is B256, expected Address")),
+                        },
+                        amount_in.unwrap_or_default(),
+                    ),
                 );
 
                 if amount_in.is_not_set() {
@@ -142,8 +153,13 @@ impl SwapOpcodesEncoderTrait for UniswapV3SwapOpcodesEncoder {
             token_to_address,
             amount_in,
         );
+        let pool_address = match flash_pool.get_address() {
+            kabu_types_entities::PoolId::Address(addr) => addr,
+            kabu_types_entities::PoolId::B256(_) => return Err(eyre!("Pool ID is B256, expected Address")),
+        };
+
         let mut swap_opcode = MulticallerCall::new_call(
-            flash_pool.get_address().into(),
+            pool_address,
             &abi_encoder.encode_swap_in_amount_provided(
                 flash_pool,
                 token_from_address,
@@ -188,7 +204,13 @@ impl SwapOpcodesEncoderTrait for UniswapV3SwapOpcodesEncoder {
             trace!("retflash transfer token={:?}, to={:?}, amount=stack_norel_1", token_from_address, flash_pool.get_address());
             let mut transfer_opcode = MulticallerCall::new_call(
                 token_from_address,
-                &AbiEncoderHelper::encode_erc20_transfer(flash_pool.get_address().into(), U256::ZERO),
+                &AbiEncoderHelper::encode_erc20_transfer(
+                    match flash_pool.get_address() {
+                        kabu_types_entities::PoolId::Address(addr) => addr,
+                        kabu_types_entities::PoolId::B256(_) => return Err(eyre!("Pool ID is B256, expected Address")),
+                    },
+                    U256::ZERO,
+                ),
             );
             transfer_opcode.set_call_stack(false, 1, 0x24, 0x20);
 
@@ -211,8 +233,13 @@ impl SwapOpcodesEncoderTrait for UniswapV3SwapOpcodesEncoder {
             inside_call_bytes.len()
         );
 
+        let pool_address = match flash_pool.get_address() {
+            kabu_types_entities::PoolId::Address(addr) => addr,
+            kabu_types_entities::PoolId::B256(_) => return Err(eyre!("Pool ID is B256, expected Address")),
+        };
+
         let mut swap_opcode = MulticallerCall::new_call(
-            flash_pool.get_address().into(),
+            pool_address,
             &abi_encoder.encode_swap_out_amount_provided(
                 flash_pool,
                 token_from_address,

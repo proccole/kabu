@@ -4,14 +4,15 @@ use std::hash::{Hash, Hasher};
 
 use serde::{Deserialize, Serialize};
 
-use kabu_types_entities::{EntityAddress, PoolProtocol, SwapPath};
+use alloy_primitives::Address;
+use kabu_types_entities::{PoolId, PoolProtocol, SwapPath};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SwapLineDTO {
     pub pool_types: Vec<PoolProtocol>,
     pub token_symbols: Vec<String>,
-    pub pools: Vec<EntityAddress>,
-    pub tokens: Vec<EntityAddress>,
+    pub pools: Vec<PoolId>,
+    pub tokens: Vec<Address>,
 }
 
 // Implement the Ord and PartialOrd traits for X

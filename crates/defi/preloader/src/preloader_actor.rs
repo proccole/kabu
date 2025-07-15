@@ -14,7 +14,7 @@ use kabu_core_blockchain::{Blockchain, BlockchainState};
 use kabu_defi_address_book::TokenAddressEth;
 use kabu_evm_utils::{BalanceCheater, NWETH};
 use kabu_types_blockchain::{GethStateUpdate, KabuDataTypes};
-use kabu_types_entities::{AccountNonceAndBalanceState, EntityAddress, MarketState, TxSigners};
+use kabu_types_entities::{AccountNonceAndBalanceState, MarketState, TxSigners};
 use revm::{Database, DatabaseCommit, DatabaseRef};
 use tracing::{debug, error, trace};
 
@@ -32,8 +32,8 @@ where
 
 async fn set_monitor_token_balance(
     account_nonce_balance_state: Option<SharedState<AccountNonceAndBalanceState>>,
-    owner: EntityAddress,
-    token: EntityAddress,
+    owner: Address,
+    token: Address,
     balance: U256,
 ) {
     if let Some(account_nonce_balance) = account_nonce_balance_state {
@@ -46,11 +46,7 @@ async fn set_monitor_token_balance(
     }
 }
 
-async fn set_monitor_nonce(
-    account_nonce_balance_state: Option<SharedState<AccountNonceAndBalanceState>>,
-    owner: EntityAddress,
-    nonce: u64,
-) {
+async fn set_monitor_nonce(account_nonce_balance_state: Option<SharedState<AccountNonceAndBalanceState>>, owner: Address, nonce: u64) {
     if let Some(account_nonce_balance) = account_nonce_balance_state {
         debug!("set_monitor_nonce {} {}", owner, nonce);
         let mut account_nonce_balance_guard = account_nonce_balance.write().await;
@@ -62,7 +58,7 @@ async fn set_monitor_nonce(
 
 pub async fn preload_market_state<P, N, DB>(
     client: P,
-    copied_accounts_vec: Vec<EntityAddress>,
+    copied_accounts_vec: Vec<Address>,
     new_accounts_vec: Vec<(Address, u64, U256, Option<Bytes>)>,
     token_balances_vec: Vec<(Address, Address, U256)>,
     market_state: SharedState<MarketState<DB>>,
@@ -79,25 +75,19 @@ where
 
     for address in copied_accounts_vec {
         trace!("Loading address : {address}");
-        let acc_state = fetch_account_state(client.clone(), address.into()).await?;
+        let acc_state = fetch_account_state(client.clone(), address).await?;
 
-        set_monitor_token_balance(
-            account_nonce_balance_state.clone(),
-            address,
-            EntityAddress::default(),
-            acc_state.balance.unwrap_or_default(),
-        )
-        .await;
+        set_monitor_token_balance(account_nonce_balance_state.clone(), address, Address::ZERO, acc_state.balance.unwrap_or_default()).await;
 
         set_monitor_nonce(account_nonce_balance_state.clone(), address, acc_state.nonce.unwrap_or_default()).await;
         trace!("Loaded address : {address} {:?}", acc_state);
 
-        state.insert(address.into(), acc_state);
+        state.insert(address, acc_state);
     }
 
     for (address, nonce, balance, code) in new_accounts_vec {
         trace!("new_accounts added {} {} {}", address, nonce, balance);
-        set_monitor_token_balance(account_nonce_balance_state.clone(), address.into(), NWETH::NATIVE_ADDRESS.into(), balance).await;
+        set_monitor_token_balance(account_nonce_balance_state.clone(), address, NWETH::NATIVE_ADDRESS, balance).await;
         state.insert(address, AccountState { balance: Some(balance), code, nonce: Some(nonce), storage: BTreeMap::new() });
     }
 
@@ -124,7 +114,7 @@ where
             }
         }
 
-        set_monitor_token_balance(account_nonce_balance_state.clone(), owner.into(), token.into(), balance).await;
+        set_monitor_token_balance(account_nonce_balance_state.clone(), owner, token, balance).await;
     }
     market_state_guard.apply_geth_update(state);
 
@@ -136,7 +126,7 @@ where
 pub struct MarketStatePreloadedOneShotActor<P, N, DB> {
     name: &'static str,
     client: P,
-    copied_accounts: Vec<EntityAddress>,
+    copied_accounts: Vec<Address>,
     new_accounts: Vec<(Address, u64, U256, Option<Bytes>)>,
     token_balances: Vec<(Address, Address, U256)>,
     #[accessor]
@@ -194,13 +184,13 @@ where
 
     pub fn with_copied_account(self, address: Address) -> Self {
         let mut copied_accounts = self.copied_accounts;
-        copied_accounts.push(address.into());
+        copied_accounts.push(address);
         Self { copied_accounts, ..self }
     }
 
-    pub fn with_copied_accounts<T: Into<EntityAddress>>(self, address_vec: Vec<T>) -> Self {
+    pub fn with_copied_accounts<T: Into<Address>>(self, address_vec: Vec<T>) -> Self {
         let mut copied_accounts = self.copied_accounts;
-        let more: Vec<EntityAddress> = address_vec.into_iter().map(Into::<EntityAddress>::into).collect();
+        let more: Vec<Address> = address_vec.into_iter().map(Into::<Address>::into).collect();
         copied_accounts.extend(more);
         Self { copied_accounts, ..self }
     }

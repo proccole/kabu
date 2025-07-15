@@ -1,11 +1,10 @@
-use crate::EntityAddress;
-use alloy_primitives::U256;
+use alloy_primitives::{Address, U256};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Default)]
 pub struct AccountNonceAndBalances {
     nonce: u64,
-    balance: HashMap<EntityAddress, U256>,
+    balance: HashMap<Address, U256>,
 }
 
 impl AccountNonceAndBalances {
@@ -22,13 +21,13 @@ impl AccountNonceAndBalances {
         self
     }
 
-    pub fn set_balance(&mut self, token: EntityAddress, balance: U256) -> &mut Self {
+    pub fn set_balance(&mut self, token: Address, balance: U256) -> &mut Self {
         let entry = self.balance.entry(token).or_default();
         *entry = balance;
         self
     }
 
-    pub fn add_balance(&mut self, token: EntityAddress, balance: U256) -> &mut Self {
+    pub fn add_balance(&mut self, token: Address, balance: U256) -> &mut Self {
         let entry = self.balance.entry(token).or_default();
         if let Some(value) = entry.checked_add(balance) {
             *entry = value
@@ -36,7 +35,7 @@ impl AccountNonceAndBalances {
         self
     }
 
-    pub fn sub_balance(&mut self, token: EntityAddress, balance: U256) -> &mut Self {
+    pub fn sub_balance(&mut self, token: Address, balance: U256) -> &mut Self {
         let entry = self.balance.entry(token).or_default();
         if let Some(value) = entry.checked_sub(balance) {
             *entry = value
@@ -45,16 +44,16 @@ impl AccountNonceAndBalances {
     }
 
     pub fn get_eth_balance(&self) -> U256 {
-        self.balance.get(&EntityAddress::default()).cloned().unwrap_or_default()
+        self.balance.get(&Address::default()).cloned().unwrap_or_default()
     }
-    pub fn get_balance(&self, token_address: &EntityAddress) -> U256 {
+    pub fn get_balance(&self, token_address: &Address) -> U256 {
         self.balance.get(token_address).cloned().unwrap_or_default()
     }
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct AccountNonceAndBalanceState {
-    accounts: HashMap<EntityAddress, AccountNonceAndBalances>,
+    accounts: HashMap<Address, AccountNonceAndBalances>,
 }
 
 impl AccountNonceAndBalanceState {
@@ -62,27 +61,27 @@ impl AccountNonceAndBalanceState {
         Self::default()
     }
 
-    pub fn add_account(&mut self, account: EntityAddress) -> &mut AccountNonceAndBalances {
+    pub fn add_account(&mut self, account: Address) -> &mut AccountNonceAndBalances {
         self.accounts.entry(account).or_default()
     }
 
-    pub fn get_account(&self, account: &EntityAddress) -> Option<&AccountNonceAndBalances> {
+    pub fn get_account(&self, account: &Address) -> Option<&AccountNonceAndBalances> {
         self.accounts.get(account)
     }
 
-    pub fn get_mut_account(&mut self, account: &EntityAddress) -> Option<&mut AccountNonceAndBalances> {
+    pub fn get_mut_account(&mut self, account: &Address) -> Option<&mut AccountNonceAndBalances> {
         self.accounts.get_mut(account)
     }
 
-    pub fn get_accounts_vec(&self) -> Vec<EntityAddress> {
+    pub fn get_accounts_vec(&self) -> Vec<Address> {
         self.accounts.keys().copied().collect()
     }
 
-    pub fn is_monitored(&self, account: &EntityAddress) -> bool {
+    pub fn is_monitored(&self, account: &Address) -> bool {
         self.accounts.contains_key(account)
     }
 
-    pub fn get_entry_or_default(&mut self, account: EntityAddress) -> &mut AccountNonceAndBalances {
+    pub fn get_entry_or_default(&mut self, account: Address) -> &mut AccountNonceAndBalances {
         self.accounts.entry(account).or_default()
     }
 }

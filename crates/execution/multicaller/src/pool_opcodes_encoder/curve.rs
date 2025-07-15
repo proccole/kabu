@@ -47,7 +47,13 @@ impl SwapOpcodesEncoderTrait for CurveSwapOpcodesEncoder {
         multicaller: Address,
     ) -> Result<()> {
         //let pool_encoder = abi_encoder.cur_pool.get_encoder().ok_or_eyre("NO_POOL_ENCODER")?;
-        let pool_address = cur_pool.get_address();
+        let pool_id = cur_pool.get_address();
+        let pool_address = match pool_id {
+            kabu_types_entities::PoolId::Address(addr) => addr,
+            kabu_types_entities::PoolId::B256(_) => {
+                return Err(eyre!("B256 pool ID variant is not supported for Curve pools"));
+            }
+        };
 
         let in_native = if cur_pool.is_native() { TokenAddressEth::is_weth(&token_from_address) } else { false };
         let out_native = if cur_pool.is_native() { TokenAddressEth::is_weth(&token_to_address) } else { false };
@@ -66,7 +72,7 @@ impl SwapOpcodesEncoderTrait for CurveSwapOpcodesEncoder {
         if in_native {
             // Swap opcode
             let mut swap_opcode = MulticallerCall::new_call_with_value(
-                pool_address.into(),
+                pool_address,
                 &abi_encoder.encode_swap_in_amount_provided(
                     cur_pool,
                     token_from_address,
@@ -78,7 +84,7 @@ impl SwapOpcodesEncoderTrait for CurveSwapOpcodesEncoder {
                 amount_in.unwrap_or_default(),
             );
 
-            if !Self::need_balance(cur_pool.get_address().into()) {
+            if !Self::need_balance(pool_address) {
                 swap_opcode.set_return_stack(true, 0, 0x0, 0x20);
             }
 
@@ -94,7 +100,7 @@ impl SwapOpcodesEncoderTrait for CurveSwapOpcodesEncoder {
             opcodes.push((
                 MulticallerCall::new_call(
                     token_from_address,
-                    &AbiEncoderHelper::encode_erc20_approve(cur_pool.get_address().into(), amount_in.unwrap_or_default()),
+                    &AbiEncoderHelper::encode_erc20_approve(pool_address, amount_in.unwrap_or_default()),
                 ),
                 0x24,
                 0x20,
@@ -102,7 +108,7 @@ impl SwapOpcodesEncoderTrait for CurveSwapOpcodesEncoder {
 
             // SWAP
             let mut swap_opcode = MulticallerCall::new_call(
-                pool_address.into(),
+                pool_address,
                 &abi_encoder.encode_swap_in_amount_provided(
                     cur_pool,
                     token_from_address,
@@ -113,7 +119,7 @@ impl SwapOpcodesEncoderTrait for CurveSwapOpcodesEncoder {
                 )?,
             );
 
-            if !Self::need_balance(cur_pool.get_address().into()) {
+            if !Self::need_balance(pool_address) {
                 swap_opcode.set_return_stack(true, 0, 0x0, 0x20);
             }
             opcodes.push((swap_opcode, abi_encoder.swap_in_amount_offset(cur_pool, token_from_address, token_to_address).unwrap(), 0x20));
@@ -129,7 +135,7 @@ impl SwapOpcodesEncoderTrait for CurveSwapOpcodesEncoder {
         }
 
         if let Some(next_pool) = next_pool {
-            if Self::need_balance(cur_pool.get_address().into()) {
+            if Self::need_balance(pool_address) {
                 let mut balance_opcode =
                     MulticallerCall::new_static_call(token_to_address, &AbiEncoderHelper::encode_erc20_balance_of(multicaller));
                 balance_opcode.set_return_stack(true, 0, 0x0, 0x20);

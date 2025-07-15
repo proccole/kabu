@@ -40,6 +40,7 @@ kabu-node-debug-provider.workspace = true
 
 alloy-rpc-client.workspace = true
 alloy-transport.workspace = true
+dotenvy.workspace = true
 env_logger.workspace = true
 rand.workspace = true
 tokio.workspace = true

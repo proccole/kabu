@@ -3,8 +3,8 @@ use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
 use crate::swap_path::SwapPath;
-use crate::{CalculationResult, EntityAddress, PoolWrapper, SwapError, SwapStep, Token};
-use alloy_primitives::{I256, U256};
+use crate::{CalculationResult, PoolId, PoolWrapper, SwapError, SwapStep, Token};
+use alloy_primitives::{Address, I256, U256};
 use eyre::{eyre, Result};
 use kabu_evm_db::KabuDBError;
 use revm::DatabaseRef;
@@ -17,7 +17,7 @@ pub enum SwapAmountType {
     Set(U256),
     Stack0,
     RelativeStack(u32),
-    Balance(EntityAddress),
+    Balance(Address),
 }
 
 impl Copy for SwapAmountType {}
@@ -58,7 +58,7 @@ pub struct SwapLine {
     /// The in and out amounts for each swap step
     pub calculation_results: Vec<CalculationResult>,
     /// Output token of the swap
-    pub swap_to: Option<EntityAddress>,
+    pub swap_to: Option<Address>,
     /// Gas used for the swap
     pub gas_used: Option<u64>,
 }
@@ -133,9 +133,9 @@ impl SwapLine {
     pub fn to_error(&self, msg: String) -> SwapError {
         SwapError {
             msg,
-            pool: self.get_first_pool().map_or(EntityAddress::default(), |x| x.get_pool_id()),
-            token_from: self.get_first_token().map_or(EntityAddress::default(), |x| x.get_address()),
-            token_to: self.get_last_token().map_or(EntityAddress::default(), |x| x.get_address()),
+            pool: self.get_first_pool().map(|x| x.get_pool_id()).unwrap_or(PoolId::Address(Address::default())),
+            token_from: self.get_first_token().map_or(Address::default(), |x| x.get_address()),
+            token_to: self.get_last_token().map_or(Address::default(), |x| x.get_address()),
             is_in_amount: true,
             amount: self.amount_in.unwrap_or_default(),
         }
@@ -181,7 +181,7 @@ impl SwapLine {
     }
 
     /// Convert the swap line to two swap steps for flash swapping
-    pub fn to_swap_steps(&self, multicaller: EntityAddress) -> Option<(SwapStep, SwapStep)> {
+    pub fn to_swap_steps(&self, multicaller: Address) -> Option<(SwapStep, SwapStep)> {
         let mut sp0: Option<SwapLine> = None;
         let mut sp1: Option<SwapLine> = None;
 
@@ -573,8 +573,8 @@ mod tests {
         let (_, _, swap_line) = default_swap_line();
 
         let tokens = swap_line.tokens();
-        assert_eq!(tokens.first().unwrap().get_address().address_or_zero(), TokenAddressEth::WETH);
-        assert_eq!(tokens.get(1).unwrap().get_address().address_or_zero(), TokenAddressEth::USDT);
+        assert_eq!(tokens.first().unwrap().get_address(), TokenAddressEth::WETH);
+        assert_eq!(tokens.get(1).unwrap().get_address(), TokenAddressEth::USDT);
     }
 
     #[test]
@@ -582,8 +582,8 @@ mod tests {
         let (pool1, pool2, swap_line) = default_swap_line();
 
         let pools = swap_line.pools();
-        assert_eq!(pools.first().unwrap().get_address().address_or_zero(), pool1.address);
-        assert_eq!(pools.get(1).unwrap().get_address().address_or_zero(), pool2.address);
+        assert_eq!(pools.first().unwrap().get_address(), PoolId::Address(pool1.address));
+        assert_eq!(pools.get(1).unwrap().get_address(), PoolId::Address(pool2.address));
     }
 
     #[test]
@@ -591,7 +591,7 @@ mod tests {
         let (_, _, swap_line) = default_swap_line();
 
         let token = swap_line.get_first_token();
-        assert_eq!(token.unwrap().get_address().address_or_zero(), TokenAddressEth::WETH);
+        assert_eq!(token.unwrap().get_address(), TokenAddressEth::WETH);
     }
 
     #[test]
@@ -599,7 +599,7 @@ mod tests {
         let (_, _, swap_line) = default_swap_line();
 
         let token = swap_line.get_last_token();
-        assert_eq!(token.unwrap().get_address().address_or_zero(), TokenAddressEth::WETH);
+        assert_eq!(token.unwrap().get_address(), TokenAddressEth::WETH);
     }
 
     #[test]
@@ -607,7 +607,7 @@ mod tests {
         let (pool1, _, swap_line) = default_swap_line();
 
         let pool = swap_line.get_first_pool();
-        assert_eq!(pool.unwrap().get_address().address_or_zero(), pool1.address);
+        assert_eq!(pool.unwrap().get_address(), PoolId::Address(pool1.address));
     }
 
     #[test]
@@ -615,6 +615,6 @@ mod tests {
         let (_, pool2, swap_line) = default_swap_line();
 
         let pool = swap_line.get_last_pool();
-        assert_eq!(pool.unwrap().get_address().address_or_zero(), pool2.address);
+        assert_eq!(pool.unwrap().get_address(), PoolId::Address(pool2.address));
     }
 }

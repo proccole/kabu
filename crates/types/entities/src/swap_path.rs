@@ -1,6 +1,5 @@
-use crate::entity_address::EntityAddress;
-use crate::{PoolWrapper, SwapDirection, Token};
-use alloy_primitives::map::HashMap;
+use crate::{PoolId, PoolWrapper, SwapDirection, Token};
+use alloy_primitives::{map::HashMap, Address};
 use eyre::Result;
 use std::fmt;
 use std::fmt::Display;
@@ -13,7 +12,7 @@ pub struct SwapPath {
     pub tokens: Vec<Arc<Token>>,
     pub pools: Vec<PoolWrapper>,
     pub disabled: bool,
-    pub disabled_pool: Vec<EntityAddress>,
+    pub disabled_pool: Vec<PoolId>,
     pub score: Option<f64>,
 }
 
@@ -133,7 +132,7 @@ impl SwapPath {
 #[derive(Clone, Debug, Default)]
 pub struct SwapPaths {
     pub paths: Vec<SwapPath>,
-    pub pool_paths: HashMap<EntityAddress, Vec<usize>>,
+    pub pool_paths: HashMap<PoolId, Vec<usize>>,
     pub path_hash_map: HashMap<u64, usize>,
     pub disabled_directions: HashMap<u64, bool>,
 }
@@ -207,13 +206,7 @@ impl SwapPaths {
         false
     }
 
-    pub fn disable_pool_paths(
-        &mut self,
-        pool_id: &EntityAddress,
-        token_from_address: &EntityAddress,
-        token_to_address: &EntityAddress,
-        disabled: bool,
-    ) {
+    pub fn disable_pool_paths(&mut self, pool_id: &PoolId, token_from_address: &Address, token_to_address: &Address, disabled: bool) {
         let Some(pool_paths) = self.pool_paths.get(pool_id).cloned() else { return };
 
         for path_idx in pool_paths.iter() {
@@ -240,7 +233,7 @@ impl SwapPaths {
         }
     }
     #[inline]
-    pub fn get_pool_paths_enabled_vec(&self, pool_id: &EntityAddress) -> Option<Vec<SwapPath>> {
+    pub fn get_pool_paths_enabled_vec(&self, pool_id: &PoolId) -> Option<Vec<SwapPath>> {
         let paths = self.pool_paths.get(pool_id)?;
         let paths_vec_ret: Vec<SwapPath> = paths
             .iter()
@@ -303,19 +296,19 @@ mod test {
         fn is_native(&self) -> bool {
             false
         }
-        fn get_address(&self) -> EntityAddress {
-            self.address.into()
+        fn get_address(&self) -> PoolId {
+            PoolId::Address(self.address)
         }
 
-        fn get_pool_id(&self) -> EntityAddress {
-            EntityAddress::Address(self.address)
+        fn get_pool_id(&self) -> PoolId {
+            PoolId::Address(self.address)
         }
 
         fn calculate_out_amount(
             &self,
             _db: &dyn DatabaseRef<Error = KabuDBError>,
-            _token_address_from: &EntityAddress,
-            _token_address_to: &EntityAddress,
+            _token_address_from: &Address,
+            _token_address_to: &Address,
             _in_amount: U256,
         ) -> Result<(U256, u64), ErrReport> {
             Err(eyre!("NOT_IMPLEMENTED"))
@@ -324,8 +317,8 @@ mod test {
         fn calculate_in_amount(
             &self,
             _db: &dyn DatabaseRef<Error = KabuDBError>,
-            _token_address_from: &EntityAddress,
-            _token_address_to: &EntityAddress,
+            _token_address_from: &Address,
+            _token_address_to: &Address,
             _out_amount: U256,
         ) -> eyre::Result<(U256, u64), ErrReport> {
             Err(eyre!("NOT_IMPLEMENTED"))
@@ -355,7 +348,7 @@ mod test {
             U256::ZERO
         }
 
-        fn get_tokens(&self) -> Vec<EntityAddress> {
+        fn get_tokens(&self) -> Vec<Address> {
             vec![]
         }
 
@@ -431,13 +424,17 @@ mod test {
         let mut tasks: Vec<JoinHandle<_>> = Vec::new();
 
         for (i, pools) in pool_address_vec.into_iter().enumerate() {
-            let pool_address = pools.0.get_address();
+            let pool_id = pools.0.get_pool_id();
             let paths_shared_clone = paths_shared.clone();
             tasks.push(tokio::task::spawn(async move {
-                let pool = PoolWrapper::new(Arc::new(EmptyPool::new(pool_address.address_or_zero())));
+                let address = match pool_id {
+                    PoolId::Address(addr) => addr,
+                    PoolId::B256(_) => Address::default(),
+                };
+                let pool = PoolWrapper::new(Arc::new(EmptyPool::new(address)));
                 let path_guard = paths_shared_clone.read().await;
-                let pool_paths = path_guard.get_pool_paths_enabled_vec(&pool.get_address());
-                println!("{i} {pool_address}: {pool_paths:?}");
+                let pool_paths = path_guard.get_pool_paths_enabled_vec(&pool.get_pool_id());
+                println!("{i} {pool_id}: {pool_paths:?}");
             }));
         }
 

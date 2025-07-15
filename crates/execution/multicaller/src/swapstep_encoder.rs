@@ -7,7 +7,7 @@ use crate::opcodes_encoder::{OpcodesEncoder, OpcodesEncoderV2};
 use crate::SwapLineEncoder;
 use kabu_defi_abi::AbiEncoderHelper;
 use kabu_types_blockchain::{MulticallerCall, MulticallerCalls};
-use kabu_types_entities::{EntityAddress, SwapAmountType, SwapStep};
+use kabu_types_entities::{SwapAmountType, SwapStep};
 
 lazy_static! {
     static ref BALANCER_VAULT_ADDRESS: Address = "0xBA12222222228d8Ba445958a75a0704d566BF2C8".parse().unwrap();
@@ -52,7 +52,7 @@ impl SwapStepEncoder {
     }
 
     pub fn encode_balancer_flash_loan(&self, steps: Vec<SwapStep>) -> Result<MulticallerCalls> {
-        let flash_funds_to = EntityAddress::Address(self.multicaller_address);
+        let flash_funds_to = self.multicaller_address;
 
         let mut swap_opcodes = MulticallerCalls::new();
 
@@ -84,7 +84,7 @@ impl SwapStepEncoder {
         let mut flash_opcodes = MulticallerCalls::new();
 
         let flash_call_data =
-            AbiEncoderHelper::encode_balancer_flashloan(token.get_address().into(), in_amount, inside_call_bytes, self.multicaller_address);
+            AbiEncoderHelper::encode_balancer_flashloan(token.get_address(), in_amount, inside_call_bytes, self.multicaller_address);
 
         flash_opcodes.add(MulticallerCall::new_call(*BALANCER_VAULT_ADDRESS, &flash_call_data));
 
@@ -97,7 +97,7 @@ impl SwapStepEncoder {
         //let flash_funds_to = self.multicaller_address;
 
         if flash_step.len() > 1 || swap_step.len() > 1 {
-            swap_step.get_mut_swap_line_by_index(swap_step.len() - 1).amount_in = SwapAmountType::Balance(self.multicaller_address.into());
+            swap_step.get_mut_swap_line_by_index(swap_step.len() - 1).amount_in = SwapAmountType::Balance(self.multicaller_address);
         }
 
         let mut swap_opcodes = MulticallerCalls::new();

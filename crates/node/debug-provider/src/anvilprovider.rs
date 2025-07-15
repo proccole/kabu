@@ -140,6 +140,7 @@ mod test {
         let _ = env_logger::try_init_from_env(EnvLog::default().default_filter_or("info"));
         let anvil = Anvil::new().try_spawn()?;
 
+        dotenvy::from_filename(".env.test").ok();
         let node_url = std::env::var("MAINNET_HTTP").unwrap().to_string();
 
         let test_node_url = anvil.endpoint_url();

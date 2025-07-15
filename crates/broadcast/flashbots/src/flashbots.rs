@@ -250,6 +250,7 @@ mod test {
     #[tokio::test]
     async fn test_client_send_bundle() -> Result<()> {
         let _ = env_logger::try_init_from_env(env_logger::Env::default().default_filter_or("debug,flashbots=off"));
+        dotenvy::from_filename(".env.test").ok();
         let node_url = Url::try_from(env::var("MAINNET_HTTP")?.as_str())?;
 
         let provider = ProviderBuilder::new().disable_recommended_fillers().connect_http(node_url);
@@ -278,6 +279,7 @@ mod test {
     #[tokio::test]
     async fn test_send_bundle() -> Result<()> {
         let _ = env_logger::try_init_from_env(env_logger::Env::default().default_filter_or("trace"));
+        dotenvy::from_filename(".env.test").ok();
         let node_url = Url::try_from(env::var("MAINNET_HTTP")?.as_str())?;
 
         let provider = ProviderBuilder::new().disable_recommended_fillers().connect_http(node_url);

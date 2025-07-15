@@ -15,12 +15,12 @@ use kabu_evm_db::KabuDBError;
 use kabu_node_debug_provider::DebugProviderExt;
 use kabu_types_blockchain::KabuDataTypesEVM;
 use kabu_types_entities::required_state::{RequiredState, RequiredStateReader};
-use kabu_types_entities::{EntityAddress, Market, MarketState, PoolClass, PoolLoaders};
+use kabu_types_entities::{Market, MarketState, PoolClass, PoolId, PoolLoaders};
 
 async fn required_pools_loader_worker<P, N, DB, LDT>(
     client: P,
     pool_loaders: Arc<PoolLoaders<P, N, LDT>>,
-    pools: Vec<(EntityAddress, PoolClass)>,
+    pools: Vec<(PoolId, PoolClass)>,
     required_state: Option<RequiredState>,
     market: SharedState<Market>,
     market_state: SharedState<MarketState<DB>>,
@@ -87,7 +87,7 @@ where
 {
     client: P,
     pool_loaders: Arc<PoolLoaders<P, N, LDT>>,
-    pools: Vec<(EntityAddress, PoolClass)>,
+    pools: Vec<(PoolId, PoolClass)>,
     required_state: Option<RequiredState>,
     #[accessor]
     market: Option<SharedState<Market>>,
@@ -109,7 +109,7 @@ where
 
     pub fn with_pool_address(self, address: Address, pool_class: PoolClass) -> Self {
         let mut pools = self.pools;
-        pools.push((EntityAddress::Address(address), pool_class));
+        pools.push((PoolId::Address(address), pool_class));
         Self { pools, ..self }
     }
 

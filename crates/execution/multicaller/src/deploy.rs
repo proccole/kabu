@@ -150,6 +150,7 @@ mod test {
     async fn test_deploy() -> Result<()> {
         let _ = env_logger::try_init_from_env(env_logger::Env::default().default_filter_or("info,kabu_multicaller=off"));
 
+        dotenvy::from_filename(".env.test").ok();
         let node_url = env::var("MAINNET_WS")?;
 
         let anvil_provider = Arc::new(AnvilDebugProviderFactory::from_node_on_block(node_url, 19109956).await?);

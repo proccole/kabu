@@ -9,7 +9,7 @@ use kabu_defi_abi::IERC20;
 use kabu_defi_address_book::FactoryAddress;
 use kabu_evm_db::KabuDBError;
 use kabu_types_entities::required_state::RequiredState;
-use kabu_types_entities::{EntityAddress, Pool, PoolAbiEncoder, PoolClass, PoolProtocol, PreswapRequirement, SwapDirection};
+use kabu_types_entities::{Pool, PoolAbiEncoder, PoolClass, PoolId, PoolProtocol, PreswapRequirement, SwapDirection};
 use lazy_static::lazy_static;
 use revm::DatabaseRef;
 use std::any::Any;
@@ -201,19 +201,19 @@ impl Pool for UniswapV2Pool {
         self.protocol
     }
 
-    fn get_address(&self) -> EntityAddress {
-        self.address.into()
+    fn get_address(&self) -> PoolId {
+        PoolId::Address(self.address)
     }
-    fn get_pool_id(&self) -> EntityAddress {
-        EntityAddress::Address(self.address)
+    fn get_pool_id(&self) -> PoolId {
+        PoolId::Address(self.address)
     }
 
     fn get_fee(&self) -> U256 {
         self.fee
     }
 
-    fn get_tokens(&self) -> Vec<EntityAddress> {
-        vec![self.token0.into(), self.token1.into()]
+    fn get_tokens(&self) -> Vec<Address> {
+        vec![self.token0, self.token1]
     }
 
     fn get_swap_directions(&self) -> Vec<SwapDirection> {
@@ -223,8 +223,8 @@ impl Pool for UniswapV2Pool {
     fn calculate_out_amount(
         &self,
         db: &dyn DatabaseRef<Error = KabuDBError>,
-        token_address_from: &EntityAddress,
-        token_address_to: &EntityAddress,
+        token_address_from: &Address,
+        token_address_to: &Address,
         in_amount: U256,
     ) -> Result<(U256, u64), ErrReport> {
         let (reserves_0, reserves_1) = self.fetch_reserves(db)?;
@@ -252,8 +252,8 @@ impl Pool for UniswapV2Pool {
     fn calculate_in_amount(
         &self,
         db: &dyn DatabaseRef<Error = KabuDBError>,
-        token_address_from: &EntityAddress,
-        token_address_to: &EntityAddress,
+        token_address_from: &Address,
+        token_address_to: &Address,
         out_amount: U256,
     ) -> Result<(U256, u64), ErrReport> {
         let (reserves_0, reserves_1) = self.fetch_reserves(db)?;
@@ -305,10 +305,11 @@ impl Pool for UniswapV2Pool {
         let reserves_call_data_vec = IUniswapV2Pair::IUniswapV2PairCalls::getReserves(IUniswapV2Pair::getReservesCall {}).abi_encode();
         let factory_call_data_vec = IUniswapV2Pair::IUniswapV2PairCalls::factory(IUniswapV2Pair::factoryCall {}).abi_encode();
 
-        state_required
-            .add_call(self.get_address(), reserves_call_data_vec)
-            .add_call(self.get_address(), factory_call_data_vec)
-            .add_slot_range(self.address, U256::from(0), 0x20);
+        state_required.add_call(self.address, reserves_call_data_vec).add_call(self.address, factory_call_data_vec).add_slot_range(
+            self.address,
+            U256::from(0),
+            0x20,
+        );
 
         for token_address in self.get_tokens() {
             state_required
@@ -395,6 +396,7 @@ mod test {
 
         let block_number = 20935488u64;
 
+        dotenvy::from_filename(".env.test").ok();
         let node_url = env::var("MAINNET_WS")?;
         let client = AnvilDebugProviderFactory::from_node_on_block(node_url, BlockNumber::from(block_number)).await?;
 
@@ -459,6 +461,7 @@ mod test {
         // Verify that the calculated out amount is the same as the contract's out amount
         let block_number = 20935488u64;
 
+        dotenvy::from_filename(".env.test").ok();
         let node_url = env::var("MAINNET_WS")?;
         let client = AnvilDebugProviderFactory::from_node_on_block(node_url, BlockNumber::from(block_number)).await?;
 
@@ -476,7 +479,7 @@ mod test {
             // fetch original
             let contract_amount_out = fetch_original_contract_amounts(client.clone(), pool_address, amount_in, block_number, true).await?;
 
-            let (amount_out, gas_used) = pool.calculate_out_amount(&state_db, &pool.token0.into(), &pool.token1.into(), amount_in)?;
+            let (amount_out, gas_used) = pool.calculate_out_amount(&state_db, &pool.token0, &pool.token1, amount_in)?;
 
             assert_eq!(amount_out, contract_amount_out, "{}", format!("Missmatch for pool={:?}, amount_in={}", pool_address, amount_in));
             assert_eq!(gas_used, 100_000);
@@ -490,6 +493,7 @@ mod test {
         // Verify that the calculated in amount is the same as the contract's in amount
         let block_number = 20935488u64;
 
+        dotenvy::from_filename(".env.test").ok();
         let node_url = env::var("MAINNET_WS")?;
         let client = AnvilDebugProviderFactory::from_node_on_block(node_url, BlockNumber::from(block_number)).await?;
 
@@ -508,7 +512,7 @@ mod test {
             let contract_amount_in = fetch_original_contract_amounts(client.clone(), pool_address, amount_out, block_number, false).await?;
 
             // under test
-            let (amount_in, gas_used) = pool.calculate_in_amount(&state_db, &pool.token0.into(), &pool.token1.into(), amount_out)?;
+            let (amount_in, gas_used) = pool.calculate_in_amount(&state_db, &pool.token0, &pool.token1, amount_out)?;
 
             assert_eq!(amount_in, contract_amount_in, "{}", format!("Missmatch for pool={:?}, amount_out={}", pool_address, amount_out));
             assert_eq!(gas_used, 100_000);

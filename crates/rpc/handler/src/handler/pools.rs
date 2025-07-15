@@ -7,7 +7,7 @@ use axum::http::StatusCode;
 use axum::Json;
 use kabu_evm_utils::error_handler::internal_error;
 use kabu_rpc_state::AppState;
-use kabu_types_entities::{EntityAddress, PoolWrapper};
+use kabu_types_entities::{PoolId, PoolWrapper};
 use revm::{DatabaseCommit, DatabaseRef};
 use std::str::FromStr;
 
@@ -52,7 +52,7 @@ pub async fn pools<DB: DatabaseRef + DatabaseCommit + Send + Sync + Clone + 'sta
         ret.push(Pool {
             address: pool_address,
             fee: pool.pool.get_fee(),
-            tokens: pool.pool.get_tokens().into_iter().map(Into::into).collect(),
+            tokens: pool.pool.get_tokens(),
             protocol: PoolProtocol::from(pool.pool.get_protocol()),
             pool_class: PoolClass::from(pool.get_class()),
         });
@@ -94,14 +94,14 @@ pub async fn pool<DB: DatabaseRef + DatabaseCommit + Send + Sync + Clone + 'stat
 ) -> Result<Json<PoolDetailsResponse>, (StatusCode, String)> {
     let address = Address::from_str(&address).map_err(internal_error)?;
 
-    match app_state.bc.market().read().await.pools().get(&EntityAddress::Address(address)) {
+    match app_state.bc.market().read().await.pools().get(&PoolId::Address(address)) {
         None => Err((StatusCode::NOT_FOUND, "Pool not found".to_string())),
         Some(pool) => Ok(Json(PoolDetailsResponse {
             address: pool.get_address().address_or_zero(),
             pool_class: PoolClass::from(pool.get_class()),
             protocol: PoolProtocol::from(pool.get_protocol()),
             fee: pool.get_fee(),
-            tokens: pool.get_tokens().into_iter().map(Into::into).collect(),
+            tokens: pool.get_tokens(),
         })),
     }
 }
@@ -151,7 +151,7 @@ pub async fn pool_quote<DB: DatabaseRef<Error = kabu_evm_db::KabuDBError> + Data
     Json(_quote_request): Json<QuoteRequest>,
 ) -> Result<Json<QuoteResponse>, (StatusCode, String)> {
     let address = Address::from_str(&address).map_err(internal_error)?;
-    match app_state.bc.market().read().await.pools().get(&EntityAddress::Address(address)) {
+    match app_state.bc.market().read().await.pools().get(&PoolId::Address(address)) {
         None => Err((StatusCode::NOT_FOUND, "Pool not found".to_string())),
         Some(_pool) => Err((StatusCode::NOT_FOUND, "Not_implemted".to_string())),
         //TODO : rewrite

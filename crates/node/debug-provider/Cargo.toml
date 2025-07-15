@@ -25,6 +25,7 @@ alloy.workspace = true
 
 
 [dev-dependencies]
+dotenvy.workspace = true
 env_logger.workspace = true
 kabu-defi-abi.workspace = true
 url.workspace = true

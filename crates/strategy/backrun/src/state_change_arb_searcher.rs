@@ -166,7 +166,7 @@ async fn state_change_arb_searcher_task<
             Ok(swap_line) => {
                 let prepare_request = SwapComposeMessage::Prepare(SwapComposeData {
                     tx_compose: TxComposeData::<LDT> {
-                        eoa: backrun_config.eoa().map(Into::into),
+                        eoa: backrun_config.eoa(),
                         next_block_number: state_update_event.next_block_number,
                         next_block_timestamp: state_update_event.next_block_timestamp,
                         next_block_base_fee: state_update_event.next_base_fee,

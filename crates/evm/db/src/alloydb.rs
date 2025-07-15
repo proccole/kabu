@@ -185,6 +185,7 @@ mod tests {
     #[test]
     #[ignore = "flaky RPC"]
     fn can_get_basic() {
+        dotenvy::from_filename(".env.test").ok();
         let node_url = env::var("MAINNET_HTTP").unwrap();
         let node_url = Url::parse(node_url.as_str()).unwrap();
 

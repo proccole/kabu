@@ -121,7 +121,7 @@ async fn arb_swap_path_merger_worker<
                             };
 
 
-                            match SwapStep::merge_swap_paths( req_swap.clone(), swap_path.clone(), multicaller_address.into() ){
+                            match SwapStep::merge_swap_paths( req_swap.clone(), swap_path.clone(), multicaller_address ){
                                 Ok((sp0, sp1)) => {
                                     let latest_block_guard = latest_block.read().await;
                                     let block_header = latest_block_guard.block_header.clone().unwrap();

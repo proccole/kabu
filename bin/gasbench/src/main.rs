@@ -19,7 +19,7 @@ use crate::soltest::create_sol_test;
 use kabu_node_debug_provider::AnvilDebugProviderFactory;
 
 use kabu_defi_address_book::UniswapV2PoolAddress;
-use kabu_types_entities::{EntityAddress, Market, MarketState, PoolWrapper, Swap, SwapAmountType, SwapDirection, SwapLine};
+use kabu_types_entities::{Market, MarketState, PoolId, PoolWrapper, Swap, SwapAmountType, SwapDirection, SwapLine};
 
 use kabu_core_actors::SharedState;
 use kabu_defi_preloader::preload_market_state;
@@ -90,7 +90,7 @@ async fn main() -> Result<()> {
     let swap_encoder = Arc::new(MulticallerSwapEncoder::new(multicaller_address, swap_step_encoder));
 
     //preload state
-    preload_market_state(client.clone(), vec![multicaller_address.into()], vec![], vec![], market_state_instance.clone(), None).await?;
+    preload_market_state(client.clone(), vec![multicaller_address], vec![], vec![], market_state_instance.clone(), None).await?;
 
     //Preloading market
     preload_pools::<_, _>(client.clone(), market_instance.clone(), market_state_instance.clone()).await?;
@@ -100,7 +100,7 @@ async fn main() -> Result<()> {
     // Getting swap directions
     let pool_address: Address = UniswapV2PoolAddress::WETH_USDT;
 
-    let pool = market.get_pool(&EntityAddress::Address(pool_address)).ok_or_eyre("POOL_NOT_FOUND")?;
+    let pool = market.get_pool(&PoolId::Address(pool_address)).ok_or_eyre("POOL_NOT_FOUND")?;
 
     let swap_directions = pool.get_swap_directions();
 

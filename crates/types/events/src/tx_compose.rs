@@ -1,7 +1,7 @@
 use crate::{Message, TxState};
-use alloy_primitives::{BlockNumber, Bytes, U256};
+use alloy_primitives::{Address, BlockNumber, Bytes, U256};
 use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEthereum};
-use kabu_types_entities::{EntityAddress, LoomTxSigner, Swap};
+use kabu_types_entities::{LoomTxSigner, Swap};
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
@@ -34,7 +34,7 @@ pub enum TxComposeMessageType<LDT: KabuDataTypes = KabuDataTypesEthereum> {
 pub struct TxComposeData<LDT: KabuDataTypes = KabuDataTypesEthereum> {
     /// The EOA address that will be used to sign the transaction.
     /// If this is None, the transaction will be signed by a random signer.
-    pub eoa: Option<EntityAddress>,
+    pub eoa: Option<Address>,
     pub signer: Option<Arc<dyn LoomTxSigner<LDT>>>,
     pub nonce: u64,
     pub eth_balance: U256,

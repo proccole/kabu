@@ -9,16 +9,15 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use tracing::{error, trace};
 
-use crate::EntityAddress;
 use kabu_node_debug_provider::DebugProviderExt;
 use kabu_types_blockchain::{debug_trace_call_pre_state, GethStateUpdate, GethStateUpdateVec, KabuDataTypesEVM};
 use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEthereum, KabuTransactionRequest};
 
 #[derive(Clone, Debug, Default)]
 pub struct RequiredState {
-    calls: Vec<(EntityAddress, Bytes)>,
-    slots: Vec<(EntityAddress, U256)>,
-    empty_slots: Vec<(EntityAddress, U256)>,
+    calls: Vec<(Address, Bytes)>,
+    slots: Vec<(Address, U256)>,
+    empty_slots: Vec<(Address, U256)>,
 }
 
 impl RequiredState {
@@ -26,21 +25,21 @@ impl RequiredState {
         Self::default()
     }
 
-    pub fn add_call<T: Into<Bytes>, A: Into<EntityAddress>>(&mut self, to: A, call_data: T) -> &mut Self {
+    pub fn add_call<T: Into<Bytes>, A: Into<Address>>(&mut self, to: A, call_data: T) -> &mut Self {
         self.calls.push((to.into(), call_data.into()));
         self
     }
-    pub fn add_slot<A: Into<EntityAddress>>(&mut self, address: A, slot: U256) -> &mut Self {
+    pub fn add_slot<A: Into<Address>>(&mut self, address: A, slot: U256) -> &mut Self {
         self.slots.push((address.into(), slot));
         self
     }
 
-    pub fn add_empty_slot<A: Into<EntityAddress>>(&mut self, address: A, slot: U256) -> &mut Self {
+    pub fn add_empty_slot<A: Into<Address>>(&mut self, address: A, slot: U256) -> &mut Self {
         self.empty_slots.push((address.into(), slot));
         self
     }
 
-    pub fn add_empty_slot_range<A: Into<EntityAddress> + Clone>(&mut self, address: A, start_slot: U256, size: usize) -> &mut Self {
+    pub fn add_empty_slot_range<A: Into<Address> + Clone>(&mut self, address: A, start_slot: U256, size: usize) -> &mut Self {
         let mut cur_slot = start_slot;
         for _ in 0..size {
             self.add_empty_slot(address.clone(), cur_slot);
@@ -49,7 +48,7 @@ impl RequiredState {
         self
     }
 
-    pub fn add_slot_range<A: Into<EntityAddress> + Clone>(&mut self, address: A, start_slot: U256, size: usize) -> &mut Self {
+    pub fn add_slot_range<A: Into<Address> + Clone>(&mut self, address: A, start_slot: U256, size: usize) -> &mut Self {
         let mut cur_slot = start_slot;
         for _ in 0..size {
             self.add_slot(address.clone(), cur_slot);
@@ -83,7 +82,7 @@ where
 
         let mut ret: GethStateUpdate = GethStateUpdate::new();
         for req in required_state.calls.into_iter() {
-            let to: LDT::Address = req.0.into();
+            let to: LDT::Address = req.0;
             let req: LDT::TransactionRequest = LDT::TransactionRequest::build_call(to, req.1);
 
             let call_result = debug_trace_call_pre_state(client.clone(), req, block_id, None).await;
@@ -105,11 +104,11 @@ where
             }
         }
         for (address, slot) in required_state.slots.into_iter() {
-            let value_result = client.get_storage_at(address.into(), slot).block_id(block_id).await;
+            let value_result = client.get_storage_at(address, slot).block_id(block_id).await;
             trace!("get_storage_at_result {} slot {} :  {:?}", address, slot, value_result);
             match value_result {
                 Ok(value) => {
-                    let entry = ret.entry(address.into()).or_default();
+                    let entry = ret.entry(address).or_default();
                     entry.storage.insert(slot.into(), value.into());
                 }
                 Err(e) => {
@@ -121,7 +120,7 @@ where
         for (address, slot) in required_state.empty_slots.into_iter() {
             let value = U256::ZERO;
 
-            let entry = ret.entry(address.into()).or_default();
+            let entry = ret.entry(address).or_default();
             entry.storage.insert(slot.into(), value.into());
         }
 

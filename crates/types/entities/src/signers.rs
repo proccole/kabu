@@ -1,4 +1,3 @@
-use crate::EntityAddress;
 use alloy_consensus::transaction::Recovered;
 use alloy_consensus::{SignableTransaction, TxEnvelope};
 use alloy_network::{TransactionBuilder, TxSigner as AlloyTxSigner, TxSignerSync};
@@ -18,7 +17,7 @@ use std::sync::Arc;
 pub trait LoomTxSigner<LDT: KabuDataTypes>: Send + Sync + Debug {
     fn sign<'a>(&'a self, tx: LDT::TransactionRequest) -> Pin<Box<dyn std::future::Future<Output = Result<LDT::Transaction>> + Send + 'a>>;
     fn sign_sync(&self, tx: LDT::TransactionRequest) -> Result<LDT::Transaction>;
-    fn address(&self) -> EntityAddress;
+    fn address(&self) -> Address;
 }
 
 #[derive(Clone)]
@@ -41,8 +40,8 @@ impl fmt::Debug for TxSignerEth {
 }
 
 impl LoomTxSigner<KabuDataTypesEthereum> for TxSignerEth {
-    fn address(&self) -> EntityAddress {
-        self.address.into()
+    fn address(&self) -> Address {
+        self.address
     }
     fn sign<'a>(&'a self, tx_req: TransactionRequest) -> Pin<Box<dyn Future<Output = Result<Transaction>> + Send + 'a>> {
         let fut = async move {
@@ -99,13 +98,13 @@ impl TxSignerEth {
 
 #[derive(Clone, Default)]
 pub struct TxSigners<LDT: KabuDataTypes = KabuDataTypesEthereum> {
-    signers: IndexMap<EntityAddress, Arc<dyn LoomTxSigner<LDT>>>,
+    signers: IndexMap<Address, Arc<dyn LoomTxSigner<LDT>>>,
 }
 
 impl TxSigners<KabuDataTypesEthereum> {
     pub fn add_privkey(&mut self, priv_key: Bytes) -> TxSignerEth {
         let wallet = PrivateKeySigner::from_bytes(&B256::from_slice(priv_key.as_ref())).unwrap();
-        self.signers.insert(wallet.address().into(), Arc::new(TxSignerEth::new(wallet.clone())));
+        self.signers.insert(wallet.address(), Arc::new(TxSignerEth::new(wallet.clone())));
         TxSignerEth::new(wallet)
     }
 
@@ -142,14 +141,14 @@ impl<LDT: KabuDataTypes> TxSigners<LDT> {
         }
     }
 
-    pub fn get_signer_by_address(&self, address: &EntityAddress) -> Result<Arc<dyn LoomTxSigner<LDT>>> {
+    pub fn get_signer_by_address(&self, address: &Address) -> Result<Arc<dyn LoomTxSigner<LDT>>> {
         match self.signers.get(address) {
             Some(s) => Ok(s.clone()),
             None => Err(eyre!("SIGNER_NOT_FOUND")),
         }
     }
 
-    pub fn get_address_vec(&self) -> Vec<EntityAddress> {
+    pub fn get_address_vec(&self) -> Vec<Address> {
         self.signers.keys().cloned().collect()
     }
 }
@@ -167,14 +166,14 @@ mod tests {
     fn test_new_signer() {
         let wallet = PrivateKeySigner::random();
         let signer = TxSignerEth::new(wallet.clone());
-        assert_eq!(signer.address(), EntityAddress::Address(wallet.address()));
+        assert_eq!(signer.address(), wallet.address());
     }
 
     #[test]
     fn test_address() {
         let wallet = PrivateKeySigner::random();
         let signer = TxSignerEth::new(wallet.clone());
-        assert_eq!(signer.address(), EntityAddress::Address(wallet.address()));
+        assert_eq!(signer.address(), wallet.address());
     }
 
     #[tokio::test]
@@ -244,7 +243,7 @@ mod tests {
         let signer = signers.add_privkey(priv_key);
         assert_eq!(signers.len(), 1);
         assert_eq!(signer.address(), signers.get_address_vec()[0]);
-        assert_eq!(signer.address(), EntityAddress::Address(address!("16Df4b25e4E37A9116eb224799c1e0Fb17fd8d30")));
+        assert_eq!(signer.address(), address!("16Df4b25e4E37A9116eb224799c1e0Fb17fd8d30"));
     }
 
     #[test]
@@ -281,7 +280,7 @@ mod tests {
         assert!(signers.get_signer_by_address(&address).is_ok());
         // test negative case
         let unknown_address = Address::random();
-        assert!(signers.get_signer_by_address(&EntityAddress::Address(unknown_address)).is_err());
+        assert!(signers.get_signer_by_address(&unknown_address).is_err());
     }
 
     #[test]

@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use alloy_primitives::U256;
 use kabu_core_actors::SharedState;
 use kabu_types_blockchain::GethStateUpdateVec;
-use kabu_types_entities::{EntityAddress, Market, PoolWrapper, SwapDirection};
+use kabu_types_entities::{Market, PoolId, PoolWrapper, SwapDirection};
 use tracing::debug;
 
 pub async fn get_affected_pools_from_state_update(
@@ -28,7 +28,7 @@ pub async fn get_affected_pools_from_state_update(
                         }
                     }
                 }
-            } else if let Some(pool) = market_guard.get_pool(&EntityAddress::Address(*address)) {
+            } else if let Some(pool) = market_guard.get_pool(&PoolId::Address(*address)) {
                 if !affected_pools.contains_key(pool) {
                     affected_pools.insert(pool.clone(), pool.get_swap_directions());
                 }

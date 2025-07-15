@@ -12,7 +12,7 @@ use kabu_defi_address_book::PeripheryAddress;
 use kabu_evm_db::KabuDBError;
 use kabu_evm_utils::evm_call;
 use kabu_types_entities::required_state::RequiredState;
-use kabu_types_entities::{EntityAddress, Pool, PoolAbiEncoder, PoolClass, PoolProtocol, PreswapRequirement, SwapDirection};
+use kabu_types_entities::{Pool, PoolAbiEncoder, PoolClass, PoolId, PoolProtocol, PreswapRequirement, SwapDirection};
 use lazy_static::lazy_static;
 use revm::DatabaseRef;
 use std::any::Any;
@@ -156,20 +156,20 @@ impl Pool for MaverickPool {
         self.protocol
     }
 
-    fn get_address(&self) -> EntityAddress {
-        self.address.into()
+    fn get_address(&self) -> PoolId {
+        PoolId::Address(self.address)
     }
 
-    fn get_pool_id(&self) -> EntityAddress {
-        EntityAddress::Address(self.address)
+    fn get_pool_id(&self) -> PoolId {
+        PoolId::Address(self.address)
     }
 
     fn get_fee(&self) -> U256 {
         self.fee
     }
 
-    fn get_tokens(&self) -> Vec<EntityAddress> {
-        vec![self.token0.into(), self.token1.into()]
+    fn get_tokens(&self) -> Vec<Address> {
+        vec![self.token0, self.token1]
     }
 
     fn get_swap_directions(&self) -> Vec<SwapDirection> {
@@ -179,12 +179,12 @@ impl Pool for MaverickPool {
     fn calculate_out_amount(
         &self,
         db: &dyn DatabaseRef<Error = KabuDBError>,
-        token_address_from: &EntityAddress,
-        token_address_to: &EntityAddress,
+        token_address_from: &Address,
+        token_address_to: &Address,
         in_amount: U256,
     ) -> Result<(U256, u64), ErrReport> {
         if in_amount >= U256::from(U128::MAX) {
-            error!("IN_AMOUNT_EXCEEDS_MAX {}", self.get_address().address_or_zero().to_checksum(None));
+            error!("IN_AMOUNT_EXCEEDS_MAX {}", self.address.to_checksum(None));
             return Err(eyre!("IN_AMOUNT_EXCEEDS_MAX"));
         }
 
@@ -214,8 +214,8 @@ impl Pool for MaverickPool {
     fn calculate_in_amount(
         &self,
         db: &dyn DatabaseRef<Error = KabuDBError>,
-        token_address_from: &EntityAddress,
-        token_address_to: &EntityAddress,
+        token_address_from: &Address,
+        token_address_to: &Address,
         out_amount: U256,
     ) -> Result<(U256, u64), ErrReport> {
         if out_amount >= U256::from(U128::MAX) {
@@ -292,7 +292,7 @@ impl Pool for MaverickPool {
 
         let mut state_required = RequiredState::new();
         state_required
-            .add_call(self.get_address(), IMaverickPoolCalls::getState(getStateCall {}).abi_encode())
+            .add_call(self.address, IMaverickPoolCalls::getState(getStateCall {}).abi_encode())
             .add_call(
                 PeripheryAddress::MAVERICK_QUOTER,
                 IMaverickQuoterCalls::getBinsAtTick(IMaverickQuoter::getBinsAtTickCall { pool: pool_address, tick: tick_bitmap_index - 4 })
@@ -450,6 +450,7 @@ mod tests {
     async fn test_pool() -> Result<()> {
         let _ = env_logger::try_init_from_env(env_logger::Env::default().default_filter_or("info,defi_pools=off"));
 
+        dotenvy::from_filename(".env.test").ok();
         let node_url = env::var("MAINNET_WS")?;
 
         let client = AnvilDebugProviderFactory::from_node_on_block(node_url, 20045799).await?;
@@ -480,16 +481,14 @@ mod tests {
         debug!("Router call : {:?}", resp);
         assert_ne!(resp, U256::ZERO);
 
-        let (out_amount, gas_used) = pool
-            .calculate_out_amount(&cache_db, &pool.token1.into(), &pool.token0.into(), U256::from(pool.liquidity1 / U256::from(1000)))
-            .unwrap();
+        let (out_amount, gas_used) =
+            pool.calculate_out_amount(&cache_db, &pool.token1, &pool.token0, U256::from(pool.liquidity1 / U256::from(1000))).unwrap();
         debug!("{} {} {}", pool.get_protocol(), out_amount, gas_used);
         assert_ne!(out_amount, U256::ZERO);
         assert!(gas_used > 100000);
 
-        let (out_amount, gas_used) = pool
-            .calculate_out_amount(&cache_db, &pool.token0.into(), &pool.token1.into(), U256::from(pool.liquidity0 / U256::from(1000)))
-            .unwrap();
+        let (out_amount, gas_used) =
+            pool.calculate_out_amount(&cache_db, &pool.token0, &pool.token1, U256::from(pool.liquidity0 / U256::from(1000))).unwrap();
         debug!("{} {} {}", pool.get_protocol(), out_amount, gas_used);
         assert_ne!(out_amount, U256::ZERO);
         assert!(gas_used > 100000);

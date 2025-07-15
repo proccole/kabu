@@ -256,6 +256,7 @@ mod test {
             EnvLog::default().default_filter_or("info,hyper_util=off,alloy_transport_http=off,alloy_rpc_client=off,reqwest=off"),
         );
 
+        dotenvy::from_filename(".env.test").ok();
         let node_url = url::Url::parse(std::env::var("MAINNET_HTTP")?.as_str())?;
 
         let provider_anvil =
