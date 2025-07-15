@@ -2,7 +2,7 @@ use crate::kabu_data_types::KabuTransactionRequest;
 use crate::{GethStateUpdate, KabuBlock, KabuDataTypes, KabuDataTypesEVM, KabuTx};
 use alloy_consensus::Transaction as TransactionTrait;
 use alloy_eips::eip2718::Encodable2718;
-use alloy_primitives::{Address, BlockHash, Bytes, TxHash, TxKind};
+use alloy_primitives::{Address, Bytes, TxHash, TxKind};
 use alloy_provider::network::TransactionBuilder;
 use alloy_provider::network::TransactionResponse;
 use alloy_rpc_types_eth::{Block as EthBlock, Header, Log, Transaction, TransactionReceipt, TransactionRequest};
@@ -19,9 +19,6 @@ impl KabuDataTypes for KabuDataTypesEthereum {
     type Header = Header;
     type Log = Log;
     type StateUpdate = GethStateUpdate;
-    type BlockHash = BlockHash;
-    type TxHash = TxHash;
-    type Address = Address;
 }
 
 impl KabuDataTypesEVM for KabuDataTypesEthereum {}
@@ -35,7 +32,7 @@ impl KabuTx<KabuDataTypesEthereum> for Transaction {
         TransactionTrait::gas_limit(self)
     }
 
-    fn get_tx_hash(&self) -> <KabuDataTypesEthereum as KabuDataTypes>::TxHash {
+    fn get_tx_hash(&self) -> TxHash {
         TransactionResponse::tx_hash(self)
     }
 
@@ -67,7 +64,7 @@ impl KabuBlock<KabuDataTypesEthereum> for EthBlock {
 }
 
 impl KabuTransactionRequest<KabuDataTypesEthereum> for TransactionRequest {
-    fn get_to(&self) -> Option<<KabuDataTypesEthereum as KabuDataTypes>::Address> {
+    fn get_to(&self) -> Option<Address> {
         match &self.to {
             None => None,
             Some(tx_kind) => match tx_kind {
@@ -77,7 +74,7 @@ impl KabuTransactionRequest<KabuDataTypesEthereum> for TransactionRequest {
         }
     }
 
-    fn build_call(to: <KabuDataTypesEthereum as KabuDataTypes>::Address, data: Bytes) -> TransactionRequest {
+    fn build_call(to: Address, data: Bytes) -> TransactionRequest {
         TransactionRequest::default().with_kind(TxKind::Call(to)).with_input(data).with_gas_limit(1_000_000)
     }
 }

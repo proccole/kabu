@@ -247,8 +247,8 @@ pub async fn pending_tx_state_change_worker<P, N, DB, LDT>(
     mempool: SharedState<Mempool<LDT>>,
     latest_block: SharedState<LatestBlock<LDT>>,
     market_state: SharedState<MarketState<DB>>,
-    mempool_events_rx: Broadcaster<MempoolEvents<LDT>>,
-    market_events_rx: Broadcaster<MarketEvents<LDT>>,
+    mempool_events_rx: Broadcaster<MempoolEvents>,
+    market_events_rx: Broadcaster<MarketEvents>,
     state_updates_broadcaster: Broadcaster<StateUpdateEvent<DB, LDT>>,
 ) -> WorkerResult
 where
@@ -270,7 +270,7 @@ where
         tokio::select! {
             msg = market_events_rx.recv() => {
                 if let Ok(msg) = msg {
-                    let market_event_msg : MarketEvents<LDT> = msg;
+                    let market_event_msg : MarketEvents = msg;
                     if let MarketEvents::BlockHeaderUpdate{ block_number, block_hash, timestamp, base_fee, next_base_fee } = market_event_msg {
                         debug!("Block header update {} {} base_fee {} ", block_number, block_hash, base_fee);
                         cur_block_number = Some( block_number + 1);
@@ -291,7 +291,7 @@ where
             }
             msg = mempool_events_rx.recv() => {
                 if let Ok(msg) = msg {
-                    let mempool_event_msg : MempoolEvents<LDT> = msg;
+                    let mempool_event_msg : MempoolEvents = msg;
                     if let MempoolEvents::MempoolActualTxUpdate{ tx_hash }  = mempool_event_msg {
                         if cur_block_number.is_none() {
                             warn!("Did not received block header update yet!");
@@ -333,9 +333,9 @@ pub struct PendingTxStateChangeProcessorActor<P, N, DB: Clone + Send + Sync + 's
     #[accessor]
     latest_block: Option<SharedState<LatestBlock<LDT>>>,
     #[consumer]
-    market_events_rx: Option<Broadcaster<MarketEvents<LDT>>>,
+    market_events_rx: Option<Broadcaster<MarketEvents>>,
     #[consumer]
-    mempool_events_rx: Option<Broadcaster<MempoolEvents<LDT>>>,
+    mempool_events_rx: Option<Broadcaster<MempoolEvents>>,
     #[producer]
     state_updates_tx: Option<Broadcaster<StateUpdateEvent<DB, LDT>>>,
     _n: PhantomData<N>,

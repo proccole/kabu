@@ -12,7 +12,6 @@ use alloy_primitives::{Address, Bytes, U256};
 use eyre::{eyre, ErrReport, Result};
 use kabu_defi_address_book::FactoryAddress;
 use kabu_evm_db::KabuDBError;
-use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEthereum};
 use revm::DatabaseRef;
 use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumIter, EnumString, VariantNames};
@@ -297,18 +296,15 @@ pub struct DefaultAbiSwapEncoder {}
 impl PoolAbiEncoder for DefaultAbiSwapEncoder {}
 
 #[derive(Clone, Debug)]
-pub enum PreswapRequirement<LDT: KabuDataTypes = KabuDataTypesEthereum> {
+pub enum PreswapRequirement {
     Unknown,
-    Transfer(LDT::Address),
+    Transfer(Address),
     Allowance,
     Callback,
     Base,
 }
 
-impl<LDT> PartialEq for PreswapRequirement<LDT>
-where
-    LDT: KabuDataTypes,
-{
+impl PartialEq for PreswapRequirement {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (PreswapRequirement::Unknown, PreswapRequirement::Unknown) => true,
@@ -321,14 +317,14 @@ where
     }
 }
 
-impl<LDT: KabuDataTypes> PreswapRequirement<LDT> {
-    pub fn address_or(&self, default_address: LDT::Address) -> LDT::Address {
+impl PreswapRequirement {
+    pub fn address_or(&self, default_address: Address) -> Address {
         match self {
             PreswapRequirement::Transfer(address) => *address,
             _ => default_address,
         }
     }
-    pub fn address(&self) -> Option<LDT::Address> {
+    pub fn address(&self) -> Option<Address> {
         match self {
             PreswapRequirement::Transfer(address) => Some(*address),
             _ => None,

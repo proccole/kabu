@@ -1,10 +1,11 @@
 use crate::Message;
+use alloy_primitives::TxHash;
 use kabu_types_blockchain::{GethStateUpdateVec, KabuHeader, MempoolTx};
 use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEthereum};
 
 #[derive(Clone, Debug)]
 pub struct NodeMempoolDataUpdate<LDT: KabuDataTypes = KabuDataTypesEthereum> {
-    pub tx_hash: LDT::TxHash,
+    pub tx_hash: TxHash,
     pub mempool_tx: MempoolTx<LDT>,
 }
 

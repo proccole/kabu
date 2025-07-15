@@ -1,12 +1,12 @@
 use crate::Message;
-use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEthereum};
+use alloy_primitives::TxHash;
 use kabu_types_entities::{EstimationError, SwapError};
 
 #[derive(Clone, Debug)]
-pub enum HealthEvent<LDT: KabuDataTypes = KabuDataTypesEthereum> {
+pub enum HealthEvent {
     PoolSwapError(SwapError),
     SwapLineEstimationError(EstimationError),
-    MonitorTx(LDT::TxHash),
+    MonitorTx(TxHash),
 }
 
-pub type MessageHealthEvent<LDT = KabuDataTypesEthereum> = Message<HealthEvent<LDT>>;
+pub type MessageHealthEvent = Message<HealthEvent>;

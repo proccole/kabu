@@ -8,19 +8,19 @@ use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEthereum};
 
 pub struct LatestBlock<LDT: KabuDataTypes = KabuDataTypesEthereum> {
     pub block_number: BlockNumber,
-    pub block_hash: LDT::BlockHash,
+    pub block_hash: BlockHash,
     pub block_header: Option<LDT::Header>,
     pub block_with_txs: Option<LDT::Block>,
     pub logs: Option<Vec<LDT::Log>>,
     pub diff: Option<Vec<LDT::StateUpdate>>,
 }
 
-impl<LDT: KabuDataTypes<Address = Address, Header = Header, BlockHash = BlockHash, StateUpdate = GethStateUpdate>> LatestBlock<LDT> {
-    pub fn hash(&self) -> LDT::BlockHash {
+impl<LDT: KabuDataTypes<Header = Header, StateUpdate = GethStateUpdate>> LatestBlock<LDT> {
+    pub fn hash(&self) -> BlockHash {
         self.block_hash
     }
 
-    pub fn parent_hash(&self) -> Option<LDT::BlockHash> {
+    pub fn parent_hash(&self) -> Option<BlockHash> {
         self.block_header.as_ref().map(|x| <Header as KabuHeader<LDT>>::get_parent_hash(x))
     }
     pub fn number(&self) -> BlockNumber {
@@ -31,7 +31,7 @@ impl<LDT: KabuDataTypes<Address = Address, Header = Header, BlockHash = BlockHas
         (self.block_number, self.block_hash)
     }
 
-    pub fn new(block_number: BlockNumber, block_hash: LDT::BlockHash) -> Self {
+    pub fn new(block_number: BlockNumber, block_hash: BlockHash) -> Self {
         Self { block_number, block_hash, block_header: None, block_with_txs: None, logs: None, diff: None }
     }
 
@@ -57,7 +57,7 @@ impl<LDT: KabuDataTypes<Address = Address, Header = Header, BlockHash = BlockHas
         self.block_with_txs.as_ref().map(|block| block.get_transactions())
     }
 
-    pub fn coinbase(&self) -> Option<LDT::Address> {
+    pub fn coinbase(&self) -> Option<Address> {
         if let Some(block) = &self.block_with_txs {
             return Some(<alloy_rpc_types::Header as KabuHeader<LDT>>::get_beneficiary(&block.get_header()));
         }
@@ -67,7 +67,7 @@ impl<LDT: KabuDataTypes<Address = Address, Header = Header, BlockHash = BlockHas
     pub fn update(
         &mut self,
         block_number: BlockNumber,
-        block_hash: LDT::BlockHash,
+        block_hash: BlockHash,
         block_header: Option<LDT::Header>,
         block_with_txes: Option<LDT::Block>,
         logs: Option<Vec<LDT::Log>>,

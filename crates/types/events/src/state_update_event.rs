@@ -1,6 +1,7 @@
 #![allow(clippy::type_complexity)]
 
 use alloy_consensus::Header;
+use alloy_primitives::TxHash;
 use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEVM, KabuDataTypesEthereum};
 use kabu_types_entities::{PoolWrapper, SwapDirection};
 use revm::DatabaseRef;
@@ -15,7 +16,7 @@ pub struct StateUpdateEvent<DB, LDT: KabuDataTypes = KabuDataTypesEthereum> {
     state_update: Vec<LDT::StateUpdate>,
     state_required: Option<Vec<LDT::StateUpdate>>,
     directions: BTreeMap<PoolWrapper, Vec<SwapDirection>>,
-    pub stuffing_txs_hashes: Vec<LDT::TxHash>,
+    pub stuffing_txs_hashes: Vec<TxHash>,
     pub stuffing_txs: Vec<LDT::Transaction>,
     pub origin: String,
     pub tips_pct: u32,
@@ -31,7 +32,7 @@ impl<DB: DatabaseRef, LDT: KabuDataTypes> StateUpdateEvent<DB, LDT> {
         state_update: Vec<LDT::StateUpdate>,
         state_required: Option<Vec<LDT::StateUpdate>>,
         directions: BTreeMap<PoolWrapper, Vec<SwapDirection>>,
-        stuffing_txs_hashes: Vec<LDT::TxHash>,
+        stuffing_txs_hashes: Vec<TxHash>,
         stuffing_txs: Vec<LDT::Transaction>,
         origin: String,
         tips_pct: u32,
@@ -70,14 +71,14 @@ impl<DB: DatabaseRef, LDT: KabuDataTypes> StateUpdateEvent<DB, LDT> {
         self.stuffing_txs_hashes.len()
     }
 
-    pub fn stuffing_txs_hashes(&self) -> &Vec<LDT::TxHash> {
+    pub fn stuffing_txs_hashes(&self) -> &Vec<TxHash> {
         &self.stuffing_txs_hashes
     }
     pub fn stuffing_txs(&self) -> &Vec<LDT::Transaction> {
         &self.stuffing_txs
     }
 
-    pub fn stuffing_tx_hash(&self) -> LDT::TxHash {
+    pub fn stuffing_tx_hash(&self) -> TxHash {
         self.stuffing_txs_hashes.first().cloned().unwrap_or_default()
     }
 }

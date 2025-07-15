@@ -15,7 +15,7 @@ pub async fn block_state_change_worker<DB: DatabaseRef + Send + Sync + Clone + '
     chain_parameters: ChainParameters,
     market: SharedState<Market>,
     block_history: SharedState<BlockHistory<DB, LDT>>,
-    market_events_rx: Broadcaster<MarketEvents<LDT>>,
+    market_events_rx: Broadcaster<MarketEvents>,
     state_updates_broadcaster: Broadcaster<StateUpdateEvent<DB, LDT>>,
 ) -> WorkerResult {
     subscribe!(market_events_rx);
@@ -90,7 +90,7 @@ pub struct BlockStateChangeProcessorActor<DB: Clone + Send + Sync + 'static, LDT
     #[accessor]
     block_history: Option<SharedState<BlockHistory<DB, LDT>>>,
     #[consumer]
-    market_events_rx: Option<Broadcaster<MarketEvents<LDT>>>,
+    market_events_rx: Option<Broadcaster<MarketEvents>>,
     #[producer]
     state_updates_tx: Option<Broadcaster<StateUpdateEvent<DB, LDT>>>,
 }

@@ -5,7 +5,7 @@ use alloy::consensus::constants::KECCAK_EMPTY;
 use alloy::primitives::map::HashMap;
 use alloy::primitives::{Address, U256};
 use criterion::{criterion_group, criterion_main, Criterion};
-use rand::{thread_rng, Rng};
+use rand::{rng, Rng};
 use revm::database::{AccountState, CacheDB, EmptyDB};
 use revm::state::{Account, AccountInfo, Bytecode};
 use revm::{DatabaseCommit, DatabaseRef};
@@ -19,10 +19,10 @@ const N_ACC: usize = 10000;
 const N_MEM: usize = 1000;
 
 fn generate_account(mem_size: usize) -> FastDbAccount {
-    let mut rng = thread_rng();
+    let mut rng = rng();
     let mut storage_map: HashMap<U256, U256, SimpleBuildHasher> = HashMap::with_hasher(SimpleBuildHasher::default());
     for _j in 0..mem_size {
-        storage_map.insert(rng.gen::<U256>(), rng.gen::<U256>());
+        storage_map.insert(rng.random::<U256>(), rng.random::<U256>());
     }
 
     //let mut code: [u8; 100] = [0; 100];

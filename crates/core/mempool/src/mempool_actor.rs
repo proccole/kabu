@@ -18,7 +18,7 @@ pub async fn new_mempool_worker<LDT: KabuDataTypes>(
     mempool_update_rx: Broadcaster<MessageMempoolDataUpdate<LDT>>,
     block_header_rx: Broadcaster<MessageBlockHeader<LDT>>,
     block_with_txs_rx: Broadcaster<MessageBlock<LDT>>,
-    broadcaster: Broadcaster<MempoolEvents<LDT>>,
+    broadcaster: Broadcaster<MempoolEvents>,
     influxdb_write_channel_tx: Broadcaster<WriteQuery>,
 ) -> WorkerResult {
     subscribe!(mempool_update_rx);
@@ -197,7 +197,7 @@ pub struct MempoolActor<LDT: KabuDataTypes + 'static = KabuDataTypesEthereum> {
     #[consumer]
     block_with_txs_rx: Option<Broadcaster<MessageBlock<LDT>>>,
     #[producer]
-    mempool_events_tx: Option<Broadcaster<MempoolEvents<LDT>>>,
+    mempool_events_tx: Option<Broadcaster<MempoolEvents>>,
     #[producer]
     influxdb_write_channel_tx: Option<Broadcaster<WriteQuery>>,
 }

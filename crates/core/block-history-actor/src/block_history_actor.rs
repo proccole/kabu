@@ -24,7 +24,7 @@ pub async fn set_chain_head<P, N, DB, LDT>(
     block_history_manager: &BlockHistoryManager<P, N, DB, LDT>,
     block_history: &mut BlockHistory<DB, LDT>,
     latest_block: &mut LatestBlock<LDT>,
-    market_events_tx: Broadcaster<MarketEvents<LDT>>,
+    market_events_tx: Broadcaster<MarketEvents>,
     header: LDT::Header,
     chain_parameters: &ChainParameters,
 ) -> Result<(bool, usize)>
@@ -81,7 +81,7 @@ pub async fn new_block_history_worker<P, N, DB, LDT>(
     block_update_rx: Broadcaster<MessageBlock<LDT>>,
     log_update_rx: Broadcaster<MessageBlockLogs<LDT>>,
     state_update_rx: Broadcaster<MessageBlockStateUpdate<LDT>>,
-    market_events_tx: Broadcaster<MarketEvents<LDT>>,
+    market_events_tx: Broadcaster<MarketEvents>,
 ) -> WorkerResult
 where
     N: Network<BlockResponse = LDT::Block>,
@@ -372,7 +372,7 @@ pub struct BlockHistoryActor<P, N, DB, LDT: KabuDataTypes + 'static> {
     #[consumer]
     state_update_rx: Option<Broadcaster<MessageBlockStateUpdate<LDT>>>,
     #[producer]
-    market_events_tx: Option<Broadcaster<MarketEvents<LDT>>>,
+    market_events_tx: Option<Broadcaster<MarketEvents>>,
     _n: PhantomData<N>,
 }
 

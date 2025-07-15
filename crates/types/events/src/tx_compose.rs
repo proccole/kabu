@@ -1,5 +1,5 @@
 use crate::{Message, TxState};
-use alloy_primitives::{Address, BlockNumber, Bytes, U256};
+use alloy_primitives::{Address, BlockNumber, Bytes, TxHash, U256};
 use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEthereum};
 use kabu_types_entities::{LoomTxSigner, Swap};
 use std::sync::Arc;
@@ -41,7 +41,7 @@ pub struct TxComposeData<LDT: KabuDataTypes = KabuDataTypesEthereum> {
     pub value: U256,
     pub gas: u64,
     pub priority_gas_fee: u64,
-    pub stuffing_txs_hashes: Vec<LDT::TxHash>,
+    pub stuffing_txs_hashes: Vec<TxHash>,
     pub stuffing_txs: Vec<LDT::Transaction>,
     pub next_block_number: BlockNumber,
     pub next_block_timestamp: u64,

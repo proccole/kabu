@@ -26,11 +26,11 @@ pub struct Blockchain<LDT: KabuDataTypes + 'static = KabuDataTypesEthereum> {
     new_block_state_update_channel: Broadcaster<MessageBlockStateUpdate<LDT>>,
     new_block_logs_channel: Broadcaster<MessageBlockLogs<LDT>>,
     new_mempool_tx_channel: Broadcaster<MessageMempoolDataUpdate<LDT>>,
-    market_events_channel: Broadcaster<MarketEvents<LDT>>,
-    mempool_events_channel: Broadcaster<MempoolEvents<LDT>>,
+    market_events_channel: Broadcaster<MarketEvents>,
+    mempool_events_channel: Broadcaster<MempoolEvents>,
     tx_compose_channel: Broadcaster<MessageTxCompose<LDT>>,
 
-    pool_health_monitor_channel: Broadcaster<MessageHealthEvent<LDT>>,
+    pool_health_monitor_channel: Broadcaster<MessageHealthEvent>,
     influxdb_write_channel: Broadcaster<WriteQuery>,
     tasks_channel: Broadcaster<LoomTask>,
 }
@@ -125,11 +125,11 @@ impl<LDT: KabuDataTypes> Blockchain<LDT> {
         self.new_mempool_tx_channel.clone()
     }
 
-    pub fn market_events_channel(&self) -> Broadcaster<MarketEvents<LDT>> {
+    pub fn market_events_channel(&self) -> Broadcaster<MarketEvents> {
         self.market_events_channel.clone()
     }
 
-    pub fn mempool_events_channel(&self) -> Broadcaster<MempoolEvents<LDT>> {
+    pub fn mempool_events_channel(&self) -> Broadcaster<MempoolEvents> {
         self.mempool_events_channel.clone()
     }
 
@@ -137,7 +137,7 @@ impl<LDT: KabuDataTypes> Blockchain<LDT> {
         self.tx_compose_channel.clone()
     }
 
-    pub fn health_monitor_channel(&self) -> Broadcaster<MessageHealthEvent<LDT>> {
+    pub fn health_monitor_channel(&self) -> Broadcaster<MessageHealthEvent> {
         self.pool_health_monitor_channel.clone()
     }
 

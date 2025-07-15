@@ -82,7 +82,7 @@ where
 
         let mut ret: GethStateUpdate = GethStateUpdate::new();
         for req in required_state.calls.into_iter() {
-            let to: LDT::Address = req.0;
+            let to: Address = req.0;
             let req: LDT::TransactionRequest = LDT::TransactionRequest::build_call(to, req.1);
 
             let call_result = debug_trace_call_pre_state(client.clone(), req, block_id, None).await;

@@ -112,7 +112,7 @@ mod test {
         assert_eq!(account_01.info.nonce, 1);
         assert_eq!(account_01.info.balance, U256::from(2));
         for (k, v) in account_01.storage.iter() {
-            print!("{} {}", k, v)
+            print!("{k} {v}")
         }
         let state_1 =
             geth_state_update_add_account(GethStateUpdate::default(), ADDR_01, account_state_with_nonce_and_balance(2, U256::from(3)));
@@ -219,11 +219,7 @@ mod test {
         loop {
             tokio::select! {
                 msg = rx.recv() => {
-                    match msg {
-                        _=>{
-                            info!("{:?}", msg)
-                        }
-                    }
+                    info!("{:?}", msg)
                 }
                 _ = tokio::time::sleep(Duration::from_millis(10000)) => {
                     break;

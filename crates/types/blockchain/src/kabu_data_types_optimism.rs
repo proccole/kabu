@@ -1,7 +1,7 @@
 use crate::kabu_data_types::KabuTransactionRequest;
-use crate::{GethStateUpdate, KabuBlock, KabuDataTypes, KabuDataTypesEVM, KabuDataTypesEthereum, KabuTx};
+use crate::{GethStateUpdate, KabuBlock, KabuDataTypes, KabuDataTypesEVM, KabuTx};
 use alloy_consensus::Transaction as TransactionTrait;
-use alloy_primitives::{Address, BlockHash, Bytes, TxHash, TxKind};
+use alloy_primitives::{Address, Bytes, TxHash, TxKind};
 use alloy_provider::network::{TransactionBuilder, TransactionResponse};
 use alloy_rpc_types_eth::{Block as EthBlock, Header, Log};
 use op_alloy::rpc_types::{OpTransactionReceipt, OpTransactionRequest, Transaction as OpTransaction};
@@ -19,9 +19,6 @@ impl KabuDataTypes for KabuDataTypesOptimism {
     type Header = Header;
     type Log = Log;
     type StateUpdate = GethStateUpdate;
-    type BlockHash = BlockHash;
-    type TxHash = TxHash;
-    type Address = Address;
 }
 
 impl KabuDataTypesEVM for KabuDataTypesOptimism {}
@@ -35,7 +32,7 @@ impl KabuTx<KabuDataTypesOptimism> for OpTransaction {
         TransactionTrait::gas_limit(self)
     }
 
-    fn get_tx_hash(&self) -> <KabuDataTypesOptimism as KabuDataTypes>::TxHash {
+    fn get_tx_hash(&self) -> TxHash {
         TransactionResponse::tx_hash(self)
     }
 
@@ -70,14 +67,14 @@ impl KabuBlock<KabuDataTypesOptimism> for EthBlock<OpTransaction, Header> {
 }
 
 impl KabuTransactionRequest<KabuDataTypesOptimism> for OpTransactionRequest {
-    fn get_to(&self) -> Option<<KabuDataTypesOptimism as KabuDataTypes>::Address> {
+    fn get_to(&self) -> Option<Address> {
         match &self.clone().build_typed_tx() {
             Ok(tx) => tx.to(),
             _ => None,
         }
     }
 
-    fn build_call(to: <KabuDataTypesEthereum as KabuDataTypes>::Address, data: Bytes) -> OpTransactionRequest {
+    fn build_call(to: Address, data: Bytes) -> OpTransactionRequest {
         OpTransactionRequest::default().with_kind(TxKind::Call(to)).with_input(data)
     }
 }

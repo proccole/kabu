@@ -150,6 +150,6 @@ mod test {
         opcodes.add(opcode);
 
         let packed_bytes = OpcodesEncoderV2::pack_do_calls(&opcodes).unwrap();
-        println!("{:?}", packed_bytes);
+        println!("{packed_bytes:?}");
     }
 }

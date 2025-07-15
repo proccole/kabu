@@ -33,13 +33,13 @@ pub struct StateChangeArbActor<P, N, DB: Clone + Send + Sync + 'static, LDT: Kab
     #[accessor]
     block_history: Option<SharedState<BlockHistory<DB, LDT>>>,
     #[consumer]
-    mempool_events_tx: Option<Broadcaster<MempoolEvents<LDT>>>,
+    mempool_events_tx: Option<Broadcaster<MempoolEvents>>,
     #[consumer]
-    market_events_tx: Option<Broadcaster<MarketEvents<LDT>>>,
+    market_events_tx: Option<Broadcaster<MarketEvents>>,
     #[producer]
     compose_channel_tx: Option<Broadcaster<MessageSwapCompose<DB, LDT>>>,
     #[producer]
-    pool_health_monitor_tx: Option<Broadcaster<MessageHealthEvent<LDT>>>,
+    pool_health_monitor_tx: Option<Broadcaster<MessageHealthEvent>>,
     #[producer]
     influxdb_write_channel_tx: Option<Broadcaster<WriteQuery>>,
 

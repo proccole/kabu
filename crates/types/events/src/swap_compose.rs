@@ -1,7 +1,7 @@
 use crate::tx_compose::TxComposeData;
 use crate::Message;
 use alloy_eips::eip2718::Encodable2718;
-use alloy_primitives::{Bytes, U256};
+use alloy_primitives::{Bytes, TxHash, U256};
 use eyre::{eyre, Result};
 use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEthereum};
 use kabu_types_entities::{PoolId, Swap};
@@ -62,7 +62,7 @@ pub struct SwapComposeData<DB, LDT: KabuDataTypes = KabuDataTypesEthereum> {
 }
 
 impl<DB: Clone + 'static, LDT: KabuDataTypes> SwapComposeData<DB, LDT> {
-    pub fn same_stuffing(&self, others_stuffing_txs_hashes: &[LDT::TxHash]) -> bool {
+    pub fn same_stuffing(&self, others_stuffing_txs_hashes: &[TxHash]) -> bool {
         let tx_len = self.tx_compose.stuffing_txs_hashes.len();
 
         if tx_len != others_stuffing_txs_hashes.len() {
@@ -78,8 +78,8 @@ impl<DB: Clone + 'static, LDT: KabuDataTypes> SwapComposeData<DB, LDT> {
         self.swap.get_pool_id_vec().iter().any(|x| others_pools.contains(x))
     }
 
-    pub fn first_stuffing_hash(&self) -> LDT::TxHash {
-        self.tx_compose.stuffing_txs_hashes.first().map_or(LDT::TxHash::default(), |x| *x)
+    pub fn first_stuffing_hash(&self) -> TxHash {
+        self.tx_compose.stuffing_txs_hashes.first().map_or(TxHash::default(), |x| *x)
     }
 
     pub fn tips_gas_ratio(&self) -> U256 {

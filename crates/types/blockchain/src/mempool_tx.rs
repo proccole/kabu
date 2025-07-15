@@ -7,7 +7,7 @@ use crate::{KabuDataTypes, KabuDataTypesEthereum};
 #[derive(Clone, Debug)]
 pub struct MempoolTx<D: KabuDataTypes> {
     pub source: String,
-    pub tx_hash: D::TxHash,
+    pub tx_hash: TxHash,
     pub time: DateTime<Utc>,
     pub tx: Option<D::Transaction>,
     pub logs: Option<Vec<D::Log>>,
@@ -30,7 +30,7 @@ impl<LDT: KabuDataTypes> Default for MempoolTx<LDT> {
     fn default() -> Self {
         MempoolTx {
             source: "unknown".to_string(),
-            tx_hash: LDT::TxHash::default(),
+            tx_hash: TxHash::default(),
             time: Utc::now(),
             tx: None,
             state_update: None,

@@ -44,11 +44,11 @@ where
         self.state_update.is_some() && self.block.is_some() && self.logs.is_some()
     }
 
-    pub fn hash(&self) -> LDT::BlockHash {
+    pub fn hash(&self) -> BlockHash {
         self.header.get_hash()
     }
 
-    pub fn parent_hash(&self) -> LDT::BlockHash {
+    pub fn parent_hash(&self) -> BlockHash {
         self.header.get_parent_hash()
     }
 
@@ -65,9 +65,9 @@ where
 pub struct BlockHistory<S, LDT: KabuDataTypes> {
     depth: usize,
     pub latest_block_number: u64,
-    block_states: HashMap<LDT::BlockHash, S>,
-    block_entries: HashMap<LDT::BlockHash, BlockHistoryEntry<LDT>>,
-    block_numbers: HashMap<u64, LDT::BlockHash>,
+    block_states: HashMap<BlockHash, S>,
+    block_entries: HashMap<BlockHash, BlockHistoryEntry<LDT>>,
+    block_numbers: HashMap<u64, BlockHash>,
 }
 
 impl<S, LDT> BlockHistory<S, LDT>
@@ -85,7 +85,7 @@ where
         }
     }
 
-    pub fn add_db(&mut self, block_hash: LDT::BlockHash, state: S) -> Result<()> {
+    pub fn add_db(&mut self, block_hash: BlockHash, state: S) -> Result<()> {
         self.block_states.insert(block_hash, state);
         Ok(())
     }
@@ -112,7 +112,7 @@ impl<S, LDT: KabuDataTypes> BlockHistory<S, LDT> {
 
         if block_number > self.depth as u64 {
             self.block_numbers.retain(|&key, _| key > (block_number - self.depth as u64));
-            let actual_hashes: Vec<LDT::BlockHash> = self.block_numbers.values().cloned().collect();
+            let actual_hashes: Vec<BlockHash> = self.block_numbers.values().cloned().collect();
             self.block_entries.retain(|key, _| actual_hashes.contains(key));
             self.block_states.retain(|key, _| actual_hashes.contains(key));
         }
@@ -120,7 +120,7 @@ impl<S, LDT: KabuDataTypes> BlockHistory<S, LDT> {
         self.block_entries.entry(block_hash).or_insert(BlockHistoryEntry::new(header, None, None, None))
     }
 
-    fn get_or_insert_entry_mut(&mut self, block_hash: LDT::BlockHash) -> &mut BlockHistoryEntry<LDT> {
+    fn get_or_insert_entry_mut(&mut self, block_hash: BlockHash) -> &mut BlockHistoryEntry<LDT> {
         self.block_entries.entry(block_hash).or_default()
     }
 
@@ -191,7 +191,7 @@ impl<S, LDT: KabuDataTypes> BlockHistory<S, LDT> {
         Ok(())
     }
 
-    pub fn add_state_diff(&mut self, block_hash: LDT::BlockHash, state_diff: Vec<LDT::StateUpdate>) -> Result<()> {
+    pub fn add_state_diff(&mut self, block_hash: BlockHash, state_diff: Vec<LDT::StateUpdate>) -> Result<()> {
         let market_history_entry = self.get_or_insert_entry_mut(block_hash);
 
         if market_history_entry.state_update.is_none() {
@@ -209,7 +209,7 @@ impl<S, LDT: KabuDataTypes> BlockHistory<S, LDT> {
         }
     }
 
-    pub fn add_logs(&mut self, block_hash: LDT::BlockHash, logs: Vec<LDT::Log>) -> Result<()> {
+    pub fn add_logs(&mut self, block_hash: BlockHash, logs: Vec<LDT::Log>) -> Result<()> {
         let market_history_entry = self.get_or_insert_entry_mut(block_hash);
 
         if market_history_entry.logs.is_none() {
@@ -227,23 +227,23 @@ impl<S, LDT: KabuDataTypes> BlockHistory<S, LDT> {
         }
     }
 
-    pub fn get_block_history_entry(&self, block_hash: &LDT::BlockHash) -> Option<&BlockHistoryEntry<LDT>> {
+    pub fn get_block_history_entry(&self, block_hash: &BlockHash) -> Option<&BlockHistoryEntry<LDT>> {
         self.block_entries.get(block_hash)
     }
 
-    pub fn get_block_state(&self, block_hash: &LDT::BlockHash) -> Option<&S> {
+    pub fn get_block_state(&self, block_hash: &BlockHash) -> Option<&S> {
         self.block_states.get(block_hash)
     }
 
-    pub fn get_entry_mut(&mut self, block_hash: &LDT::BlockHash) -> Option<&mut BlockHistoryEntry<LDT>> {
+    pub fn get_entry_mut(&mut self, block_hash: &BlockHash) -> Option<&mut BlockHistoryEntry<LDT>> {
         self.block_entries.get_mut(block_hash)
     }
 
-    pub fn get_block_by_hash(&self, block_hash: &LDT::BlockHash) -> Option<LDT::Block> {
+    pub fn get_block_by_hash(&self, block_hash: &BlockHash) -> Option<LDT::Block> {
         self.block_entries.get(block_hash).and_then(|entry| entry.block.clone())
     }
 
-    pub fn get_block_hash_for_block_number(&self, block_number: BlockNumber) -> Option<LDT::BlockHash> {
+    pub fn get_block_hash_for_block_number(&self, block_number: BlockNumber) -> Option<BlockHash> {
         self.block_numbers.get(&block_number).cloned()
     }
 
@@ -251,7 +251,7 @@ impl<S, LDT: KabuDataTypes> BlockHistory<S, LDT> {
         self.block_entries.values().map(|x| x.header.get_number()).min()
     }
 
-    pub fn contains_block(&self, block_hash: &LDT::BlockHash) -> bool {
+    pub fn contains_block(&self, block_hash: &BlockHash) -> bool {
         self.block_entries.contains_key(block_hash)
     }
 }
@@ -315,9 +315,9 @@ where
 
         let block_entry = BlockHistoryEntry::new(block.get_header().clone(), Some(block), None, None);
 
-        let mut block_entries: HashMap<LDT::BlockHash, BlockHistoryEntry<LDT>> = HashMap::new();
-        let mut block_numbers: HashMap<u64, LDT::BlockHash> = HashMap::new();
-        let mut block_states: HashMap<LDT::BlockHash, S> = HashMap::new();
+        let mut block_entries: HashMap<BlockHash, BlockHistoryEntry<LDT>> = HashMap::new();
+        let mut block_numbers: HashMap<u64, BlockHash> = HashMap::new();
+        let mut block_states: HashMap<BlockHash, S> = HashMap::new();
 
         block_numbers.insert(latest_block_number, block_hash);
         block_entries.insert(block_hash, block_entry);
@@ -422,7 +422,7 @@ where
         &self,
         block_history: &mut BlockHistory<S, LDT>,
         market_state_config: &MarketStateConfig,
-        block_hash: LDT::BlockHash,
+        block_hash: BlockHash,
     ) -> Result<S> {
         let mut entry = block_history.get_or_insert_entry_mut(block_hash).clone();
         if !entry.is_fetched() {
@@ -445,7 +445,7 @@ where
         if let Ok(is_new) = block_history.add_block_header(header) {
             is_new_block = is_new;
             if let Some(min_block) = first_block_number {
-                let mut parent_block_hash: LDT::BlockHash = parent_hash;
+                let mut parent_block_hash: BlockHash = parent_hash;
 
                 if is_new {
                     loop {
@@ -477,7 +477,7 @@ where
         Ok((is_new_block, reorg_depth))
     }
 
-    pub async fn fetch_entry_by_hash(&self, block_hash: LDT::BlockHash) -> Result<BlockHistoryEntry<LDT>> {
+    pub async fn fetch_entry_by_hash(&self, block_hash: BlockHash) -> Result<BlockHistoryEntry<LDT>> {
         let block = self.client.get_block_by_hash(block_hash).full().await?;
         if let Some(block) = block {
             let header = block.get_header().clone();

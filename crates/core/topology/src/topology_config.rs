@@ -264,7 +264,7 @@ mod test {
     fn test_load() {
         match TopologyConfig::load_from_file("../../config.toml".to_string()) {
             Ok(c) => {
-                println!("{:?}", c);
+                println!("{c:?}");
             }
             Err(e) => {
                 println!("Error:{e}")

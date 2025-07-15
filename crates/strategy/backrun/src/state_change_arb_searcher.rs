@@ -36,7 +36,7 @@ async fn state_change_arb_searcher_task<
     state_update_event: StateUpdateEvent<DB, LDT>,
     market: SharedState<Market>,
     swap_request_tx: Broadcaster<MessageSwapCompose<DB, LDT>>,
-    pool_health_monitor_tx: Broadcaster<MessageHealthEvent<LDT>>,
+    pool_health_monitor_tx: Broadcaster<MessageHealthEvent>,
     influxdb_write_channel_tx: Broadcaster<WriteQuery>,
 ) -> Result<()> {
     debug!("Message received {} stuffing : {:?}", state_update_event.origin, state_update_event.stuffing_tx_hash());
@@ -234,7 +234,7 @@ pub async fn state_change_arb_searcher_worker<
     market: SharedState<Market>,
     search_request_rx: Broadcaster<StateUpdateEvent<DB, LDT>>,
     swap_request_tx: Broadcaster<MessageSwapCompose<DB, LDT>>,
-    pool_health_monitor_tx: Broadcaster<MessageHealthEvent<LDT>>,
+    pool_health_monitor_tx: Broadcaster<MessageHealthEvent>,
     influxdb_write_channel_tx: Broadcaster<WriteQuery>,
 ) -> WorkerResult {
     subscribe!(search_request_rx);
@@ -276,7 +276,7 @@ pub struct StateChangeArbSearcherActor<DB: Clone + Send + Sync + 'static, LDT: K
     #[producer]
     compose_tx: Option<Broadcaster<MessageSwapCompose<DB, LDT>>>,
     #[producer]
-    pool_health_monitor_tx: Option<Broadcaster<MessageHealthEvent<LDT>>>,
+    pool_health_monitor_tx: Option<Broadcaster<MessageHealthEvent>>,
     #[producer]
     influxdb_write_channel_tx: Option<Broadcaster<WriteQuery>>,
 }

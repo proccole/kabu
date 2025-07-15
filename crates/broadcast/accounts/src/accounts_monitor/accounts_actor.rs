@@ -58,17 +58,17 @@ where
 pub async fn nonce_and_balance_monitor_worker<LDT>(
     accounts_state: SharedState<AccountNonceAndBalanceState>,
     latest_block: SharedState<LatestBlock<LDT>>,
-    market_events_rx: Broadcaster<MarketEvents<LDT>>,
+    market_events_rx: Broadcaster<MarketEvents>,
 ) -> WorkerResult
 where
-    LDT: KabuDataTypes<Log = EthLog, Address = Address>,
+    LDT: KabuDataTypes<Log = EthLog>,
 {
     let mut market_events = market_events_rx.subscribe();
 
     loop {
         tokio::select! {
             msg = market_events.recv() => {
-                let market_event_msg : Result<MarketEvents<LDT>, RecvError> = msg;
+                let market_event_msg : Result<MarketEvents, RecvError> = msg;
                 if let Ok(market_event_msg) = market_event_msg {
                     match market_event_msg {
                         MarketEvents::BlockTxUpdate{  .. }=>{
@@ -152,7 +152,7 @@ pub struct NonceAndBalanceMonitorActor<P, N, LDT: KabuDataTypes + 'static> {
     #[accessor]
     latest_block: Option<SharedState<LatestBlock<LDT>>>,
     #[consumer]
-    market_events: Option<Broadcaster<MarketEvents<LDT>>>,
+    market_events: Option<Broadcaster<MarketEvents>>,
     _n: PhantomData<N>,
 }
 
@@ -196,7 +196,7 @@ impl<P, N, LDT> Actor for NonceAndBalanceMonitorActor<P, N, LDT>
 where
     N: Network,
     P: Provider<N> + Send + Sync + Clone + 'static,
-    LDT: KabuDataTypes<Log = EthLog, Address = Address> + 'static,
+    LDT: KabuDataTypes<Log = EthLog> + 'static,
 {
     fn start(&self) -> ActorResult {
         let mut handles = Vec::new();
