@@ -26,6 +26,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly
@@ -50,6 +52,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly
@@ -74,6 +78,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly
@@ -127,6 +133,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@clippy
       - uses: Swatinem/rust-cache@v2
       - uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - run: 'echo "pub const KEY_ENCRYPTION_PWD: [u8; 16] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];" > crates/types/entities/src/private.rs'
       # workaround for latest stable rust
