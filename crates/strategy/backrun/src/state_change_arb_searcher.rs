@@ -12,9 +12,9 @@ use revm::{Database, DatabaseCommit, DatabaseRef};
 use tokio::sync::broadcast::error::RecvError;
 #[cfg(not(debug_assertions))]
 use tracing::warn;
-use tracing::{debug, error, info, trace};
+use tracing::{debug, error, info};
 
-use crate::BackrunConfig;
+use crate::{BackrunConfig, SwapCalculator};
 use kabu_core_actors::{subscribe, Accessor, Actor, ActorResult, Broadcaster, Consumer, Producer, SharedState, WorkerResult};
 use kabu_core_actors_macros::{Accessor, Consumer, Producer};
 use kabu_core_blockchain::{Blockchain, Strategy};
@@ -101,31 +101,22 @@ async fn state_change_arb_searcher_task<
     }
     info!("Calculation started: swap_path_vec_len={} elapsed={}", swap_path_vec.len(), start_time.elapsed().as_micros());
 
-    let next_header = state_update_event.next_header();
-
     let channel_len = swap_path_vec.len();
     let (swap_path_tx, mut swap_line_rx) = tokio::sync::mpsc::channel(channel_len);
 
     let market_state_clone = db.clone();
     let swap_path_vec_len = swap_path_vec.len();
 
-    //let evm = Arc::new(KabuEVMWrapper::new());
-
     let _tasks = tokio::task::spawn(async move {
         thread_pool.install(|| {
-            swap_path_vec.into_par_iter().for_each_with((&swap_path_tx, &market_state_clone, &next_header), |_req, item| {
-                let mut_item: SwapLine = SwapLine { path: item, ..Default::default() };
+            swap_path_vec.into_par_iter().for_each_with((&swap_path_tx, &market_state_clone), |_req, item| {
+                let mut mut_item: SwapLine = SwapLine { path: item, ..Default::default() };
 
-                // TODO: Fix KabuEVMWrapper initialization and LoomExecuteEvm trait implementation
-                // let mut evm = KabuEVMWrapper::new().with_header(req.2);
-                // let calc_result = SwapCalculator::calculate(&mut mut_item, evm.get_mut());
-
-                // Temporarily disable swap calculation until LoomExecuteEvm trait is properly implemented
-                let calc_result: Result<(), SwapError> = Err(mut_item.to_error("LoomExecuteEvm trait not implemented".to_string()));
+                let calc_result = SwapCalculator::calculate(&mut mut_item, &market_state_clone);
 
                 match calc_result {
                     Ok(_) => {
-                        trace!("Calc result received: {}", mut_item);
+                        debug!("Calc result received: {}", mut_item);
 
                         if let Ok(profit) = mut_item.profit() {
                             if profit.is_positive() && mut_item.abs_profit_eth() > U256::from(state_update_event.next_base_fee * 100_000) {
@@ -133,12 +124,12 @@ async fn state_change_arb_searcher_task<
                                     error!(%error, "swap_path_tx.try_send")
                                 }
                             } else {
-                                trace!("profit is not enough")
+                                debug!("profit is not enough")
                             }
                         }
                     }
                     Err(e) => {
-                        trace!("Swap error: {:?}", e);
+                        debug!("Swap error: {:?}", e);
 
                         if let Err(error) = swap_path_tx.try_send(Err(e)) {
                             error!(%error, "try_send to swap_path_tx")

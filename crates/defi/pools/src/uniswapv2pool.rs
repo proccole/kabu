@@ -278,6 +278,7 @@ impl Pool for UniswapV2Pool {
             if in_amount.is_zero() {
                 Err(eyre!("IN_AMOUNT_IS_ZERO"))
             } else {
+                let in_amount = in_amount.checked_add(U256::ONE).ok_or(eyre!("IN_AMOUNT_OVERFLOW"))?;
                 Ok((in_amount, 100_000))
             }
         }
@@ -487,7 +488,6 @@ mod test {
         Ok(())
     }
 
-    #[ignore]
     #[tokio::test]
     async fn test_calculate_in_amount() -> Result<()> {
         // Verify that the calculated in amount is the same as the contract's in amount

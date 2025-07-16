@@ -470,7 +470,7 @@ mod tests {
         use kabu_types_entities::MarketState;
         let mut market_state = MarketState::new(KabuDBType::default());
         market_state.state_db.apply_geth_update(state_required);
-        let block = client.get_block_by_number(BlockNumberOrTag::Number(block_number)).await?.unwrap();
+        let _block = client.get_block_by_number(BlockNumberOrTag::Number(block_number)).await?.unwrap();
         let cache_db = CacheDB::new(market_state.state_db.clone());
 
         let amount = U256::from(pool.liquidity1 / U256::from(1000));

@@ -108,7 +108,9 @@ async fn swap_router_worker<DB: DatabaseRef + Clone + Send + Sync + 'static, LDT
                                     )
                                 );
                             }
-                            _=>{}
+                            _=>{
+                                error!("Unexpected message type received in swap router worker");
+                            }
 
                         }
                     }
