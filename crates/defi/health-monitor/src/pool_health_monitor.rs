@@ -30,7 +30,7 @@ lazy_static! {
 pub async fn pool_health_monitor_worker(
     market: SharedState<Market>,
     pool_health_monitor_rx: Broadcaster<MessageHealthEvent>,
-    influx_channel_tx: Broadcaster<WriteQuery>,
+    influx_channel_tx: Option<Broadcaster<WriteQuery>>,
 ) -> WorkerResult {
     subscribe!(pool_health_monitor_rx);
 
@@ -93,8 +93,10 @@ pub async fn pool_health_monitor_worker(
                                                                                 .add_tag("token_from", tokens[0].to_string())
                                                                                 .add_tag("token_to", tokens[1].to_string());
 
-                                                                            if let Err(e) = influx_channel_clone.send(write_query) {
-                                                                               error!("Failed to failed pool to influxdb: {:?}", e);
+                                                                            if let Some(tx) = influx_channel_clone {
+                                                                                if let Err(e) = tx.send(write_query) {
+                                                                                    error!("Failed to failed pool to influxdb: {:?}", e);
+                                                                                }
                                                                             }
                                                                         }
                                                                     ).await {
@@ -159,8 +161,10 @@ pub async fn pool_health_monitor_worker(
                                                                     .add_tag("token_from", swap_error.token_from.to_string())
                                                                     .add_tag("token_to", swap_error.token_to.to_string());
 
-                                                                if let Err(e) = influx_channel_clone.send(write_query) {
-                                                                   error!("Failed to failed pool to influxdb: {:?}", e);
+                                                                if let Some(tx) = influx_channel_clone {
+                                                                    if let Err(e) = tx.send(write_query) {
+                                                                        error!("Failed to failed pool to influxdb: {:?}", e);
+                                                                    }
                                                                 }
                                                             }
                                                         ).await {
@@ -213,7 +217,7 @@ impl PoolHealthMonitorActor {
         Self {
             market: Some(bc.market()),
             pool_health_update_rx: Some(bc.health_monitor_channel()),
-            influxdb_tx: Some(bc.influxdb_write_channel()),
+            influxdb_tx: bc.influxdb_write_channel(),
         }
     }
 }
@@ -223,7 +227,7 @@ impl Actor for PoolHealthMonitorActor {
         let task = tokio::task::spawn(pool_health_monitor_worker(
             self.market.clone().unwrap(),
             self.pool_health_update_rx.clone().unwrap(),
-            self.influxdb_tx.clone().unwrap(),
+            self.influxdb_tx.clone(),
         ));
         Ok(vec![task])
     }

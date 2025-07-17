@@ -37,7 +37,7 @@ async fn state_change_arb_searcher_task<
     market: SharedState<Market>,
     swap_request_tx: Broadcaster<MessageSwapCompose<DB, LDT>>,
     pool_health_monitor_tx: Broadcaster<MessageHealthEvent>,
-    influxdb_write_channel_tx: Broadcaster<WriteQuery>,
+    influxdb_write_channel_tx: Option<Broadcaster<WriteQuery>>,
 ) -> Result<()> {
     debug!("Message received {} stuffing : {:?}", state_update_event.origin, state_update_event.stuffing_tx_hash());
 
@@ -210,8 +210,10 @@ async fn state_change_arb_searcher_task<
         .add_tag("origin", state_update_event.origin)
         .add_tag("stuffing", stuffing_tx_hash.to_string());
 
-    if let Err(e) = influxdb_write_channel_tx.send(write_query) {
-        error!("Failed to send block latency to influxdb: {:?}", e);
+    if let Some(tx) = influxdb_write_channel_tx {
+        if let Err(e) = tx.send(write_query) {
+            error!("Failed to send block latency to influxdb: {:?}", e);
+        }
     }
 
     Ok(())
@@ -226,7 +228,7 @@ pub async fn state_change_arb_searcher_worker<
     search_request_rx: Broadcaster<StateUpdateEvent<DB, LDT>>,
     swap_request_tx: Broadcaster<MessageSwapCompose<DB, LDT>>,
     pool_health_monitor_tx: Broadcaster<MessageHealthEvent>,
-    influxdb_write_channel_tx: Broadcaster<WriteQuery>,
+    influxdb_write_channel_tx: Option<Broadcaster<WriteQuery>>,
 ) -> WorkerResult {
     subscribe!(search_request_rx);
 
@@ -294,7 +296,7 @@ impl<
             pool_health_monitor_tx: Some(bc.health_monitor_channel()),
             compose_tx: Some(strategy.swap_compose_channel()),
             state_update_rx: Some(strategy.state_update_channel()),
-            influxdb_write_channel_tx: Some(bc.influxdb_write_channel()),
+            influxdb_write_channel_tx: bc.influxdb_write_channel(),
             ..self
         }
     }
@@ -312,7 +314,7 @@ impl<
             self.state_update_rx.clone().unwrap(),
             self.compose_tx.clone().unwrap(),
             self.pool_health_monitor_tx.clone().unwrap(),
-            self.influxdb_write_channel_tx.clone().unwrap(),
+            self.influxdb_write_channel_tx.clone(),
         ));
         Ok(vec![task])
     }

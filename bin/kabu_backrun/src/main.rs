@@ -53,7 +53,7 @@ async fn main() -> Result<()> {
 
     info!("Starting state change arb actor");
     let mut state_change_arb_actor = StateChangeArbActor::new(client.clone(), true, true, backrun_config);
-    match state_change_arb_actor
+    let mut arb_builder = state_change_arb_actor
         .access(blockchain.mempool())
         .access(blockchain.latest_block())
         .access(blockchain.market())
@@ -62,10 +62,11 @@ async fn main() -> Result<()> {
         .consume(blockchain.market_events_channel())
         .consume(blockchain.mempool_events_channel())
         .produce(strategy.swap_compose_channel())
-        .produce(blockchain.health_monitor_channel())
-        .produce(blockchain.influxdb_write_channel())
-        .start()
-    {
+        .produce(blockchain.health_monitor_channel());
+    if let Some(influx_channel) = blockchain.influxdb_write_channel() {
+        arb_builder = arb_builder.produce(influx_channel);
+    }
+    match arb_builder.start() {
         Err(e) => {
             error!("{}", e)
         }
@@ -174,13 +175,14 @@ async fn main() -> Result<()> {
 
     // Monitoring transactions we tried to attach to.
     let mut stuffing_txs_monitor_actor = StuffingTxMonitorActor::new(client.clone());
-    match stuffing_txs_monitor_actor
+    let mut stuffing_builder = stuffing_txs_monitor_actor
         .access(blockchain.latest_block())
         .consume(blockchain.tx_compose_channel())
-        .consume(blockchain.market_events_channel())
-        .produce(blockchain.influxdb_write_channel())
-        .start()
-    {
+        .consume(blockchain.market_events_channel());
+    if let Some(influx_channel) = blockchain.influxdb_write_channel() {
+        stuffing_builder = stuffing_builder.produce(influx_channel);
+    }
+    match stuffing_builder.start() {
         Err(e) => {
             panic!("Stuffing txs monitor actor failed : {e}")
         }
@@ -192,25 +194,28 @@ async fn main() -> Result<()> {
 
     // Recording InfluxDB metrics
     if let Some(influxdb_config) = influxdb_config {
-        let mut influxdb_writer_actor = InfluxDbWriterActor::new(influxdb_config.url, influxdb_config.database, influxdb_config.tags);
-        match influxdb_writer_actor.consume(blockchain.influxdb_write_channel()).start() {
-            Err(e) => {
-                panic!("InfluxDB writer actor failed : {e}")
-            }
-            Ok(r) => {
-                worker_task_vec.extend(r);
-                info!("InfluxDB writer actor started successfully")
+        if let Some(influx_channel) = blockchain.influxdb_write_channel() {
+            let mut influxdb_writer_actor = InfluxDbWriterActor::new(influxdb_config.url, influxdb_config.database, influxdb_config.tags);
+            match influxdb_writer_actor.consume(influx_channel).start() {
+                Err(e) => {
+                    panic!("InfluxDB writer actor failed : {e}")
+                }
+                Ok(r) => {
+                    worker_task_vec.extend(r);
+                    info!("InfluxDB writer actor started successfully")
+                }
             }
         }
 
         let mut block_latency_recorder_actor = MetricsRecorderActor::new();
-        match block_latency_recorder_actor
+        let mut metrics_builder = block_latency_recorder_actor
             .access(blockchain.market())
             .access(blockchain_state.market_state())
-            .consume(blockchain.new_block_headers_channel())
-            .produce(blockchain.influxdb_write_channel())
-            .start()
-        {
+            .consume(blockchain.new_block_headers_channel());
+        if let Some(influx_channel) = blockchain.influxdb_write_channel() {
+            metrics_builder = metrics_builder.produce(influx_channel);
+        }
+        match metrics_builder.start() {
             Err(e) => {
                 panic!("Block latency recorder actor failed : {e}")
             }

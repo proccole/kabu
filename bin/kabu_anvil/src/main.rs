@@ -19,7 +19,6 @@ use clap::Parser;
 use kabu::node::debug_provider::AnvilDebugProviderFactory;
 
 use eyre::{OptionExt, Result};
-use influxdb::WriteQuery;
 use kabu::broadcast::accounts::{InitializeSignersOneShotBlockingActor, NonceAndBalanceMonitorActor, TxSignersActor};
 use kabu::broadcast::broadcaster::{AnvilBroadcastActor, FlashbotsBroadcastActor};
 use kabu::broadcast::flashbots::client::RelayConfig;
@@ -187,8 +186,6 @@ async fn main() -> Result<()> {
     let market_events_channel: Broadcaster<MarketEvents> = Broadcaster::new(100);
     let mempool_events_channel: Broadcaster<MempoolEvents> = Broadcaster::new(500);
     let pool_health_monitor_channel: Broadcaster<MessageHealthEvent> = Broadcaster::new(100);
-
-    let influx_channel: Broadcaster<WriteQuery> = Broadcaster::new(100);
 
     let market_instance = SharedState::new(market_instance);
     let market_state = SharedState::new(market_state_instance);
@@ -391,7 +388,6 @@ async fn main() -> Result<()> {
         .access(latest_block.clone())
         .consume(market_events_channel.clone())
         .consume(tx_compose_channel.clone())
-        .produce(influx_channel.clone())
         .start()
     {
         Ok(_) => {
@@ -458,7 +454,6 @@ async fn main() -> Result<()> {
             .consume(mempool_events_channel.clone())
             .produce(swap_compose_channel.clone())
             .produce(pool_health_monitor_channel.clone())
-            .produce(influx_channel.clone())
             .start()
         {
             Err(e) => {

@@ -73,7 +73,7 @@ impl InfluxDbWriterActor {
     }
 
     pub fn on_bc(self, bc: &Blockchain) -> Self {
-        Self { influxdb_write_channel_rx: Some(bc.influxdb_write_channel()), ..self }
+        Self { influxdb_write_channel_rx: bc.influxdb_write_channel(), ..self }
     }
 }
 

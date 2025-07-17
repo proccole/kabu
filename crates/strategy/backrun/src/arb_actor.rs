@@ -86,14 +86,17 @@ where
         let mut tasks: Vec<JoinHandle<WorkerResult>> = Vec::new();
 
         let mut state_update_searcher = StateChangeArbSearcherActor::new(self.backrun_config.clone());
-        match state_update_searcher
+        let mut searcher_builder = state_update_searcher
             .access(self.market.clone().unwrap())
             .consume(searcher_pool_update_channel.clone())
             .produce(self.compose_channel_tx.clone().unwrap())
-            .produce(self.pool_health_monitor_tx.clone().unwrap())
-            .produce(self.influxdb_write_channel_tx.clone().unwrap())
-            .start()
-        {
+            .produce(self.pool_health_monitor_tx.clone().unwrap());
+
+        if let Some(influx_channel) = self.influxdb_write_channel_tx.clone() {
+            searcher_builder = searcher_builder.produce(influx_channel);
+        }
+
+        match searcher_builder.start() {
             Err(e) => {
                 panic!("{}", e)
             }

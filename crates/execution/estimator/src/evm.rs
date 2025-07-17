@@ -345,7 +345,7 @@ where
             compose_channel_tx: Some(strategy.swap_compose_channel()),
             compose_channel_rx: Some(strategy.swap_compose_channel()),
             health_monitor_channel_tx: Some(bc.health_monitor_channel()),
-            influxdb_write_channel_tx: Some(bc.influxdb_write_channel()),
+            influxdb_write_channel_tx: bc.influxdb_write_channel(),
             ..self
         }
     }

@@ -5846,7 +5846,6 @@ dependencies = [
  "criterion 0.5.1",
  "eyre",
  "futures",
- "influxdb",
  "kabu",
  "kabu-evm-utils",
  "kabu-types-blockchain",

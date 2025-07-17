@@ -31,12 +31,16 @@ pub struct Blockchain<LDT: KabuDataTypes + 'static = KabuDataTypesEthereum> {
     tx_compose_channel: Broadcaster<MessageTxCompose<LDT>>,
 
     pool_health_monitor_channel: Broadcaster<MessageHealthEvent>,
-    influxdb_write_channel: Broadcaster<WriteQuery>,
+    influxdb_write_channel: Option<Broadcaster<WriteQuery>>,
     tasks_channel: Broadcaster<LoomTask>,
 }
 
 impl Blockchain<KabuDataTypesEthereum> {
     pub fn new(chain_id: ChainId) -> Blockchain<KabuDataTypesEthereum> {
+        Self::new_with_config(chain_id, true)
+    }
+
+    pub fn new_with_config(chain_id: ChainId, enable_influxdb: bool) -> Blockchain<KabuDataTypesEthereum> {
         let new_block_headers_channel: Broadcaster<MessageBlockHeader> = Broadcaster::new(10);
         let new_block_with_tx_channel: Broadcaster<MessageBlock> = Broadcaster::new(10);
         let new_block_state_update_channel: Broadcaster<MessageBlockStateUpdate> = Broadcaster::new(10);
@@ -49,7 +53,7 @@ impl Blockchain<KabuDataTypesEthereum> {
         let tx_compose_channel: Broadcaster<MessageTxCompose> = Broadcaster::new(2000);
 
         let pool_health_monitor_channel: Broadcaster<MessageHealthEvent> = Broadcaster::new(1000);
-        let influx_write_channel: Broadcaster<WriteQuery> = Broadcaster::new(1000);
+        let influx_write_channel = if enable_influxdb { Some(Broadcaster::new(1000)) } else { None };
         let tasks_channel: Broadcaster<LoomTask> = Broadcaster::new(1000);
 
         let mut market_instance = Market::default();
@@ -141,7 +145,7 @@ impl<LDT: KabuDataTypes> Blockchain<LDT> {
         self.pool_health_monitor_channel.clone()
     }
 
-    pub fn influxdb_write_channel(&self) -> Broadcaster<WriteQuery> {
+    pub fn influxdb_write_channel(&self) -> Option<Broadcaster<WriteQuery>> {
         self.influxdb_write_channel.clone()
     }
 

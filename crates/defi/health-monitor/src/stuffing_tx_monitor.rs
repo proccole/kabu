@@ -46,7 +46,7 @@ pub async fn stuffing_tx_monitor_worker<P: Provider<Ethereum> + Clone + 'static>
     latest_block: SharedState<LatestBlock>,
     tx_compose_channel_rx: Broadcaster<MessageTxCompose>,
     market_events_rx: Broadcaster<MarketEvents>,
-    influxdb_write_channel_tx: Broadcaster<WriteQuery>,
+    influxdb_write_channel_tx: Option<Broadcaster<WriteQuery>>,
 ) -> WorkerResult {
     let mut tx_compose_channel_rx: Receiver<MessageTxCompose> = tx_compose_channel_rx.subscribe();
     let mut market_events_rx: Receiver<MarketEvents> = market_events_rx.subscribe();
@@ -88,8 +88,10 @@ pub async fn stuffing_tx_monitor_worker<P: Provider<Ethereum> + Clone + 'static>
                                                         .add_tag("block_idx", idx as u64)
                                                         .add_tag("stuffing_tx", tx_hash.to_string())
                                                         .add_tag("other_tx", others_tx_hash.to_string());
-                                                    if let Err(e) = influx_channel_clone.send(write_query) {
-                                                       error!("Failed to send block latency to influxdb: {:?}", e);
+                                                    if let Some(tx) = influx_channel_clone {
+                                                        if let Err(e) = tx.send(write_query) {
+                                                            error!("Failed to send block latency to influxdb: {:?}", e);
+                                                        }
                                                     }
                                                 };
                                             });
@@ -104,8 +106,10 @@ pub async fn stuffing_tx_monitor_worker<P: Provider<Ethereum> + Clone + 'static>
                             let start_time_utc =   chrono::Utc::now();
 
                             let write_query = WriteQuery::new(Timestamp::from(start_time_utc), "stuffing_waiting").add_field("value", txs_to_check.len() as u64).add_tag("block", block_number);
-                            if let Err(e) = influxdb_write_channel_tx.send(write_query) {
-                               error!("Failed to send block latency to influxdb: {:?}", e);
+                            if let Some(tx) = &influxdb_write_channel_tx {
+                                if let Err(e) = tx.send(write_query) {
+                                    error!("Failed to send block latency to influxdb: {:?}", e);
+                                }
                             }
                         }
                     }
@@ -190,7 +194,7 @@ impl<P: Provider<Ethereum> + Send + Sync + Clone + 'static> StuffingTxMonitorAct
             latest_block: Some(bc.latest_block()),
             tx_compose_channel_rx: Some(bc.tx_compose_channel()),
             market_events_rx: Some(bc.market_events_channel()),
-            influxdb_write_channel_tx: Some(bc.influxdb_write_channel()),
+            influxdb_write_channel_tx: bc.influxdb_write_channel(),
             ..self
         }
     }
@@ -206,7 +210,7 @@ where
             self.latest_block.clone().unwrap(),
             self.tx_compose_channel_rx.clone().unwrap(),
             self.market_events_rx.clone().unwrap(),
-            self.influxdb_write_channel_tx.clone().unwrap(),
+            self.influxdb_write_channel_tx.clone(),
         ));
         Ok(vec![task])
     }

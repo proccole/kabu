@@ -19,7 +19,7 @@ async fn metrics_recorder_worker<DB: DatabaseKabuExt + DatabaseRef + Send + Sync
     market: SharedState<Market>,
     market_state: SharedState<MarketState<DB>>,
     block_header_update_rx: Broadcaster<MessageBlockHeader<LDT>>,
-    influx_channel_tx: Broadcaster<WriteQuery>,
+    influx_channel_tx: Option<Broadcaster<WriteQuery>>,
 ) -> WorkerResult {
     subscribe!(block_header_update_rx);
     loop {
@@ -60,66 +60,68 @@ async fn metrics_recorder_worker<DB: DatabaseKabuExt + DatabaseRef + Send + Sync
 
         let block_number = block_header.inner.header.get_number();
 
-        if let Err(e) = tokio::time::timeout(Duration::from_secs(2), async move {
-            let write_query = WriteQuery::new(Timestamp::from(current_timestamp), "state_accounts")
-                .add_field("value", accounts as f32)
-                .add_field("block_number", block_number);
-            if let Err(e) = influx_channel_clone.send(write_query) {
-                error!("Failed to send block latency to influxdb: {:?}", e);
-            }
+        if let Some(influx_tx) = influx_channel_clone {
+            if let Err(e) = tokio::time::timeout(Duration::from_secs(2), async move {
+                let write_query = WriteQuery::new(Timestamp::from(current_timestamp), "state_accounts")
+                    .add_field("value", accounts as f32)
+                    .add_field("block_number", block_number);
+                if let Err(e) = influx_tx.send(write_query) {
+                    error!("Failed to send block latency to influxdb: {:?}", e);
+                }
 
-            let write_query = WriteQuery::new(Timestamp::from(current_timestamp), "state_contracts")
-                .add_field("value", contracts as f32)
-                .add_field("block_number", block_number);
-            if let Err(e) = influx_channel_clone.send(write_query) {
-                error!("Failed to send block latency to influxdb: {:?}", e);
-            }
+                let write_query = WriteQuery::new(Timestamp::from(current_timestamp), "state_contracts")
+                    .add_field("value", contracts as f32)
+                    .add_field("block_number", block_number);
+                if let Err(e) = influx_tx.send(write_query) {
+                    error!("Failed to send block latency to influxdb: {:?}", e);
+                }
 
-            let write_query = WriteQuery::new(Timestamp::from(current_timestamp), "pools_disabled")
-                .add_field("value", pools_disabled as f32)
-                .add_field("block_number", block_number);
-            if let Err(e) = influx_channel_clone.send(write_query) {
-                error!("Failed to send pools_disabled to influxdb: {:?}", e);
-            }
+                let write_query = WriteQuery::new(Timestamp::from(current_timestamp), "pools_disabled")
+                    .add_field("value", pools_disabled as f32)
+                    .add_field("block_number", block_number);
+                if let Err(e) = influx_tx.send(write_query) {
+                    error!("Failed to send pools_disabled to influxdb: {:?}", e);
+                }
 
-            let write_query = WriteQuery::new(Timestamp::from(current_timestamp), "paths")
-                .add_field("value", paths as f32)
-                .add_field("block_number", block_number);
-            if let Err(e) = influx_channel_clone.send(write_query) {
-                error!("Failed to send pools_disabled to influxdb: {:?}", e);
-            }
+                let write_query = WriteQuery::new(Timestamp::from(current_timestamp), "paths")
+                    .add_field("value", paths as f32)
+                    .add_field("block_number", block_number);
+                if let Err(e) = influx_tx.send(write_query) {
+                    error!("Failed to send pools_disabled to influxdb: {:?}", e);
+                }
 
-            let write_query = WriteQuery::new(Timestamp::from(current_timestamp), "paths_disabled")
-                .add_field("value", paths_disabled as f32)
-                .add_field("block_number", block_number);
-            if let Err(e) = influx_channel_clone.send(write_query) {
-                error!("Failed to send pools_disabled to influxdb: {:?}", e);
-            }
+                let write_query = WriteQuery::new(Timestamp::from(current_timestamp), "paths_disabled")
+                    .add_field("value", paths_disabled as f32)
+                    .add_field("block_number", block_number);
+                if let Err(e) = influx_tx.send(write_query) {
+                    error!("Failed to send pools_disabled to influxdb: {:?}", e);
+                }
 
-            let write_query = WriteQuery::new(Timestamp::from(current_timestamp), "pools_disabled")
-                .add_field("value", pools_disabled as f32)
-                .add_field("block_number", block_number);
-            if let Err(e) = influx_channel_clone.send(write_query) {
-                error!("Failed to send pools_disabled to influxdb: {:?}", e);
-            }
+                let write_query = WriteQuery::new(Timestamp::from(current_timestamp), "pools_disabled")
+                    .add_field("value", pools_disabled as f32)
+                    .add_field("block_number", block_number);
+                if let Err(e) = influx_tx.send(write_query) {
+                    error!("Failed to send pools_disabled to influxdb: {:?}", e);
+                }
 
-            let write_query = WriteQuery::new(Timestamp::from(current_timestamp), "jemalloc_allocated")
-                .add_field("value", (allocated >> 20) as f32)
-                .add_field("block_number", block_number);
-            if let Err(e) = influx_channel_clone.send(write_query) {
-                error!("Failed to send jemalloc_allocator latency to influxdb: {:?}", e);
-            }
+                let write_query = WriteQuery::new(Timestamp::from(current_timestamp), "jemalloc_allocated")
+                    .add_field("value", (allocated >> 20) as f32)
+                    .add_field("block_number", block_number);
+                if let Err(e) = influx_tx.send(write_query) {
+                    error!("Failed to send jemalloc_allocator latency to influxdb: {:?}", e);
+                }
 
-            let write_query = WriteQuery::new(Timestamp::from(current_timestamp), "block_latency")
-                .add_field("value", block_latency)
-                .add_field("block_number", block_number);
-            if let Err(e) = influx_channel_clone.send(write_query) {
-                error!("Failed to send block latency to influxdb: {:?}", e);
+                let write_query = WriteQuery::new(Timestamp::from(current_timestamp), "block_latency")
+                    .add_field("value", block_latency)
+                    .add_field("block_number", block_number);
+                if let Err(e) = influx_tx.send(write_query) {
+                    error!("Failed to send block latency to influxdb: {:?}", e);
+                }
+            })
+            .await
+            {
+                error!("Failed to send data to influxdb: {:?}", e);
             }
-        })
-        .await
-        {
-            error!("Failed to send data to influxdb: {:?}", e);
         }
     }
 }
@@ -150,7 +152,7 @@ where
             market: Some(bc.market()),
             market_state: Some(bc_state.market_state()),
             block_header_rx: Some(bc.new_block_headers_channel()),
-            influxdb_write_channel_tx: Some(bc.influxdb_write_channel()),
+            influxdb_write_channel_tx: bc.influxdb_write_channel(),
         }
     }
 }
@@ -165,7 +167,7 @@ where
             self.market.clone().unwrap(),
             self.market_state.clone().unwrap(),
             self.block_header_rx.clone().unwrap(),
-            self.influxdb_write_channel_tx.clone().unwrap(),
+            self.influxdb_write_channel_tx.clone(),
         ));
         Ok(vec![task])
     }

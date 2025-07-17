@@ -19,7 +19,7 @@ pub async fn new_mempool_worker<LDT: KabuDataTypes>(
     block_header_rx: Broadcaster<MessageBlockHeader<LDT>>,
     block_with_txs_rx: Broadcaster<MessageBlock<LDT>>,
     broadcaster: Broadcaster<MempoolEvents>,
-    influxdb_write_channel_tx: Broadcaster<WriteQuery>,
+    influxdb_write_channel_tx: Option<Broadcaster<WriteQuery>>,
 ) -> WorkerResult {
     subscribe!(mempool_update_rx);
     subscribe!(block_header_rx);
@@ -175,8 +175,10 @@ pub async fn new_mempool_worker<LDT: KabuDataTypes>(
                     .add_field("tx_count_found", mempool_tx_counter)
                     .add_field("tx_mempool_size", mempool_size as u64);
 
-                if let Err(e) = influxdb_write_channel_tx.send(write_query) {
-                       error!("Failed to send mempool stat to influxdb: {:?}", e);
+                if let Some(tx) = &influxdb_write_channel_tx {
+                    if let Err(e) = tx.send(write_query) {
+                        error!("Failed to send mempool stat to influxdb: {:?}", e);
+                    }
                 }
 
                 drop(mempool_write_guard);
@@ -229,7 +231,7 @@ impl<LDT: KabuDataTypes> MempoolActor<LDT> {
             block_header_rx: Some(bc.new_block_headers_channel()),
             block_with_txs_rx: Some(bc.new_block_with_tx_channel()),
             mempool_events_tx: Some(bc.mempool_events_channel()),
-            influxdb_write_channel_tx: Some(bc.influxdb_write_channel()),
+            influxdb_write_channel_tx: bc.influxdb_write_channel(),
         }
     }
 }
@@ -243,7 +245,7 @@ impl<LDT: KabuDataTypes> Actor for MempoolActor<LDT> {
             self.block_header_rx.clone().unwrap(),
             self.block_with_txs_rx.clone().unwrap(),
             self.mempool_events_tx.clone().unwrap(),
-            self.influxdb_write_channel_tx.clone().unwrap(),
+            self.influxdb_write_channel_tx.clone(),
         ));
         Ok(vec![task])
     }

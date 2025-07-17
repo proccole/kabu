@@ -190,7 +190,7 @@ impl<
         }
 
         for (k, params) in self.config.blockchains.iter() {
-            let blockchain = Blockchain::new(params.chain_id.unwrap_or(1) as u64);
+            let blockchain = Blockchain::new_with_config(params.chain_id.unwrap_or(1) as u64, self.config.influxdb.is_some());
             let market_state = MarketState::new(DB::default());
             let blockchain_state = BlockchainState::<DB, KabuDataTypesEthereum>::new_with_market_state(market_state);
             let strategy = Strategy::<DB>::new();
@@ -262,15 +262,16 @@ impl<
 
             info!("Starting mempool actor {k}");
             let mut mempool_actor = MempoolActor::new();
-            match mempool_actor
+            let mut mempool_builder = mempool_actor
                 .access(blockchain.mempool())
                 .consume(blockchain.new_mempool_tx_channel())
                 .consume(blockchain.new_block_headers_channel())
                 .consume(blockchain.new_block_with_tx_channel())
-                .produce(blockchain.mempool_events_channel())
-                .produce(blockchain.influxdb_write_channel())
-                .start()
-            {
+                .produce(blockchain.mempool_events_channel());
+            if let Some(influx_channel) = blockchain.influxdb_write_channel() {
+                mempool_builder = mempool_builder.produce(influx_channel);
+            }
+            match mempool_builder.start() {
                 Ok(r) => {
                     tasks.extend(r);
                     info!("Mempool actor started successfully")
@@ -282,12 +283,11 @@ impl<
 
             info!("Starting pool monitor monitor actor {k}");
             let mut new_pool_health_monior_actor = PoolHealthMonitorActor::new();
-            match new_pool_health_monior_actor
-                .access(blockchain.market())
-                .consume(blockchain.health_monitor_channel())
-                .produce(blockchain.influxdb_write_channel())
-                .start()
-            {
+            let mut health_builder = new_pool_health_monior_actor.access(blockchain.market()).consume(blockchain.health_monitor_channel());
+            if let Some(influx_channel) = blockchain.influxdb_write_channel() {
+                health_builder = health_builder.produce(influx_channel);
+            }
+            match health_builder.start() {
                 Ok(r) => {
                     tasks.extend(r);
                     info!("Pool monitor monitor actor started")
@@ -567,13 +567,14 @@ impl<
                         encoder.set_address(multicaller_address);
 
                         let mut evm_estimator_actor = EvmEstimatorActor::new_with_provider(encoder, client);
-                        match evm_estimator_actor
+                        let mut evm_builder = evm_estimator_actor
                             .consume(strategy.swap_compose_channel())
                             .produce(strategy.swap_compose_channel())
-                            .produce(blockchain.health_monitor_channel())
-                            .produce(blockchain.influxdb_write_channel())
-                            .start()
-                        {
+                            .produce(blockchain.health_monitor_channel());
+                        if let Some(influx_channel) = blockchain.influxdb_write_channel() {
+                            evm_builder = evm_builder.produce(influx_channel);
+                        }
+                        match evm_builder.start() {
                             Ok(r) => {
                                 tasks.extend(r);
                                 info!("EVM estimator actor started successfully {name} @ {}", blockchain.chain_id())
