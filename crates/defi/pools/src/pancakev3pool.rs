@@ -4,7 +4,7 @@ use alloy::primitives::{Address, Bytes, I256, U160, U256};
 use alloy::providers::{Network, Provider};
 use alloy::sol_types::{SolCall, SolInterface};
 use alloy_evm::EvmEnv;
-use eyre::{eyre, ErrReport, OptionExt, Result};
+use eyre::{OptionExt, Result};
 use kabu_defi_abi::pancake::IPancakeQuoterV2::IPancakeQuoterV2Calls;
 use kabu_defi_abi::pancake::IPancakeV3Pool::slot0Return;
 use kabu_defi_abi::pancake::{IPancakeQuoterV2, IPancakeV3Pool};
@@ -15,7 +15,9 @@ use kabu_defi_address_book::PeripheryAddress;
 use kabu_evm_db::KabuDBError;
 use kabu_evm_utils::evm_call;
 use kabu_types_entities::required_state::RequiredState;
-use kabu_types_entities::{Pool, PoolAbiEncoder, PoolClass, PoolId, PoolProtocol, PreswapRequirement, SwapDirection};
+use kabu_types_entities::{
+    Pool, PoolAbiEncoder, PoolClass, PoolError, PoolId, PoolProtocol, PreswapRequirement, SwapDirection, UniswapV3Error,
+};
 use revm::DatabaseRef;
 use std::any::Any;
 use std::fmt::Debug;
@@ -220,7 +222,7 @@ impl Pool for PancakeV3Pool {
         token_address_from: &Address,
         token_address_to: &Address,
         in_amount: U256,
-    ) -> Result<(U256, u64), ErrReport> {
+    ) -> Result<(U256, u64), PoolError> {
         let call_data = IPancakeQuoterV2Calls::quoteExactInputSingle(IPancakeQuoterV2::quoteExactInputSingleCall {
             params: IPancakeQuoterV2::QuoteExactInputSingleParams {
                 tokenIn: *token_address_from,
@@ -234,10 +236,11 @@ impl Pool for PancakeV3Pool {
 
         let (value, gas_used, _) = evm_call(db, EvmEnv::default(), PeripheryAddress::PANCAKE_V3_QUOTER, call_data)?;
 
-        let ret = IPancakeQuoterV2::quoteExactInputSingleCall::abi_decode_returns(&value)?;
+        let ret = IPancakeQuoterV2::quoteExactInputSingleCall::abi_decode_returns(&value)
+            .map_err(|e| PoolError::AbiDecodingError { method: "quoteExactInputSingle", source: e })?;
 
         if ret.amountOut.is_zero() {
-            Err(eyre!("ZERO_OUT_AMOUNT"))
+            Err(UniswapV3Error::OutAmountIsZero.into())
         } else {
             Ok((ret.amountOut - U256::from(1), gas_used))
         }
@@ -249,7 +252,7 @@ impl Pool for PancakeV3Pool {
         token_address_from: &Address,
         token_address_to: &Address,
         out_amount: U256,
-    ) -> Result<(U256, u64), ErrReport> {
+    ) -> Result<(U256, u64), PoolError> {
         let call_data = IPancakeQuoterV2Calls::quoteExactOutputSingle(IPancakeQuoterV2::quoteExactOutputSingleCall {
             params: IPancakeQuoterV2::QuoteExactOutputSingleParams {
                 tokenIn: *token_address_from,
@@ -263,10 +266,11 @@ impl Pool for PancakeV3Pool {
 
         let (value, gas_used, _) = evm_call(db, EvmEnv::default(), PeripheryAddress::PANCAKE_V3_QUOTER, call_data)?;
 
-        let ret = IPancakeQuoterV2::quoteExactOutputSingleCall::abi_decode_returns(&value)?;
+        let ret = IPancakeQuoterV2::quoteExactOutputSingleCall::abi_decode_returns(&value)
+            .map_err(|e| PoolError::AbiDecodingError { method: "quoteExactOutputSingle", source: e })?;
 
         if ret.amountIn.is_zero() {
-            Err(eyre!("ZERO_IN_AMOUNT"))
+            Err(UniswapV3Error::InAmountIsZero.into())
         } else {
             Ok((ret.amountIn + U256::from(1), gas_used))
         }
@@ -292,7 +296,7 @@ impl Pool for PancakeV3Pool {
         let tick = self.slot0.as_ref().ok_or_eyre("SLOT0_NOT_SET")?.tick;
         let price_step = PancakeV3Pool::get_price_step(self.fee_u32);
         if price_step == 0 {
-            return Err(eyre!("BAD_PRICE_STEP"));
+            return Err(UniswapV3Error::BadPriceStep.into());
         }
         let tick_bitmap_index = PancakeV3Pool::get_tick_bitmap_index(tick.as_i32(), PancakeV3Pool::get_price_step(self.fee_u32));
 

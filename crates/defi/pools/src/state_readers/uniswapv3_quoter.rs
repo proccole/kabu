@@ -2,10 +2,11 @@ use alloy::primitives::aliases::U24;
 use alloy::primitives::{Address, U160, U256};
 use alloy::sol_types::SolCall;
 use alloy_evm::EvmEnv;
-use eyre::{eyre, Result};
+use eyre::Result;
 use kabu_defi_abi::uniswap_periphery::IQuoterV2;
 use kabu_evm_db::KabuDBError;
 use kabu_evm_utils::evm_call;
+use kabu_types_entities::PoolError;
 use revm::DatabaseRef;
 
 pub struct UniswapV3QuoterV2Encoder {}
@@ -35,18 +36,18 @@ impl UniswapV3QuoterV2Encoder {
         call.abi_encode()
     }
 
-    pub fn quote_exact_input_result_decode(data: &[u8]) -> Result<U256> {
+    pub fn quote_exact_input_result_decode(data: &[u8]) -> Result<U256, PoolError> {
         let ret = IQuoterV2::quoteExactInputSingleCall::abi_decode_returns(data);
         match ret {
             Ok(r) => Ok(r.amountOut),
-            Err(_) => Err(eyre!("CANNOT_DECODE_EXACT_INPUT_RETURN")),
+            Err(e) => Err(PoolError::AbiDecodingError { method: "quoteExactInputSingle", source: e }),
         }
     }
-    pub fn quote_exact_output_result_decode(data: &[u8]) -> Result<U256> {
+    pub fn quote_exact_output_result_decode(data: &[u8]) -> Result<U256, PoolError> {
         let ret = IQuoterV2::quoteExactOutputSingleCall::abi_decode_returns(data);
         match ret {
             Ok(r) => Ok(r.amountIn),
-            Err(_) => Err(eyre!("CANNOT_DECODE_EXACT_OUTPUT_RETURN")),
+            Err(e) => Err(PoolError::AbiDecodingError { method: "quoteExactOutputSingle", source: e }),
         }
     }
 }
@@ -61,7 +62,7 @@ impl UniswapV3QuoterV2StateReader {
         token_to: Address,
         fee: U24,
         amount: U256,
-    ) -> Result<(U256, u64)> {
+    ) -> Result<(U256, u64), PoolError> {
         let input = UniswapV3QuoterV2Encoder::quote_exact_input_encode(token_from, token_to, fee, U160::ZERO, amount);
         let (value, gas_used, _) = evm_call(db, EvmEnv::default(), quoter_address, input)?;
 
@@ -76,7 +77,7 @@ impl UniswapV3QuoterV2StateReader {
         token_to: Address,
         fee: U24,
         amount: U256,
-    ) -> Result<(U256, u64)> {
+    ) -> Result<(U256, u64), PoolError> {
         let input = UniswapV3QuoterV2Encoder::quote_exact_output_encode(token_from, token_to, fee, U160::ZERO, amount);
         let (value, gas_used, _) = evm_call(db, EvmEnv::default(), quoter_address, input)?;
 

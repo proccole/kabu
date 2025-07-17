@@ -8,7 +8,7 @@ use crate::virtual_impl::UniswapV3PoolVirtual;
 use alloy::primitives::{Address, Bytes, I256, U160, U256};
 use alloy::providers::{Network, Provider};
 use alloy::sol_types::{SolCall, SolInterface};
-use eyre::{eyre, ErrReport, OptionExt, Result};
+use eyre::{OptionExt, Result};
 use kabu_defi_abi::uniswap3::IUniswapV3Pool;
 use kabu_defi_abi::uniswap3::IUniswapV3Pool::slot0Return;
 use kabu_defi_abi::uniswap_periphery::ITickLens;
@@ -16,7 +16,9 @@ use kabu_defi_abi::IERC20;
 use kabu_defi_address_book::{FactoryAddress, PeripheryAddress};
 use kabu_evm_db::KabuDBError;
 use kabu_types_entities::required_state::RequiredState;
-use kabu_types_entities::{Pool, PoolAbiEncoder, PoolClass, PoolId, PoolProtocol, PreswapRequirement, SwapDirection};
+use kabu_types_entities::{
+    Pool, PoolAbiEncoder, PoolClass, PoolError, PoolId, PoolProtocol, PreswapRequirement, SwapDirection, UniswapV3Error,
+};
 use lazy_static::lazy_static;
 use revm::DatabaseRef;
 use tracing::debug;
@@ -257,7 +259,7 @@ impl Pool for UniswapV3Pool {
         token_address_from: &Address,
         token_address_to: &Address,
         in_amount: U256,
-    ) -> Result<(U256, u64), ErrReport> {
+    ) -> Result<(U256, u64), PoolError> {
         let (ret, gas_used) = if self.get_protocol() == PoolProtocol::UniswapV3 {
             let ret_virtual = UniswapV3PoolVirtual::simulate_swap_in_amount_provider(db, self, token_address_from, in_amount)?;
 
@@ -269,7 +271,7 @@ impl Pool for UniswapV3Pool {
                     PeripheryAddress::UNISWAP_V3_QUOTER_V2,
                     *token_address_from,
                     *token_address_to,
-                    self.fee.try_into()?,
+                    self.fee.try_into().map_err(|_| PoolError::InvalidInput { reason: "invalid fee value" })?,
                     in_amount,
                 )?;
                 println!("calculate_out_amount ret_evm: {ret_evm:?} ret: {ret_virtual:?} gas_used: {gas_used:?}");
@@ -286,16 +288,16 @@ impl Pool for UniswapV3Pool {
                 PeripheryAddress::UNISWAP_V3_QUOTER_V2,
                 *token_address_from,
                 *token_address_to,
-                self.fee.try_into()?,
+                self.fee.try_into().map_err(|_| PoolError::InvalidInput { reason: "invalid fee value" })?,
                 in_amount,
             )?;
             (ret_evm, gas_used)
         };
 
         if ret.is_zero() {
-            Err(eyre!("RETURN_RESULT_IS_ZERO"))
+            Err(UniswapV3Error::OutAmountIsZero.into())
         } else {
-            Ok((ret.checked_sub(*U256_ONE).ok_or_eyre("SUB_OVERFLOWN")?, gas_used))
+            Ok((ret.checked_sub(*U256_ONE).ok_or(UniswapV3Error::UnderflowInCalculation)?, gas_used))
             // value, gas_used
         }
     }
@@ -306,7 +308,7 @@ impl Pool for UniswapV3Pool {
         token_address_from: &Address,
         token_address_to: &Address,
         out_amount: U256,
-    ) -> Result<(U256, u64), ErrReport> {
+    ) -> Result<(U256, u64), PoolError> {
         let (ret, gas_used) = if self.get_protocol() == PoolProtocol::UniswapV3 {
             let ret_virtual = UniswapV3PoolVirtual::simulate_swap_out_amount_provided(db, self, token_address_from, out_amount)?;
 
@@ -318,7 +320,7 @@ impl Pool for UniswapV3Pool {
                     PeripheryAddress::UNISWAP_V3_QUOTER_V2,
                     *token_address_from,
                     *token_address_to,
-                    self.fee.try_into()?,
+                    self.fee.try_into().map_err(|_| PoolError::InvalidInput { reason: "invalid fee value" })?,
                     out_amount,
                 )?;
                 println!("calculate_out_amount ret_evm: {ret_evm:?} ret: {ret_virtual:?} gas_used: {gas_used:?}");
@@ -336,16 +338,16 @@ impl Pool for UniswapV3Pool {
                 PeripheryAddress::UNISWAP_V3_QUOTER_V2,
                 *token_address_from,
                 *token_address_to,
-                self.fee.try_into()?,
+                self.fee.try_into().map_err(|_| PoolError::InvalidInput { reason: "invalid fee value" })?,
                 out_amount,
             )?;
             (ret_evm, gas_used)
         };
 
         if ret.is_zero() {
-            Err(eyre!("RETURN_RESULT_IS_ZERO"))
+            Err(UniswapV3Error::InAmountIsZero.into())
         } else {
-            Ok((ret.checked_add(*U256_ONE).ok_or_eyre("ADD_OVERFLOWN")?, gas_used))
+            Ok((ret.checked_add(*U256_ONE).ok_or(UniswapV3Error::OverflowInCalculation)?, gas_used))
         }
     }
 
@@ -370,7 +372,7 @@ impl Pool for UniswapV3Pool {
         let price_step = UniswapV3Pool::get_price_step(self.fee);
         let mut state_required = RequiredState::new();
         if price_step == 0 {
-            return Err(eyre!("BAD_PRICE_STEP"));
+            return Err(UniswapV3Error::BadPriceStep.into());
         }
         let tick_bitmap_index = UniswapV3Pool::get_tick_bitmap_index(tick, price_step);
 

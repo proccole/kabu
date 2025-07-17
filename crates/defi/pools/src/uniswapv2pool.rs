@@ -3,13 +3,15 @@ use alloy::primitives::{Address, Bytes, U256};
 use alloy::providers::{Network, Provider};
 use alloy::rpc::types::BlockNumberOrTag;
 use alloy::sol_types::SolInterface;
-use eyre::{eyre, ErrReport, Result};
+use eyre::Result;
 use kabu_defi_abi::uniswap2::IUniswapV2Pair;
 use kabu_defi_abi::IERC20;
 use kabu_defi_address_book::FactoryAddress;
 use kabu_evm_db::KabuDBError;
 use kabu_types_entities::required_state::RequiredState;
-use kabu_types_entities::{Pool, PoolAbiEncoder, PoolClass, PoolId, PoolProtocol, PreswapRequirement, SwapDirection};
+use kabu_types_entities::{
+    Pool, PoolAbiEncoder, PoolClass, PoolError, PoolId, PoolProtocol, PreswapRequirement, SwapDirection, UniswapV2Error,
+};
 use lazy_static::lazy_static;
 use revm::DatabaseRef;
 use std::any::Any;
@@ -183,9 +185,8 @@ impl UniswapV2Pool {
         Ok(ret)
     }
 
-    pub fn fetch_reserves<DB: DatabaseRef<Error = KabuDBError> + ?Sized>(&self, db: &DB) -> Result<(U256, U256)> {
-        let (reserve_0, reserve_1) = UniswapV2EVMStateReader::get_reserves(db, self.address)?;
-        Ok((reserve_0, reserve_1))
+    pub fn fetch_reserves<DB: DatabaseRef<Error = KabuDBError> + ?Sized>(&self, db: &DB) -> Result<(U256, U256), PoolError> {
+        UniswapV2EVMStateReader::get_reserves(db, self.address)
     }
 }
 
@@ -226,7 +227,7 @@ impl Pool for UniswapV2Pool {
         token_address_from: &Address,
         token_address_to: &Address,
         in_amount: U256,
-    ) -> Result<(U256, u64), ErrReport> {
+    ) -> Result<(U256, u64), PoolError> {
         let (reserves_0, reserves_1) = self.fetch_reserves(db)?;
 
         let (reserve_in, reserve_out) = match token_address_from < token_address_to {
@@ -234,16 +235,16 @@ impl Pool for UniswapV2Pool {
             false => (reserves_1, reserves_0),
         };
 
-        let amount_in_with_fee = in_amount.checked_mul(self.fee).ok_or(eyre!("AMOUNT_IN_WITH_FEE_OVERFLOW"))?;
-        let numerator = amount_in_with_fee.checked_mul(reserve_out).ok_or(eyre!("NUMERATOR_OVERFLOW"))?;
-        let denominator = reserve_in.checked_mul(U256::from(10000)).ok_or(eyre!("DENOMINATOR_OVERFLOW"))?;
-        let denominator = denominator.checked_add(amount_in_with_fee).ok_or(eyre!("DENOMINATOR_OVERFLOW_FEE"))?;
+        let amount_in_with_fee = in_amount.checked_mul(self.fee).ok_or(UniswapV2Error::AmountInWithFeeOverflow)?;
+        let numerator = amount_in_with_fee.checked_mul(reserve_out).ok_or(UniswapV2Error::NumeratorOverflow)?;
+        let denominator = reserve_in.checked_mul(U256::from(10000)).ok_or(UniswapV2Error::DenominatorOverflow)?;
+        let denominator = denominator.checked_add(amount_in_with_fee).ok_or(UniswapV2Error::DenominatorOverflowFee)?;
 
-        let out_amount = numerator.checked_div(denominator).ok_or(eyre!("CANNOT_CALCULATE_ZERO_RESERVE"))?;
+        let out_amount = numerator.checked_div(denominator).ok_or(UniswapV2Error::CannotCalculateZeroReserve)?;
         if out_amount > reserve_out {
-            Err(eyre!("RESERVE_EXCEEDED"))
+            Err(UniswapV2Error::ReserveExceeded.into())
         } else if out_amount.is_zero() {
-            Err(eyre!("OUT_AMOUNT_IS_ZERO"))
+            Err(UniswapV2Error::OutAmountIsZero.into())
         } else {
             Ok((out_amount, 100_000))
         }
@@ -255,7 +256,7 @@ impl Pool for UniswapV2Pool {
         token_address_from: &Address,
         token_address_to: &Address,
         out_amount: U256,
-    ) -> Result<(U256, u64), ErrReport> {
+    ) -> Result<(U256, u64), PoolError> {
         let (reserves_0, reserves_1) = self.fetch_reserves(db)?;
 
         let (reserve_in, reserve_out) = match token_address_from.lt(token_address_to) {
@@ -264,21 +265,21 @@ impl Pool for UniswapV2Pool {
         };
 
         if out_amount > reserve_out {
-            return Err(eyre!("RESERVE_OUT_EXCEEDED"));
+            return Err(UniswapV2Error::ReserveOutExceeded.into());
         }
-        let numerator = reserve_in.checked_mul(out_amount).ok_or(eyre!("NUMERATOR_OVERFLOW"))?;
-        let numerator = numerator.checked_mul(U256::from(10000)).ok_or(eyre!("NUMERATOR_OVERFLOW_FEE"))?;
-        let denominator = reserve_out.checked_sub(out_amount).ok_or(eyre!("DENOMINATOR_UNDERFLOW"))?;
-        let denominator = denominator.checked_mul(self.fee).ok_or(eyre!("DENOMINATOR_OVERFLOW_FEE"))?;
+        let numerator = reserve_in.checked_mul(out_amount).ok_or(UniswapV2Error::NumeratorOverflow)?;
+        let numerator = numerator.checked_mul(U256::from(10000)).ok_or(UniswapV2Error::NumeratorOverflowFee)?;
+        let denominator = reserve_out.checked_sub(out_amount).ok_or(UniswapV2Error::DenominatorUnderflow)?;
+        let denominator = denominator.checked_mul(self.fee).ok_or(UniswapV2Error::DenominatorOverflowFee)?;
 
         if denominator.is_zero() {
-            Err(eyre!("CANNOT_CALCULATE_ZERO_RESERVE"))
+            Err(UniswapV2Error::CannotCalculateZeroReserve.into())
         } else {
             let in_amount = numerator.div(denominator); // We assure before that denominator is not zero
             if in_amount.is_zero() {
-                Err(eyre!("IN_AMOUNT_IS_ZERO"))
+                Err(UniswapV2Error::InAmountIsZero.into())
             } else {
-                let in_amount = in_amount.checked_add(U256::ONE).ok_or(eyre!("IN_AMOUNT_OVERFLOW"))?;
+                let in_amount = in_amount.checked_add(U256::ONE).ok_or(UniswapV2Error::InAmountOverflow)?;
                 Ok((in_amount, 100_000))
             }
         }

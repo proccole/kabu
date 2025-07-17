@@ -3,7 +3,7 @@ use alloy::primitives::{Address, Bytes, U128, U256};
 use alloy::providers::{Network, Provider};
 use alloy::sol_types::{SolCall, SolInterface};
 use alloy_evm::EvmEnv;
-use eyre::{eyre, ErrReport, OptionExt, Result};
+use eyre::Result;
 use kabu_defi_abi::maverick::IMaverickPool::{getStateCall, IMaverickPoolCalls, IMaverickPoolInstance};
 use kabu_defi_abi::maverick::IMaverickQuoter::{calculateSwapCall, IMaverickQuoterCalls};
 use kabu_defi_abi::maverick::{IMaverickPool, IMaverickQuoter, State};
@@ -12,7 +12,9 @@ use kabu_defi_address_book::PeripheryAddress;
 use kabu_evm_db::KabuDBError;
 use kabu_evm_utils::evm_call;
 use kabu_types_entities::required_state::RequiredState;
-use kabu_types_entities::{Pool, PoolAbiEncoder, PoolClass, PoolId, PoolProtocol, PreswapRequirement, SwapDirection};
+use kabu_types_entities::{
+    MaverickError, Pool, PoolAbiEncoder, PoolClass, PoolError, PoolId, PoolProtocol, PreswapRequirement, SwapDirection,
+};
 use lazy_static::lazy_static;
 use revm::DatabaseRef;
 use std::any::Any;
@@ -182,10 +184,10 @@ impl Pool for MaverickPool {
         token_address_from: &Address,
         token_address_to: &Address,
         in_amount: U256,
-    ) -> Result<(U256, u64), ErrReport> {
+    ) -> Result<(U256, u64), PoolError> {
         if in_amount >= U256::from(U128::MAX) {
             error!("IN_AMOUNT_EXCEEDS_MAX {}", self.address.to_checksum(None));
-            return Err(eyre!("IN_AMOUNT_EXCEEDS_MAX"));
+            return Err(MaverickError::MaxInAmount.into());
         }
 
         let token_a_in = MaverickPool::get_zero_for_one(token_address_from, token_address_to);
@@ -202,12 +204,13 @@ impl Pool for MaverickPool {
 
         let (value, gas_used, _) = evm_call(db, EvmEnv::default(), PeripheryAddress::MAVERICK_QUOTER, call_data_vec)?;
 
-        let ret = calculateSwapCall::abi_decode_returns(&value)?;
+        let ret = calculateSwapCall::abi_decode_returns(&value)
+            .map_err(|e| PoolError::AbiDecodingError { method: "calculateSwap", source: e })?;
 
         if ret.is_zero() {
-            Err(eyre!("ZERO_OUT_AMOUNT"))
+            Err(MaverickError::OutAmountIsZero.into())
         } else {
-            Ok((ret.checked_sub(*U256_ONE).ok_or_eyre("SUBTRACTION_OVERFLOWN")?, gas_used))
+            Ok((ret.checked_sub(*U256_ONE).ok_or(PoolError::InvalidInput { reason: "subtraction overflow" })?, gas_used))
         }
     }
 
@@ -217,10 +220,10 @@ impl Pool for MaverickPool {
         token_address_from: &Address,
         token_address_to: &Address,
         out_amount: U256,
-    ) -> Result<(U256, u64), ErrReport> {
+    ) -> Result<(U256, u64), PoolError> {
         if out_amount >= U256::from(U128::MAX) {
             error!("OUT_AMOUNT_EXCEEDS_MAX {} ", self.get_address());
-            return Err(eyre!("OUT_AMOUNT_EXCEEDS_MAX"));
+            return Err(MaverickError::ReserveOutExceeded.into());
         }
 
         let token_a_in = MaverickPool::get_zero_for_one(token_address_from, token_address_to);
@@ -237,12 +240,13 @@ impl Pool for MaverickPool {
 
         let (value, gas_used, _) = evm_call(db, EvmEnv::default(), PeripheryAddress::MAVERICK_QUOTER, call_data_vec)?;
 
-        let ret = calculateSwapCall::abi_decode_returns(&value)?;
+        let ret = calculateSwapCall::abi_decode_returns(&value)
+            .map_err(|e| PoolError::AbiDecodingError { method: "calculateSwap", source: e })?;
 
         if ret.is_zero() {
-            Err(eyre!("ZERO_IN_AMOUNT"))
+            Err(MaverickError::InAmountIsZero.into())
         } else {
-            Ok((ret.checked_add(*U256_ONE).ok_or_eyre("ADD_OVERFLOWN")?, gas_used))
+            Ok((ret.checked_add(*U256_ONE).ok_or(PoolError::InvalidInput { reason: "addition overflow" })?, gas_used))
         }
     }
 

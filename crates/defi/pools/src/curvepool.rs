@@ -3,13 +3,15 @@ use alloy::primitives::{address, Address, Bytes, U256};
 use alloy::providers::{Network, Provider};
 use alloy::sol_types::SolCall;
 use alloy_evm::EvmEnv;
-use eyre::{eyre, OptionExt, Result};
+use eyre::Result;
 use kabu_defi_abi::IERC20;
 use kabu_defi_address_book::TokenAddressEth;
 use kabu_evm_db::KabuDBError;
 use kabu_evm_utils::evm_call;
 use kabu_types_entities::required_state::RequiredState;
-use kabu_types_entities::{Pool, PoolAbiEncoder, PoolClass, PoolId, PoolProtocol, PreswapRequirement, SwapDirection};
+use kabu_types_entities::{
+    CurveError, Pool, PoolAbiEncoder, PoolClass, PoolError, PoolId, PoolProtocol, PreswapRequirement, SwapDirection,
+};
 use lazy_static::lazy_static;
 use revm::DatabaseRef;
 use std::any::Any;
@@ -94,7 +96,7 @@ where
                 return Ok(i as u32);
             }
         }
-        Err(eyre!("COIN_NOT_FOUND"))
+        Err(CurveError::TokenNotInPool { token: address }.into())
     }
     pub fn get_underlying_coin_idx(&self, address: Address) -> Result<u32> {
         for i in 0..self.underlying_tokens.len() {
@@ -102,7 +104,7 @@ where
                 return Ok(i as u32);
             }
         }
-        Err(eyre!("COIN_NOT_FOUND"))
+        Err(CurveError::TokenNotInPool { token: address }.into())
     }
 
     pub async fn fetch_out_amount(&self, token_address_from: Address, token_address_to: Address, amount_in: U256) -> Result<U256> {
@@ -272,7 +274,7 @@ where
         token_address_from: &Address,
         token_address_to: &Address,
         in_amount: U256,
-    ) -> Result<(U256, u64)> {
+    ) -> Result<(U256, u64), PoolError> {
         let token_address_from = *token_address_from;
         let token_address_to = *token_address_to;
 
@@ -280,28 +282,56 @@ where
             let i: Result<u32> = self.get_coin_idx(token_address_from);
             let j: Result<u32> = self.get_coin_idx(token_address_to);
             if i.is_ok() && j.is_ok() {
-                self.pool_contract.get_dy_call_data(i.unwrap(), j.unwrap(), in_amount)?
+                self.pool_contract
+                    .get_dy_call_data(i.unwrap(), j.unwrap(), in_amount)
+                    .map_err(|_e| PoolError::InvalidInput { reason: "Failed to get dy call data" })?
             } else {
-                let i: u32 = self.get_meta_coin_idx(token_address_from)?;
-                let j: u32 = self.get_meta_coin_idx(token_address_to)?;
-                self.pool_contract.get_dy_underlying_call_data(i, j, in_amount)?
+                let i: u32 = self
+                    .get_meta_coin_idx(token_address_from)
+                    .map_err(|_e| PoolError::Curve(CurveError::TokenNotInPool { token: token_address_from }))?;
+                let j: u32 = self
+                    .get_meta_coin_idx(token_address_to)
+                    .map_err(|_e| PoolError::Curve(CurveError::TokenNotInPool { token: token_address_to }))?;
+                self.pool_contract
+                    .get_dy_underlying_call_data(i, j, in_amount)
+                    .map_err(|_e| PoolError::InvalidInput { reason: "Failed to get dy underlying call data" })?
             }
         } else if let Some(lp_token) = self.lp_token {
             if token_address_from == lp_token {
-                let i: u32 = self.get_coin_idx(token_address_to)?;
-                self.pool_contract.calc_withdraw_one_coin_call_data(i, in_amount)?
+                let i: u32 = self
+                    .get_coin_idx(token_address_to)
+                    .map_err(|_e| PoolError::Curve(CurveError::TokenNotInPool { token: token_address_to }))?;
+                self.pool_contract
+                    .calc_withdraw_one_coin_call_data(i, in_amount)
+                    .map_err(|_e| PoolError::InvalidInput { reason: "Failed to calc withdraw one coin call data" })?
             } else if token_address_to == lp_token {
-                let i: u32 = self.get_coin_idx(token_address_from)?;
-                self.pool_contract.calc_token_amount_call_data(i, in_amount)?
+                let i: u32 = self
+                    .get_coin_idx(token_address_from)
+                    .map_err(|_e| PoolError::Curve(CurveError::TokenNotInPool { token: token_address_from }))?;
+                self.pool_contract
+                    .calc_token_amount_call_data(i, in_amount)
+                    .map_err(|_e| PoolError::InvalidInput { reason: "Failed to calc token amount call data" })?
             } else {
-                let i: u32 = self.get_coin_idx(token_address_from)?;
-                let j: u32 = self.get_coin_idx(token_address_to)?;
-                self.pool_contract.get_dy_call_data(i, j, in_amount)?
+                let i: u32 = self
+                    .get_coin_idx(token_address_from)
+                    .map_err(|_e| PoolError::Curve(CurveError::TokenNotInPool { token: token_address_from }))?;
+                let j: u32 = self
+                    .get_coin_idx(token_address_to)
+                    .map_err(|_e| PoolError::Curve(CurveError::TokenNotInPool { token: token_address_to }))?;
+                self.pool_contract
+                    .get_dy_call_data(i, j, in_amount)
+                    .map_err(|_e| PoolError::InvalidInput { reason: "Failed to get dy call data" })?
             }
         } else {
-            let i: u32 = self.get_coin_idx(token_address_from)?;
-            let j: u32 = self.get_coin_idx(token_address_to)?;
-            self.pool_contract.get_dy_call_data(i, j, in_amount)?
+            let i: u32 = self
+                .get_coin_idx(token_address_from)
+                .map_err(|_e| PoolError::Curve(CurveError::TokenNotInPool { token: token_address_from }))?;
+            let j: u32 = self
+                .get_coin_idx(token_address_to)
+                .map_err(|_e| PoolError::Curve(CurveError::TokenNotInPool { token: token_address_to }))?;
+            self.pool_contract
+                .get_dy_call_data(i, j, in_amount)
+                .map_err(|_e| PoolError::InvalidInput { reason: "Failed to get dy call data" })?
         };
 
         let (value, gas_used, _) = evm_call(db, EvmEnv::default(), self.address, call_data.to_vec())?;
@@ -309,9 +339,9 @@ where
         let ret = if value.len() > 32 { U256::from_be_slice(&value[0..32]) } else { U256::from_be_slice(&value[0..]) };
 
         if ret.is_zero() {
-            Err(eyre!("ZERO_OUT_AMOUNT"))
+            Err(CurveError::OutAmountIsZero.into())
         } else {
-            Ok((ret.checked_sub(*U256_ONE).ok_or_eyre("SUB_OVERFLOWN")?, gas_used))
+            Ok((ret.checked_sub(*U256_ONE).ok_or(PoolError::InvalidInput { reason: "SUB_OVERFLOWN" })?, gas_used))
         }
     }
 
@@ -321,26 +351,33 @@ where
         token_address_from: &Address,
         token_address_to: &Address,
         out_amount: U256,
-    ) -> Result<(U256, u64)> {
+    ) -> Result<(U256, u64), PoolError> {
         let token_address_from = *token_address_from;
         let token_address_to = *token_address_to;
 
         if self.pool_contract.can_calculate_in_amount() {
-            let i: u32 = self.get_coin_idx(token_address_from)?;
-            let j: u32 = self.get_coin_idx(token_address_to)?;
-            let call_data = self.pool_contract.get_dx_call_data(i, j, out_amount)?;
+            let i: u32 = self
+                .get_coin_idx(token_address_from)
+                .map_err(|_e| PoolError::Curve(CurveError::TokenNotInPool { token: token_address_from }))?;
+            let j: u32 = self
+                .get_coin_idx(token_address_to)
+                .map_err(|_e| PoolError::Curve(CurveError::TokenNotInPool { token: token_address_to }))?;
+            let call_data = self
+                .pool_contract
+                .get_dx_call_data(i, j, out_amount)
+                .map_err(|_e| PoolError::InvalidInput { reason: "Failed to get dx call data" })?;
 
             let (value, gas_used, _) = evm_call(db, EvmEnv::default(), self.address, call_data.to_vec())?;
 
             let ret = if value.len() > 32 { U256::from_be_slice(&value[0..32]) } else { U256::from_be_slice(&value[0..]) };
 
             if ret.is_zero() {
-                Err(eyre!("ZERO_IN_AMOUNT"))
+                Err(CurveError::InAmountIsZero.into())
             } else {
-                Ok((ret.checked_add(*U256_ONE).ok_or_eyre("ADD_OVERFLOWN")?, gas_used))
+                Ok((ret.checked_add(*U256_ONE).ok_or(PoolError::InvalidInput { reason: "ADD_OVERFLOWN" })?, gas_used))
             }
         } else {
-            Err(eyre!("NOT_SUPPORTED"))
+            Err(PoolError::NotImplemented)
         }
     }
 
@@ -415,7 +452,7 @@ where
                         }
                     } else {
                         error!("Cannot get curve pool balance {} {}", self.address, i);
-                        return Err(eyre!("CANNOT_GET_CURVE_BALANCE"));
+                        return Err(CurveError::InvalidPoolState.into());
                     }
                 }
             }
@@ -485,7 +522,7 @@ where
             Ok(idx) => Ok(idx),
             _ => match self.get_underlying_coin_idx(address) {
                 Ok(idx) => Ok(idx + self.tokens.len() as u32 - 1),
-                Err(_) => Err(eyre!("TOKEN_NOT_FOUND")),
+                Err(_) => Err(CurveError::TokenNotInPool { token: address }.into()),
             },
         }
     }
@@ -496,7 +533,7 @@ where
                 return Ok(i as u32);
             }
         }
-        Err(eyre!("COIN_NOT_FOUND"))
+        Err(CurveError::TokenNotInPool { token: address }.into())
     }
 
     pub fn get_underlying_coin_idx(&self, address: Address) -> Result<u32> {
@@ -507,9 +544,9 @@ where
                         return Ok(i as u32);
                     }
                 }
-                Err(eyre!("UNDERLYING_COIN_NOT_FOUND"))
+                Err(CurveError::InvalidPoolState.into())
             }
-            _ => Err(eyre!("UNDERLYING_COIN_NOT_SET")),
+            _ => Err(CurveError::InvalidPoolState.into()),
         }
     }
 }
@@ -566,7 +603,7 @@ where
         _recipient: Address,
         _payload: Bytes,
     ) -> Result<Bytes> {
-        Err(eyre!("NOT_IMPLEMENTED"))
+        Err(PoolError::NotImplemented.into())
     }
 
     fn swap_in_amount_offset(&self, _token_from_address: Address, _token_to_address: Address) -> Option<u32> {

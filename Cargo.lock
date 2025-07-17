@@ -5772,6 +5772,7 @@ dependencies = [
  "alloy-rpc-types-trace",
  "alloy-signer",
  "alloy-signer-local",
+ "alloy-sol-types",
  "alloy-transport",
  "async-stream",
  "auto_impl",

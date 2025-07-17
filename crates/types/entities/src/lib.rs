@@ -12,13 +12,14 @@ pub use market::Market;
 pub use market_state::MarketState;
 pub use mock_pool::MockPool;
 pub use pool::{get_protocol_by_factory, Pool, PoolAbiEncoder, PoolClass, PoolProtocol, PoolWrapper, PreswapRequirement};
+pub use pool_error::{CurveError, MaverickError, PoolError, UniswapV2Error, UniswapV3Error};
 pub use pool_id::PoolId;
 pub use pool_loader::{PoolLoader, PoolLoaders};
 pub use signers::{LoomTxSigner, TxSignerEth, TxSigners};
 pub use swap::Swap;
 pub use swap_direction::SwapDirection;
 pub use swap_encoder::SwapEncoder;
-pub use swap_error::{EstimationError, SwapError};
+pub use swap_error::{EstimationError, SwapError, SwapErrorKind};
 pub use swap_line::{SwapAmountType, SwapLine};
 pub use swap_path::{SwapPath, SwapPaths};
 pub use swap_path_builder::build_swap_path_vec;
@@ -39,6 +40,7 @@ pub mod required_state;
 mod swap_path_builder;
 mod swap_step;
 
+mod pool_error;
 mod signers;
 
 mod keystore;

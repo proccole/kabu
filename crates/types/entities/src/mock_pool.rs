@@ -1,7 +1,6 @@
 use crate::required_state::RequiredState;
-use crate::{Pool, PoolAbiEncoder, PoolClass, PoolId, PoolProtocol, PreswapRequirement, SwapDirection};
+use crate::{Pool, PoolAbiEncoder, PoolClass, PoolError, PoolId, PoolProtocol, PreswapRequirement, SwapDirection};
 use alloy_primitives::{Address, U256};
-use eyre::ErrReport;
 use eyre::Result;
 use kabu_evm_db::KabuDBError;
 use revm::DatabaseRef;
@@ -59,8 +58,8 @@ impl Pool for MockPool {
         token_address_from: &Address,
         token_address_to: &Address,
         in_amount: U256,
-    ) -> Result<(U256, u64), ErrReport> {
-        panic!("Not implemented")
+    ) -> Result<(U256, u64), PoolError> {
+        Err(PoolError::NotImplemented)
     }
 
     fn calculate_in_amount(
@@ -69,8 +68,8 @@ impl Pool for MockPool {
         token_address_from: &Address,
         token_address_to: &Address,
         out_amount: U256,
-    ) -> Result<(U256, u64), ErrReport> {
-        panic!("Not implemented")
+    ) -> Result<(U256, u64), PoolError> {
+        Err(PoolError::NotImplemented)
     }
 
     fn can_flash_swap(&self) -> bool {

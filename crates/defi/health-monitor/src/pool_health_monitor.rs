@@ -122,7 +122,7 @@ pub async fn pool_health_monitor_worker(
 
                                     }
                                     HealthEvent::PoolSwapError(swap_error)=>{
-                                        debug!("Pool health_monitor message update: {:?} {} {} ", swap_error.pool, swap_error.msg, swap_error.amount);
+                                        debug!("Pool health_monitor message update: {:?} {} {} ", swap_error.pool, swap_error.kind, swap_error.amount);
                                         let entry = pool_errors_map.entry(swap_error.pool).or_insert(0);
                                         *entry += 1;
                                         if *entry >= 10 {
@@ -136,7 +136,7 @@ pub async fn pool_health_monitor_worker(
 
                                                 match market_guard.get_pool(&swap_error.pool) {
                                                     Some(pool)=>{
-                                                        info!("Disabling pool: protocol={}, address={:?}, msg={} amount={}", pool.get_protocol(),swap_error.pool, swap_error.msg, swap_error.amount);
+                                                        info!("Disabling pool: protocol={}, address={:?}, error={} amount={}", pool.get_protocol(),swap_error.pool, swap_error.kind, swap_error.amount);
 
                                                         let amount_f64 = if let Some(token_in) = market_guard.get_token(&swap_error.token_from) {
                                                             token_in.to_float(swap_error.amount)
@@ -154,7 +154,7 @@ pub async fn pool_health_monitor_worker(
                                                                 let start_time_utc =   chrono::Utc::now();
 
                                                                 let write_query = WriteQuery::new(Timestamp::from(start_time_utc), "pool_disabled")
-                                                                    .add_field("message", swap_error.msg)
+                                                                    .add_field("message", swap_error.kind.to_string())
                                                                     .add_field("amount", amount_f64)
                                                                     .add_tag("id", pool_id)
                                                                     .add_tag("protocol", pool_protocol)
@@ -175,7 +175,7 @@ pub async fn pool_health_monitor_worker(
 
                                                     }
                                                     _=>{
-                                                        error!("Disabled pool missing in market: address={:?}, msg={} amount={}", swap_error.pool, swap_error.msg, swap_error.amount);
+                                                        error!("Disabled pool missing in market: address={:?}, error={} amount={}", swap_error.pool, swap_error.kind, swap_error.amount);
                                                     }
                                                 }
                                             //}

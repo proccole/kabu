@@ -2,6 +2,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
+use crate::swap_error::SwapErrorKind;
 use crate::swap_path::SwapPath;
 use crate::{CalculationResult, PoolId, PoolWrapper, SwapError, SwapStep, Token};
 use alloy_primitives::{Address, I256, U256};
@@ -130,9 +131,9 @@ impl From<SwapPath> for SwapLine {
 }
 
 impl SwapLine {
-    pub fn to_error(&self, msg: String) -> SwapError {
+    pub fn to_error(&self, kind: SwapErrorKind) -> SwapError {
         SwapError {
-            msg,
+            kind,
             pool: self.get_first_pool().map(|x| x.get_pool_id()).unwrap_or(PoolId::Address(Address::default())),
             token_from: self.get_first_token().map_or(Address::default(), |x| x.get_address()),
             token_to: self.get_last_token().map_or(Address::default(), |x| x.get_address()),
@@ -319,7 +320,7 @@ impl SwapLine {
                 Ok((out_amount_result, gas_result)) => {
                     if out_amount_result.is_zero() {
                         return Err(SwapError {
-                            msg: "ZERO_OUT_AMOUNT".to_string(),
+                            kind: SwapErrorKind::ZeroOutAmount,
                             pool: pool.get_pool_id(),
                             token_from: token_from.get_address(),
                             token_to: token_to.get_address(),
@@ -329,7 +330,7 @@ impl SwapLine {
                     }
                     if out_amount_result.lt(&Self::MIN_VALID_OUT_AMOUNT) {
                         return Err(SwapError {
-                            msg: "ALMOST_ZERO_OUT_AMOUNT".to_string(),
+                            kind: SwapErrorKind::AlmostZeroOutAmount,
                             pool: pool.get_pool_id(),
                             token_from: token_from.get_address(),
                             token_to: token_to.get_address(),
@@ -346,7 +347,7 @@ impl SwapLine {
                 Err(e) => {
                     //error!("calculate_with_in_amount calculate_out_amount error {} amount {} : {}", self, in_amount, e);
                     return Err(SwapError {
-                        msg: e.to_string(),
+                        kind: SwapErrorKind::from(e),
                         pool: pool.get_pool_id(),
                         token_from: token_from.get_address(),
                         token_to: token_to.get_address(),
@@ -382,9 +383,19 @@ impl SwapLine {
             let token_to = &tokens_reverse[i];
             match pool.calculate_in_amount(db, &token_from.get_address(), &token_to.get_address(), current_out_amount) {
                 Ok((in_amount_result, gas_result)) => {
-                    if in_amount_result == U256::MAX || in_amount_result == U256::ZERO {
+                    if in_amount_result == U256::MAX {
                         return Err(SwapError {
-                            msg: "ZERO_AMOUNT".to_string(),
+                            kind: SwapErrorKind::MaxInAmount,
+                            pool: pool.get_pool_id(),
+                            token_from: token_from.get_address(),
+                            token_to: token_to.get_address(),
+                            is_in_amount: false,
+                            amount: current_out_amount,
+                        });
+                    }
+                    if in_amount_result == U256::ZERO {
+                        return Err(SwapError {
+                            kind: SwapErrorKind::ZeroInAmount,
                             pool: pool.get_pool_id(),
                             token_from: token_from.get_address(),
                             token_to: token_to.get_address(),
@@ -401,7 +412,7 @@ impl SwapLine {
                     //error!("calculate_with_out_amount calculate_in_amount error {} amount {} : {}", self, in_amount, e);
 
                     return Err(SwapError {
-                        msg: e.to_string(),
+                        kind: SwapErrorKind::from(e),
                         pool: pool.get_pool_id(),
                         token_from: token_from.get_address(),
                         token_to: token_to.get_address(),

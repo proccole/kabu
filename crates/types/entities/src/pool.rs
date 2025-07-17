@@ -5,11 +5,12 @@ use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::sync::Arc;
 
+use crate::pool_error::PoolError;
 use crate::required_state::RequiredState;
 use crate::swap_direction::SwapDirection;
 use crate::PoolId;
 use alloy_primitives::{Address, Bytes, U256};
-use eyre::{eyre, ErrReport, Result};
+use eyre::{eyre, Result};
 use kabu_defi_address_book::FactoryAddress;
 use kabu_evm_db::KabuDBError;
 use revm::DatabaseRef;
@@ -261,7 +262,7 @@ pub trait Pool: Sync + Send {
         token_address_from: &Address,
         token_address_to: &Address,
         in_amount: U256,
-    ) -> Result<(U256, u64), ErrReport>;
+    ) -> Result<(U256, u64), PoolError>;
 
     // returns (in_amount, gas_used)
     fn calculate_in_amount(
@@ -270,7 +271,7 @@ pub trait Pool: Sync + Send {
         token_address_from: &Address,
         token_address_to: &Address,
         out_amount: U256,
-    ) -> Result<(U256, u64), ErrReport>;
+    ) -> Result<(U256, u64), PoolError>;
 
     fn can_flash_swap(&self) -> bool;
 
