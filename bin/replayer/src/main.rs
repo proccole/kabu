@@ -8,6 +8,7 @@ use alloy::primitives::{address, Address, U256};
 use alloy::providers::Provider;
 use alloy::rpc::types::Header;
 use alloy::{providers::ProviderBuilder, rpc::client::ClientBuilder};
+use alloy_evm::EvmEnv;
 use clap::Parser;
 use eyre::Result;
 use tokio::select;
@@ -196,7 +197,7 @@ async fn main() -> Result<()> {
 
                         // Note: ERC20StateReader calls will still fail until full EVM integration is complete,
                         // but database access is now direct
-                        if let Ok(balance) = ERC20StateReader::balance_of(&state_db, TokenAddressEth::WETH, TARGET_ADDRESS ) {
+                        if let Ok(balance) = ERC20StateReader::balance_of(&state_db, &EvmEnv::default(), TARGET_ADDRESS, TokenAddressEth::WETH ) {
                             info!("------WETH Balance of {} : {}", TARGET_ADDRESS, balance);
                             let tx_req = alloy::rpc::types::TransactionRequest::default()
                                 .to(TokenAddressEth::WETH)
@@ -211,7 +212,7 @@ async fn main() -> Result<()> {
                         } else {
                             info!("ERC20StateReader call failed - EVM integration not complete yet");
                         }
-                        if let Ok(balance) = ERC20StateReader::balance_of(&state_db, TokenAddressEth::WETH, UniswapV3PoolAddress::USDC_WETH_500 ) {
+                        if let Ok(balance) = ERC20StateReader::balance_of(&state_db, &EvmEnv::default(), UniswapV3PoolAddress::USDC_WETH_500, TokenAddressEth::WETH ) {
                             info!("------WETH Balance of {} : {}/({:#x}) ", UniswapV3PoolAddress::USDC_WETH_500, balance, balance);
                         } else {
                             info!("ERC20StateReader call for pool balance failed - EVM integration not complete yet");

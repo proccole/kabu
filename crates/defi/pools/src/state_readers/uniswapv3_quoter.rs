@@ -57,6 +57,7 @@ pub struct UniswapV3QuoterV2StateReader {}
 impl UniswapV3QuoterV2StateReader {
     pub fn quote_exact_input<DB: DatabaseRef<Error = KabuDBError> + ?Sized>(
         db: &DB,
+        evm_env: &EvmEnv,
         quoter_address: Address,
         token_from: Address,
         token_to: Address,
@@ -64,7 +65,7 @@ impl UniswapV3QuoterV2StateReader {
         amount: U256,
     ) -> Result<(U256, u64), PoolError> {
         let input = UniswapV3QuoterV2Encoder::quote_exact_input_encode(token_from, token_to, fee, U160::ZERO, amount);
-        let (value, gas_used, _) = evm_call(db, EvmEnv::default(), quoter_address, input)?;
+        let (value, gas_used, _) = evm_call(db, evm_env.clone(), quoter_address, input)?;
 
         let ret = UniswapV3QuoterV2Encoder::quote_exact_input_result_decode(&value)?;
         Ok((ret, gas_used))
@@ -72,6 +73,7 @@ impl UniswapV3QuoterV2StateReader {
 
     pub fn quote_exact_output<DB: DatabaseRef<Error = KabuDBError> + ?Sized>(
         db: &DB,
+        evm_env: &EvmEnv,
         quoter_address: Address,
         token_from: Address,
         token_to: Address,
@@ -79,7 +81,7 @@ impl UniswapV3QuoterV2StateReader {
         amount: U256,
     ) -> Result<(U256, u64), PoolError> {
         let input = UniswapV3QuoterV2Encoder::quote_exact_output_encode(token_from, token_to, fee, U160::ZERO, amount);
-        let (value, gas_used, _) = evm_call(db, EvmEnv::default(), quoter_address, input)?;
+        let (value, gas_used, _) = evm_call(db, evm_env.clone(), quoter_address, input)?;
 
         let ret = UniswapV3QuoterV2Encoder::quote_exact_output_result_decode(&value)?;
         Ok((ret, gas_used))

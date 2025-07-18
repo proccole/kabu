@@ -1,5 +1,6 @@
 use crate::required_state::RequiredState;
 use crate::{Pool, PoolAbiEncoder, PoolClass, PoolError, PoolId, PoolProtocol, PreswapRequirement, SwapDirection};
+use alloy_evm::EvmEnv;
 use alloy_primitives::{Address, U256};
 use eyre::Result;
 use kabu_evm_db::KabuDBError;
@@ -55,6 +56,7 @@ impl Pool for MockPool {
     fn calculate_out_amount(
         &self,
         db: &dyn DatabaseRef<Error = KabuDBError>,
+        evm_env: &EvmEnv,
         token_address_from: &Address,
         token_address_to: &Address,
         in_amount: U256,
@@ -65,6 +67,7 @@ impl Pool for MockPool {
     fn calculate_in_amount(
         &self,
         db: &dyn DatabaseRef<Error = KabuDBError>,
+        evm_env: &EvmEnv,
         token_address_from: &Address,
         token_address_to: &Address,
         out_amount: U256,

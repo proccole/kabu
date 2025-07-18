@@ -97,6 +97,7 @@ impl UniswapV3DbReader {
 #[cfg(test)]
 mod test {
     use alloy::primitives::Address;
+    use alloy_evm::EvmEnv;
     use eyre::Result;
     use revm::database::CacheDB;
     use std::env;
@@ -140,12 +141,12 @@ mod test {
 
         let cache_db = CacheDB::new(market_state.state_db.clone());
 
-        let factory_evm = UniswapV3EvmStateReader::factory(&cache_db, pool_address)?;
-        let token0_evm = UniswapV3EvmStateReader::token0(&cache_db, pool_address)?;
-        let token1_evm = UniswapV3EvmStateReader::token1(&cache_db, pool_address)?;
+        let factory_evm = UniswapV3EvmStateReader::factory(&cache_db, &EvmEnv::default(), pool_address)?;
+        let token0_evm = UniswapV3EvmStateReader::token0(&cache_db, &EvmEnv::default(), pool_address)?;
+        let token1_evm = UniswapV3EvmStateReader::token1(&cache_db, &EvmEnv::default(), pool_address)?;
         debug!("{factory_evm:?} {token0_evm:?} {token1_evm:?}");
 
-        let slot0_evm = UniswapV3EvmStateReader::slot0(&cache_db, pool_address)?;
+        let slot0_evm = UniswapV3EvmStateReader::slot0(&cache_db, &EvmEnv::default(), pool_address)?;
 
         let slot0_db = UniswapV3DbReader::slot0(&market_state.state_db, pool_address)?;
 

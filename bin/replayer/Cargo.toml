@@ -26,6 +26,7 @@ kabu-types-entities.workspace = true
 kabu-types-events.workspace = true
 
 alloy.workspace = true
+alloy-evm.workspace = true
 clap.workspace = true
 eyre.workspace = true
 futures.workspace = true

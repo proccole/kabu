@@ -1,3 +1,4 @@
+use alloy_evm::EvmEnv;
 use alloy_primitives::{Address, BlockNumber, Bytes};
 use alloy_provider::Provider;
 use alloy_rpc_types::{BlockNumberOrTag, TransactionInput, TransactionRequest};
@@ -139,7 +140,7 @@ async fn main() -> Result<()> {
 
         let mut swapline = SwapLine { path: sp, amount_in: SwapAmountType::Set(in_amount), ..SwapLine::default() };
 
-        match swapline.calculate_with_in_amount(&db, in_amount) {
+        match swapline.calculate_with_in_amount(&db, &EvmEnv::default(), in_amount) {
             Ok((out_amount, gas_used, _)) => {
                 println!("{} gas: {}  amount {} -> {}", sp_dto, gas_used, in_amount_f64, NWETH::to_float(out_amount));
                 swapline.amount_out = SwapAmountType::Set(out_amount)

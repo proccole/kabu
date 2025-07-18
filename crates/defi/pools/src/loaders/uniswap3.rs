@@ -3,6 +3,7 @@ use crate::{pool_loader, MaverickPool, PancakeV3Pool, UniswapV3Pool};
 use alloy::primitives::Bytes;
 use alloy::primitives::Log as EVMLog;
 use alloy::sol_types::SolEventInterface;
+use alloy_evm::EvmEnv;
 use eyre::eyre;
 use futures::Stream;
 use kabu_defi_abi::uniswap3::IUniswapV3Pool::IUniswapV3PoolEvents;
@@ -85,7 +86,7 @@ where
             PoolId::Address(addr) => addr,
             PoolId::B256(_) => return Err(eyre!("UniswapV3 pools only support Address-based pool IDs")),
         };
-        Ok(PoolWrapper::new(Arc::new(UniswapV3Pool::fetch_pool_data_evm(db, pool_address)?)))
+        Ok(PoolWrapper::new(Arc::new(UniswapV3Pool::fetch_pool_data_evm(db, &EvmEnv::default(), pool_address)?)))
     }
 
     fn is_code(&self, code: &Bytes) -> bool {

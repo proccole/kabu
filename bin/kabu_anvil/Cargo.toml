@@ -24,6 +24,7 @@ wiremock.workspace = true
 
 # alloy
 alloy-consensus.workspace = true
+alloy-evm.workspace = true
 alloy-node-bindings.workspace = true
 alloy-primitives.workspace = true
 alloy-provider.workspace = true

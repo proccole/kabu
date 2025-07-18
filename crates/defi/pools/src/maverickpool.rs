@@ -118,12 +118,12 @@ impl MaverickPool {
 
         Ok(ret)
     }
-    pub fn fetch_pool_data_evm<DB: DatabaseRef<Error = KabuDBError> + ?Sized>(db: &DB, address: Address) -> Result<Self> {
-        let token0: Address = UniswapV3EvmStateReader::token0(db, address)?;
-        let token1: Address = UniswapV3EvmStateReader::token1(db, address)?;
-        let fee = UniswapV3EvmStateReader::fee(db, address)?;
-        let factory: Address = UniswapV3EvmStateReader::factory(db, address)?;
-        let spacing: u32 = UniswapV3EvmStateReader::tick_spacing(db, address)?;
+    pub fn fetch_pool_data_evm<DB: DatabaseRef<Error = KabuDBError> + ?Sized>(db: &DB, evm_env: &EvmEnv, address: Address) -> Result<Self> {
+        let token0: Address = UniswapV3EvmStateReader::token0(db, evm_env, address)?;
+        let token1: Address = UniswapV3EvmStateReader::token1(db, evm_env, address)?;
+        let fee = UniswapV3EvmStateReader::fee(db, evm_env, address)?;
+        let factory: Address = UniswapV3EvmStateReader::factory(db, evm_env, address)?;
+        let spacing: u32 = UniswapV3EvmStateReader::tick_spacing(db, evm_env, address)?;
 
         let protocol = Self::get_protocol_by_factory(factory);
 
@@ -181,6 +181,7 @@ impl Pool for MaverickPool {
     fn calculate_out_amount(
         &self,
         db: &dyn DatabaseRef<Error = KabuDBError>,
+        evm_env: &EvmEnv,
         token_address_from: &Address,
         token_address_to: &Address,
         in_amount: U256,
@@ -202,7 +203,7 @@ impl Pool for MaverickPool {
         })
         .abi_encode();
 
-        let (value, gas_used, _) = evm_call(db, EvmEnv::default(), PeripheryAddress::MAVERICK_QUOTER, call_data_vec)?;
+        let (value, gas_used, _) = evm_call(db, evm_env.clone(), PeripheryAddress::MAVERICK_QUOTER, call_data_vec)?;
 
         let ret = calculateSwapCall::abi_decode_returns(&value)
             .map_err(|e| PoolError::AbiDecodingError { method: "calculateSwap", source: e })?;
@@ -217,6 +218,7 @@ impl Pool for MaverickPool {
     fn calculate_in_amount(
         &self,
         db: &dyn DatabaseRef<Error = KabuDBError>,
+        evm_env: &EvmEnv,
         token_address_from: &Address,
         token_address_to: &Address,
         out_amount: U256,
@@ -238,7 +240,7 @@ impl Pool for MaverickPool {
         })
         .abi_encode();
 
-        let (value, gas_used, _) = evm_call(db, EvmEnv::default(), PeripheryAddress::MAVERICK_QUOTER, call_data_vec)?;
+        let (value, gas_used, _) = evm_call(db, evm_env.clone(), PeripheryAddress::MAVERICK_QUOTER, call_data_vec)?;
 
         let ret = calculateSwapCall::abi_decode_returns(&value)
             .map_err(|e| PoolError::AbiDecodingError { method: "calculateSwap", source: e })?;
@@ -485,14 +487,16 @@ mod tests {
         debug!("Router call : {:?}", resp);
         assert_ne!(resp, U256::ZERO);
 
-        let (out_amount, gas_used) =
-            pool.calculate_out_amount(&cache_db, &pool.token1, &pool.token0, U256::from(pool.liquidity1 / U256::from(1000))).unwrap();
+        let (out_amount, gas_used) = pool
+            .calculate_out_amount(&cache_db, &EvmEnv::default(), &pool.token1, &pool.token0, U256::from(pool.liquidity1 / U256::from(1000)))
+            .unwrap();
         debug!("{} {} {}", pool.get_protocol(), out_amount, gas_used);
         assert_ne!(out_amount, U256::ZERO);
         assert!(gas_used > 100000);
 
-        let (out_amount, gas_used) =
-            pool.calculate_out_amount(&cache_db, &pool.token0, &pool.token1, U256::from(pool.liquidity0 / U256::from(1000))).unwrap();
+        let (out_amount, gas_used) = pool
+            .calculate_out_amount(&cache_db, &EvmEnv::default(), &pool.token0, &pool.token1, U256::from(pool.liquidity0 / U256::from(1000)))
+            .unwrap();
         debug!("{} {} {}", pool.get_protocol(), out_amount, gas_used);
         assert_ne!(out_amount, U256::ZERO);
         assert!(gas_used > 100000);

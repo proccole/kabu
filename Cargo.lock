@@ -3599,6 +3599,7 @@ checksum = "42012b0f064e01aa58b545fe3727f90f7dd4020f4a3ea735b50344965f5a57e9"
 name = "gasbench"
 version = "0.6.0"
 dependencies = [
+ "alloy-evm",
  "alloy-network",
  "alloy-primitives",
  "alloy-provider",
@@ -5664,6 +5665,7 @@ version = "0.6.0"
 dependencies = [
  "alloy-consensus",
  "alloy-eips",
+ "alloy-evm",
  "alloy-network",
  "alloy-primitives",
  "alloy-provider",
@@ -5761,6 +5763,7 @@ version = "0.6.0"
 dependencies = [
  "aes",
  "alloy-consensus",
+ "alloy-evm",
  "alloy-json-rpc",
  "alloy-network",
  "alloy-node-bindings",
@@ -5833,6 +5836,7 @@ name = "kabu_anvil"
 version = "0.6.0"
 dependencies = [
  "alloy-consensus",
+ "alloy-evm",
  "alloy-node-bindings",
  "alloy-primitives",
  "alloy-provider",
@@ -7722,6 +7726,7 @@ name = "replayer"
 version = "0.6.0"
 dependencies = [
  "alloy",
+ "alloy-evm",
  "clap",
  "eyre",
  "futures",

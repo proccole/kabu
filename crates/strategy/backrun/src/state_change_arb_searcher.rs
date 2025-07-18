@@ -1,6 +1,4 @@
-use std::collections::{BTreeMap, HashSet};
-use std::sync::Arc;
-
+use alloy_evm::EvmEnv;
 use alloy_primitives::U256;
 #[cfg(not(debug_assertions))]
 use chrono::TimeDelta;
@@ -8,7 +6,10 @@ use eyre::{eyre, Result};
 use influxdb::{Timestamp, WriteQuery};
 use rayon::prelude::*;
 use rayon::{ThreadPool, ThreadPoolBuilder};
+use revm::context::{BlockEnv, CfgEnv};
 use revm::{Database, DatabaseCommit, DatabaseRef};
+use std::collections::{BTreeMap, HashSet};
+use std::sync::Arc;
 use tokio::sync::broadcast::error::RecvError;
 #[cfg(not(debug_assertions))]
 use tracing::warn;
@@ -104,15 +105,22 @@ async fn state_change_arb_searcher_task<
     let channel_len = swap_path_vec.len();
     let (swap_path_tx, mut swap_line_rx) = tokio::sync::mpsc::channel(channel_len);
 
+    let block_env = BlockEnv {
+        number: U256::from(state_update_event.next_block_number),
+        timestamp: U256::from(state_update_event.next_block_timestamp),
+        basefee: state_update_event.next_base_fee,
+        ..Default::default()
+    };
+    let evm_env = EvmEnv::new(CfgEnv::new(), block_env);
     let market_state_clone = db.clone();
     let swap_path_vec_len = swap_path_vec.len();
 
     let _tasks = tokio::task::spawn(async move {
         thread_pool.install(|| {
-            swap_path_vec.into_par_iter().for_each_with((&swap_path_tx, &market_state_clone), |_req, item| {
+            swap_path_vec.into_par_iter().for_each_with((&swap_path_tx, &market_state_clone, evm_env), |(_req, _db, evm_env), item| {
                 let mut mut_item: SwapLine = SwapLine { path: item, ..Default::default() };
 
-                let calc_result = SwapCalculator::calculate(&mut mut_item, &market_state_clone);
+                let calc_result = SwapCalculator::calculate(&mut mut_item, &market_state_clone, evm_env.clone());
 
                 match calc_result {
                     Ok(_) => {

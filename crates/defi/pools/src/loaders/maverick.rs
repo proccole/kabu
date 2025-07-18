@@ -2,6 +2,7 @@ use crate::{pool_loader, MaverickPool};
 use alloy::primitives::Bytes;
 use alloy::primitives::Log as EVMLog;
 use alloy::sol_types::SolEventInterface;
+use alloy_evm::EvmEnv;
 use eyre::{eyre, Result};
 use kabu_defi_abi::maverick::IMaverickPool::IMaverickPoolEvents;
 use kabu_evm_db::KabuDBError;
@@ -62,7 +63,7 @@ where
             PoolId::Address(addr) => addr,
             PoolId::B256(_) => return Err(eyre!("B256 pool ID variant not supported for Maverick pools")),
         };
-        Ok(PoolWrapper::new(Arc::new(MaverickPool::fetch_pool_data_evm(db, address)?)))
+        Ok(PoolWrapper::new(Arc::new(MaverickPool::fetch_pool_data_evm(db, &EvmEnv::default(), address)?)))
     }
 
     fn is_code(&self, _code: &Bytes) -> bool {

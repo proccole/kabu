@@ -61,7 +61,7 @@ impl SwapPath {
     }
 
     #[inline]
-    pub fn is_emply(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.tokens.is_empty() && self.pools.is_empty()
     }
 
@@ -82,7 +82,7 @@ impl SwapPath {
 
     #[inline]
     pub fn push_swap_hope(&mut self, token_from: Arc<Token>, token_to: Arc<Token>, pool: PoolWrapper) -> Result<&mut Self> {
-        if self.is_emply() {
+        if self.is_empty() {
             self.tokens = vec![token_from, token_to];
             self.pools = vec![pool];
         } else {
@@ -97,7 +97,7 @@ impl SwapPath {
 
     #[inline]
     pub fn insert_swap_hope(&mut self, token_from: Arc<Token>, token_to: Arc<Token>, pool: PoolWrapper) -> Result<&mut Self> {
-        if self.is_emply() {
+        if self.is_empty() {
             self.tokens = vec![token_from, token_to];
             self.pools = vec![pool];
         } else {
@@ -268,9 +268,9 @@ mod test {
     use super::*;
     use crate::pool::DefaultAbiSwapEncoder;
     use crate::required_state::RequiredState;
-    use crate::{Pool, PoolAbiEncoder, PoolClass, PoolProtocol, PreswapRequirement, SwapDirection};
+    use crate::{Pool, PoolAbiEncoder, PoolClass, PoolError, PoolProtocol, PreswapRequirement, SwapDirection};
+    use alloy_evm::EvmEnv;
     use alloy_primitives::{Address, U256};
-    use eyre::{eyre, ErrReport};
     use kabu_evm_db::KabuDBError;
     use revm::DatabaseRef;
     use std::any::Any;
@@ -307,21 +307,23 @@ mod test {
         fn calculate_out_amount(
             &self,
             _db: &dyn DatabaseRef<Error = KabuDBError>,
+            _evm_env: &EvmEnv,
             _token_address_from: &Address,
             _token_address_to: &Address,
             _in_amount: U256,
-        ) -> Result<(U256, u64), ErrReport> {
-            Err(eyre!("NOT_IMPLEMENTED"))
+        ) -> Result<(U256, u64), PoolError> {
+            Err(PoolError::GeneralError("NOT_IMPLEMENTED".to_string()))
         }
 
         fn calculate_in_amount(
             &self,
             _db: &dyn DatabaseRef<Error = KabuDBError>,
+            _evm_env: &EvmEnv,
             _token_address_from: &Address,
             _token_address_to: &Address,
             _out_amount: U256,
-        ) -> eyre::Result<(U256, u64), ErrReport> {
-            Err(eyre!("NOT_IMPLEMENTED"))
+        ) -> Result<(U256, u64), PoolError> {
+            Err(PoolError::GeneralError("NOT_IMPLEMENTED".to_string()))
         }
 
         fn can_flash_swap(&self) -> bool {

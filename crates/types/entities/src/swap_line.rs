@@ -1,14 +1,14 @@
-use std::fmt;
-use std::hash::{Hash, Hasher};
-use std::sync::Arc;
-
 use crate::swap_error::SwapErrorKind;
 use crate::swap_path::SwapPath;
 use crate::{CalculationResult, PoolId, PoolWrapper, SwapError, SwapStep, Token};
+use alloy_evm::EvmEnv;
 use alloy_primitives::{Address, I256, U256};
 use eyre::{eyre, Result};
 use kabu_evm_db::KabuDBError;
 use revm::DatabaseRef;
+use std::fmt;
+use std::hash::{Hash, Hasher};
+use std::sync::Arc;
 use tracing::debug;
 
 #[derive(Debug, Clone, Default)]
@@ -306,6 +306,7 @@ impl SwapLine {
     pub fn calculate_with_in_amount<DB: DatabaseRef<Error = KabuDBError>>(
         &self,
         db: &DB,
+        evm_env: &EvmEnv,
         in_amount: U256,
     ) -> Result<(U256, u64, Vec<CalculationResult>), SwapError> {
         let mut current_in_amount = in_amount;
@@ -316,7 +317,7 @@ impl SwapLine {
         for (i, pool) in self.pools().iter().enumerate() {
             let token_from = &self.tokens()[i];
             let token_to = &self.tokens()[i + 1];
-            match pool.calculate_out_amount(db, &token_from.get_address(), &token_to.get_address(), current_in_amount) {
+            match pool.calculate_out_amount(db, evm_env, &token_from.get_address(), &token_to.get_address(), current_in_amount) {
                 Ok((out_amount_result, gas_result)) => {
                     if out_amount_result.is_zero() {
                         return Err(SwapError {
@@ -365,6 +366,7 @@ impl SwapLine {
     pub fn calculate_with_out_amount<DB: DatabaseRef<Error = KabuDBError>>(
         &self,
         db: &DB,
+        evm_env: &EvmEnv,
         out_amount: U256,
     ) -> Result<(U256, u64, Vec<CalculationResult>), SwapError> {
         let mut current_out_amount = out_amount;
@@ -381,7 +383,7 @@ impl SwapLine {
         for (i, pool) in pool_reverse.iter().enumerate() {
             let token_from = &tokens_reverse[i + 1];
             let token_to = &tokens_reverse[i];
-            match pool.calculate_in_amount(db, &token_from.get_address(), &token_to.get_address(), current_out_amount) {
+            match pool.calculate_in_amount(db, evm_env, &token_from.get_address(), &token_to.get_address(), current_out_amount) {
                 Ok((in_amount_result, gas_result)) => {
                     if in_amount_result == U256::MAX {
                         return Err(SwapError {
@@ -430,6 +432,7 @@ impl SwapLine {
     pub fn optimize_with_in_amount<DB: DatabaseRef<Error = KabuDBError>>(
         &mut self,
         db: &DB,
+        evm_env: EvmEnv,
         in_amount: U256,
     ) -> Result<&mut Self, SwapError> {
         let mut current_in_amount = in_amount;
@@ -451,7 +454,8 @@ impl SwapLine {
                 return Ok(self);
             }
 
-            let (current_out_amount, current_gas_used, calculation_results) = match self.calculate_with_in_amount(db, next_amount) {
+            let (current_out_amount, current_gas_used, calculation_results) = match self.calculate_with_in_amount(db, &evm_env, next_amount)
+            {
                 Ok(ret) => ret,
                 Err(e) => {
                     if counter == 1 {

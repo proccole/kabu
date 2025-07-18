@@ -14,11 +14,12 @@ pub struct ERC20StateReader {}
 impl ERC20StateReader {
     pub fn balance_of<DB: DatabaseRef<Error = KabuDBError> + ?Sized>(
         db: &DB,
+        evm_env: &EvmEnv,
         erc20_token: Address,
         account: Address,
     ) -> Result<U256, PoolError> {
         let input = IERC20::IERC20Calls::balanceOf(IERC20::balanceOfCall { account }).abi_encode();
-        let (call_data_result, _, _) = evm_call(db, EvmEnv::default(), erc20_token, input)?;
+        let (call_data_result, _, _) = evm_call(db, evm_env.clone(), erc20_token, input)?;
 
         let call_return = IERC20::balanceOfCall::abi_decode_returns(&call_data_result)
             .map_err(|e| PoolError::AbiDecodingError { method: "balanceOf", source: e })?;
@@ -27,12 +28,13 @@ impl ERC20StateReader {
 
     pub fn allowance<DB: DatabaseRef<Error = KabuDBError> + ?Sized>(
         db: &DB,
+        evm_env: &EvmEnv,
         erc20_token: Address,
         owner: Address,
         spender: Address,
     ) -> Result<U256, PoolError> {
         let input = IERC20::IERC20Calls::allowance(IERC20::allowanceCall { owner, spender }).abi_encode();
-        let (call_data_result, _, _) = evm_call(db, EvmEnv::default(), erc20_token, input)?;
+        let (call_data_result, _, _) = evm_call(db, evm_env.clone(), erc20_token, input)?;
 
         let call_return = IERC20::allowanceCall::abi_decode_returns(&call_data_result)
             .map_err(|e| PoolError::AbiDecodingError { method: "allowance", source: e })?;

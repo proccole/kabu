@@ -1,3 +1,4 @@
+use alloy_evm::EvmEnv;
 use alloy_primitives::{Address, BlockNumber, U256};
 use chrono::Local;
 #[allow(unused_imports)]
@@ -82,7 +83,7 @@ async fn sync_run(state_db: &KabuDBType, pool: PoolWrapper) {
     (0..10).for_each(|_| {
         let tokens = pool.get_tokens();
         let (out_amount, gas_used) =
-            pool.calculate_out_amount(&state_db, tokens.first().unwrap(), tokens.get(1).unwrap(), in_amount).unwrap();
+            pool.calculate_out_amount(&state_db, &EvmEnv::default(), tokens.first().unwrap(), tokens.get(1).unwrap(), in_amount).unwrap();
         if out_amount.is_zero() || gas_used < 50_000 {
             panic!("BAD CALC")
         }
@@ -112,7 +113,8 @@ async fn rayon_run(state_db: &KabuDBType, pool: PoolWrapper, threadpool: Arc<Thr
     tokio::task::spawn(async move {
         threadpool.install(|| {
             in_vec.into_par_iter().for_each_with((&state_db_clone, &result_tx), |(state_db, result_tx), in_amount| {
-                let (out_amount, gas_used) = pool.calculate_out_amount(state_db, &token_from, &token_to, in_amount).unwrap();
+                let (out_amount, gas_used) =
+                    pool.calculate_out_amount(state_db, &EvmEnv::default(), &token_from, &token_to, in_amount).unwrap();
                 if out_amount.is_zero() || gas_used < 50_000 {
                     panic!("BAD CALC")
                 }
@@ -197,7 +199,13 @@ async fn tokio_run(state_db: &KabuDBType, pool: PoolWrapper) {
                             Some(req) => {
                                 let tokens = pool.get_tokens();
                                 let (out_amount, gas_used) = pool
-                                    .calculate_out_amount(req.0.as_ref(), tokens.first().unwrap(), tokens.get(1).unwrap(), req.1)
+                                    .calculate_out_amount(
+                                        req.0.as_ref(),
+                                        &EvmEnv::default(),
+                                        tokens.first().unwrap(),
+                                        tokens.get(1).unwrap(),
+                                        req.1,
+                                    )
                                     .unwrap();
                                 if out_amount.is_zero() || gas_used < 50_000 {
                                     panic!("BAD CALC")

@@ -1,20 +1,20 @@
-use std::any::Any;
-use std::cmp::Ordering;
-use std::fmt::{Debug, Display, Formatter};
-use std::hash::{Hash, Hasher};
-use std::ops::Deref;
-use std::sync::Arc;
-
 use crate::pool_error::PoolError;
 use crate::required_state::RequiredState;
 use crate::swap_direction::SwapDirection;
 use crate::PoolId;
+use alloy_evm::EvmEnv;
 use alloy_primitives::{Address, Bytes, U256};
 use eyre::{eyre, Result};
 use kabu_defi_address_book::FactoryAddress;
 use kabu_evm_db::KabuDBError;
 use revm::DatabaseRef;
 use serde::{Deserialize, Serialize};
+use std::any::Any;
+use std::cmp::Ordering;
+use std::fmt::{Debug, Display, Formatter};
+use std::hash::{Hash, Hasher};
+use std::ops::Deref;
+use std::sync::Arc;
 use strum_macros::{Display, EnumIter, EnumString, VariantNames};
 
 pub fn get_protocol_by_factory(factory_address: Address) -> PoolProtocol {
@@ -259,6 +259,7 @@ pub trait Pool: Sync + Send {
     fn calculate_out_amount(
         &self,
         db: &dyn DatabaseRef<Error = KabuDBError>,
+        evm_env: &EvmEnv,
         token_address_from: &Address,
         token_address_to: &Address,
         in_amount: U256,
@@ -268,6 +269,7 @@ pub trait Pool: Sync + Send {
     fn calculate_in_amount(
         &self,
         db: &dyn DatabaseRef<Error = KabuDBError>,
+        evm_env: &EvmEnv,
         token_address_from: &Address,
         token_address_to: &Address,
         out_amount: U256,

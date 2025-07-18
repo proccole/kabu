@@ -5,9 +5,11 @@ use std::ops::Sub;
 use crate::state_readers::UniswapV3QuoterV2StateReader;
 use crate::state_readers::{UniswapV3EvmStateReader, UniswapV3QuoterV2Encoder};
 use crate::virtual_impl::UniswapV3PoolVirtual;
+use alloy::primitives::aliases::U24;
 use alloy::primitives::{Address, Bytes, I256, U160, U256};
 use alloy::providers::{Network, Provider};
 use alloy::sol_types::{SolCall, SolInterface};
+use alloy_evm::EvmEnv;
 use eyre::{OptionExt, Result};
 use kabu_defi_abi::uniswap3::IUniswapV3Pool;
 use kabu_defi_abi::uniswap3::IUniswapV3Pool::slot0Return;
@@ -160,12 +162,12 @@ impl UniswapV3Pool {
         }
     }
 
-    pub fn fetch_pool_data_evm<DB: DatabaseRef<Error = KabuDBError> + ?Sized>(db: &DB, address: Address) -> Result<Self> {
-        let token0 = UniswapV3EvmStateReader::token0(db, address)?;
-        let token1 = UniswapV3EvmStateReader::token1(db, address)?;
-        let fee: u32 = UniswapV3EvmStateReader::fee(db, address)?.to();
-        let liquidity = UniswapV3EvmStateReader::liquidity(db, address)?;
-        let factory = UniswapV3EvmStateReader::factory(db, address).unwrap_or_default();
+    pub fn fetch_pool_data_evm<DB: DatabaseRef<Error = KabuDBError> + ?Sized>(db: &DB, evm_env: &EvmEnv, address: Address) -> Result<Self> {
+        let token0 = UniswapV3EvmStateReader::token0(db, evm_env, address)?;
+        let token1 = UniswapV3EvmStateReader::token1(db, evm_env, address)?;
+        let fee: u32 = UniswapV3EvmStateReader::fee(db, evm_env, address)?.to();
+        let liquidity = UniswapV3EvmStateReader::liquidity(db, evm_env, address)?;
+        let factory = UniswapV3EvmStateReader::factory(db, evm_env, address).unwrap_or_default();
         let protocol = UniswapV3Pool::get_protocol_by_factory(factory);
 
         let ret = UniswapV3Pool {
@@ -256,6 +258,7 @@ impl Pool for UniswapV3Pool {
     fn calculate_out_amount(
         &self,
         db: &dyn DatabaseRef<Error = KabuDBError>,
+        evm_env: &EvmEnv,
         token_address_from: &Address,
         token_address_to: &Address,
         in_amount: U256,
@@ -268,10 +271,11 @@ impl Pool for UniswapV3Pool {
                 // TODO check gas limit issue
                 let (ret_evm, gas_used) = UniswapV3QuoterV2StateReader::quote_exact_input(
                     db,
+                    evm_env,
                     PeripheryAddress::UNISWAP_V3_QUOTER_V2,
                     *token_address_from,
                     *token_address_to,
-                    self.fee.try_into().map_err(|_| PoolError::InvalidInput { reason: "invalid fee value" })?,
+                    U24::from(self.fee),
                     in_amount,
                 )?;
                 println!("calculate_out_amount ret_evm: {ret_evm:?} ret: {ret_virtual:?} gas_used: {gas_used:?}");
@@ -285,10 +289,11 @@ impl Pool for UniswapV3Pool {
 
             let (ret_evm, gas_used) = UniswapV3QuoterV2StateReader::quote_exact_input(
                 db,
+                evm_env,
                 PeripheryAddress::UNISWAP_V3_QUOTER_V2,
                 *token_address_from,
                 *token_address_to,
-                self.fee.try_into().map_err(|_| PoolError::InvalidInput { reason: "invalid fee value" })?,
+                U24::from(self.fee),
                 in_amount,
             )?;
             (ret_evm, gas_used)
@@ -305,6 +310,7 @@ impl Pool for UniswapV3Pool {
     fn calculate_in_amount(
         &self,
         db: &dyn DatabaseRef<Error = KabuDBError>,
+        evm_env: &EvmEnv,
         token_address_from: &Address,
         token_address_to: &Address,
         out_amount: U256,
@@ -317,10 +323,11 @@ impl Pool for UniswapV3Pool {
                 // TODO : Gas limit issue
                 let (ret_evm, gas_used) = UniswapV3QuoterV2StateReader::quote_exact_output(
                     db,
+                    evm_env,
                     PeripheryAddress::UNISWAP_V3_QUOTER_V2,
                     *token_address_from,
                     *token_address_to,
-                    self.fee.try_into().map_err(|_| PoolError::InvalidInput { reason: "invalid fee value" })?,
+                    U24::from(self.fee),
                     out_amount,
                 )?;
                 println!("calculate_out_amount ret_evm: {ret_evm:?} ret: {ret_virtual:?} gas_used: {gas_used:?}");
@@ -335,10 +342,11 @@ impl Pool for UniswapV3Pool {
 
             let (ret_evm, gas_used) = UniswapV3QuoterV2StateReader::quote_exact_output(
                 db,
+                evm_env,
                 PeripheryAddress::UNISWAP_V3_QUOTER_V2,
                 *token_address_from,
                 *token_address_to,
-                self.fee.try_into().map_err(|_| PoolError::InvalidInput { reason: "invalid fee value" })?,
+                U24::from(self.fee),
                 out_amount,
             )?;
             (ret_evm, gas_used)
@@ -628,12 +636,13 @@ mod test {
                     .await?;
 
             // under test
-            let (amount_out, gas_used) = match pool.calculate_out_amount(&state_db, &pool.token0, &pool.token1, amount_in) {
-                Ok((amount_out, gas_used)) => (amount_out, gas_used),
-                Err(e) => {
-                    panic!("Calculation error for pool={pool_address:?}, amount_in={amount_in}, e={e:?}");
-                }
-            };
+            let (amount_out, gas_used) =
+                match pool.calculate_out_amount(&state_db, &EvmEnv::default(), &pool.token0, &pool.token1, amount_in) {
+                    Ok((amount_out, gas_used)) => (amount_out, gas_used),
+                    Err(e) => {
+                        panic!("Calculation error for pool={pool_address:?}, amount_in={amount_in}, e={e:?}");
+                    }
+                };
             assert_eq!(
                 amount_out, contract_amount_out,
                 "Mismatch for pool={:?}, token_out={}, amount_in={}",
@@ -648,12 +657,13 @@ mod test {
                     .await?;
 
             // under test
-            let (amount_out, gas_used) = match pool.calculate_out_amount(&state_db, &pool.token1, &pool.token0, amount_in) {
-                Ok((amount_out, gas_used)) => (amount_out, gas_used),
-                Err(e) => {
-                    panic!("Calculation error for pool={pool_address:?}, amount_in={amount_in}, e={e:?}");
-                }
-            };
+            let (amount_out, gas_used) =
+                match pool.calculate_out_amount(&state_db, &EvmEnv::default(), &pool.token1, &pool.token0, amount_in) {
+                    Ok((amount_out, gas_used)) => (amount_out, gas_used),
+                    Err(e) => {
+                        panic!("Calculation error for pool={pool_address:?}, amount_in={amount_in}, e={e:?}");
+                    }
+                };
             assert_eq!(
                 amount_out, contract_amount_out,
                 "Mismatch for pool={:?}, token_out={}, amount_in={}",
@@ -693,12 +703,13 @@ mod test {
                     .await?;
 
             // under test
-            let (amount_in, gas_used) = match pool.calculate_in_amount(&state_db, &pool.token0, &pool.token1, amount_out) {
-                Ok((amount_in, gas_used)) => (amount_in, gas_used),
-                Err(e) => {
-                    panic!("Calculation error for pool={pool_address:?}, amount_out={amount_out}, e={e:?}");
-                }
-            };
+            let (amount_in, gas_used) =
+                match pool.calculate_in_amount(&state_db, &EvmEnv::default(), &pool.token0, &pool.token1, amount_out) {
+                    Ok((amount_in, gas_used)) => (amount_in, gas_used),
+                    Err(e) => {
+                        panic!("Calculation error for pool={pool_address:?}, amount_out={amount_out}, e={e:?}");
+                    }
+                };
             assert_eq!(
                 amount_in, contract_amount_in,
                 "Mismatch for pool={:?}, token_in={:?}, amount_out={}",
@@ -713,12 +724,13 @@ mod test {
                     .await?;
 
             // under test
-            let (amount_in, gas_used) = match pool.calculate_in_amount(&state_db, &pool.token1, &pool.token0, amount_out) {
-                Ok((amount_in, gas_used)) => (amount_in, gas_used),
-                Err(e) => {
-                    panic!("Calculation error for pool={pool_address:?}, amount_out={amount_out}, e={e:?}");
-                }
-            };
+            let (amount_in, gas_used) =
+                match pool.calculate_in_amount(&state_db, &EvmEnv::default(), &pool.token1, &pool.token0, amount_out) {
+                    Ok((amount_in, gas_used)) => (amount_in, gas_used),
+                    Err(e) => {
+                        panic!("Calculation error for pool={pool_address:?}, amount_out={amount_out}, e={e:?}");
+                    }
+                };
             assert_eq!(
                 amount_in, contract_amount_in,
                 "Mismatch for pool={:?}, token_in={:?}, amount_out={}",
@@ -755,12 +767,13 @@ mod test {
                     .await?;
 
             // under test
-            let (amount_in, gas_used) = match pool.calculate_in_amount(&state_db, &pool.token0, &pool.token1, amount_out) {
-                Ok((amount_in, gas_used)) => (amount_in, gas_used),
-                Err(e) => {
-                    panic!("Calculation error for pool={pool_address:?}, amount_out={amount_out}, e={e:?}");
-                }
-            };
+            let (amount_in, gas_used) =
+                match pool.calculate_in_amount(&state_db, &EvmEnv::default(), &pool.token0, &pool.token1, amount_out) {
+                    Ok((amount_in, gas_used)) => (amount_in, gas_used),
+                    Err(e) => {
+                        panic!("Calculation error for pool={pool_address:?}, amount_out={amount_out}, e={e:?}");
+                    }
+                };
             assert_eq!(
                 amount_in, contract_amount_in,
                 "Mismatch for pool={:?}, token_in={:?}, amount_out={}",
@@ -775,12 +788,13 @@ mod test {
                     .await?;
 
             // under test
-            let (amount_in, gas_used) = match pool.calculate_in_amount(&state_db, &pool.token1, &pool.token0, amount_out) {
-                Ok((amount_in, gas_used)) => (amount_in, gas_used),
-                Err(e) => {
-                    panic!("Calculation error for pool={pool_address:?}, amount_out={amount_out}, e={e:?}");
-                }
-            };
+            let (amount_in, gas_used) =
+                match pool.calculate_in_amount(&state_db, &EvmEnv::default(), &pool.token1, &pool.token0, amount_out) {
+                    Ok((amount_in, gas_used)) => (amount_in, gas_used),
+                    Err(e) => {
+                        panic!("Calculation error for pool={pool_address:?}, amount_out={amount_out}, e={e:?}");
+                    }
+                };
             assert_eq!(
                 amount_in, contract_amount_in,
                 "Mismatch for pool={:?}, token_in={:?}, amount_out={}",

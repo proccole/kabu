@@ -3,6 +3,7 @@ use alloy::primitives::{Address, Bytes, U256};
 use alloy::providers::{Network, Provider};
 use alloy::rpc::types::BlockNumberOrTag;
 use alloy::sol_types::SolInterface;
+use alloy_evm::EvmEnv;
 use eyre::Result;
 use kabu_defi_abi::uniswap2::IUniswapV2Pair;
 use kabu_defi_abi::IERC20;
@@ -121,10 +122,10 @@ impl UniswapV2Pool {
         ((value >> 0) & *U112_MASK, (value >> (112)) & *U112_MASK)
     }
 
-    pub fn fetch_pool_data_evm<DB: DatabaseRef<Error = KabuDBError> + ?Sized>(db: &DB, address: Address) -> Result<Self> {
-        let token0 = UniswapV2EVMStateReader::token0(db, address)?;
-        let token1 = UniswapV2EVMStateReader::token1(db, address)?;
-        let factory = UniswapV2EVMStateReader::factory(db, address)?;
+    pub fn fetch_pool_data_evm<DB: DatabaseRef<Error = KabuDBError> + ?Sized>(db: &DB, evm_env: &EvmEnv, address: Address) -> Result<Self> {
+        let token0 = UniswapV2EVMStateReader::token0(db, evm_env, address)?;
+        let token1 = UniswapV2EVMStateReader::token1(db, evm_env, address)?;
+        let factory = UniswapV2EVMStateReader::factory(db, evm_env, address)?;
         let protocol = Self::get_uni2_protocol_by_factory(factory);
 
         let fee = Self::get_fee_by_protocol(protocol);
@@ -185,8 +186,12 @@ impl UniswapV2Pool {
         Ok(ret)
     }
 
-    pub fn fetch_reserves<DB: DatabaseRef<Error = KabuDBError> + ?Sized>(&self, db: &DB) -> Result<(U256, U256), PoolError> {
-        UniswapV2EVMStateReader::get_reserves(db, self.address)
+    pub fn fetch_reserves<DB: DatabaseRef<Error = KabuDBError> + ?Sized>(
+        &self,
+        db: &DB,
+        evm_env: &EvmEnv,
+    ) -> Result<(U256, U256), PoolError> {
+        UniswapV2EVMStateReader::get_reserves(db, evm_env.clone(), self.address)
     }
 }
 
@@ -224,11 +229,12 @@ impl Pool for UniswapV2Pool {
     fn calculate_out_amount(
         &self,
         db: &dyn DatabaseRef<Error = KabuDBError>,
+        evm_env: &EvmEnv,
         token_address_from: &Address,
         token_address_to: &Address,
         in_amount: U256,
     ) -> Result<(U256, u64), PoolError> {
-        let (reserves_0, reserves_1) = self.fetch_reserves(db)?;
+        let (reserves_0, reserves_1) = self.fetch_reserves(db, evm_env)?;
 
         let (reserve_in, reserve_out) = match token_address_from < token_address_to {
             true => (reserves_0, reserves_1),
@@ -253,11 +259,12 @@ impl Pool for UniswapV2Pool {
     fn calculate_in_amount(
         &self,
         db: &dyn DatabaseRef<Error = KabuDBError>,
+        evm_env: &EvmEnv,
         token_address_from: &Address,
         token_address_to: &Address,
         out_amount: U256,
     ) -> Result<(U256, u64), PoolError> {
-        let (reserves_0, reserves_1) = self.fetch_reserves(db)?;
+        let (reserves_0, reserves_1) = self.fetch_reserves(db, evm_env)?;
 
         let (reserve_in, reserve_out) = match token_address_from.lt(token_address_to) {
             true => (reserves_0, reserves_1),
@@ -418,7 +425,7 @@ mod test {
             state_db.apply_geth_update(state_update);
 
             // under test
-            let (reserves_0, reserves_1) = pool.fetch_reserves(&state_db)?;
+            let (reserves_0, reserves_1) = pool.fetch_reserves(&state_db, &EvmEnv::default())?;
 
             assert_eq!(reserves_0, reserves_0_original, "{}", format!("Missmatch for pool={:?}", pool_address));
             assert_eq!(reserves_1, reserves_1_original, "{}", format!("Missmatch for pool={:?}", pool_address));
@@ -481,7 +488,7 @@ mod test {
             // fetch original
             let contract_amount_out = fetch_original_contract_amounts(client.clone(), pool_address, amount_in, block_number, true).await?;
 
-            let (amount_out, gas_used) = pool.calculate_out_amount(&state_db, &pool.token0, &pool.token1, amount_in)?;
+            let (amount_out, gas_used) = pool.calculate_out_amount(&state_db, &EvmEnv::default(), &pool.token0, &pool.token1, amount_in)?;
 
             assert_eq!(amount_out, contract_amount_out, "{}", format!("Missmatch for pool={:?}, amount_in={}", pool_address, amount_in));
             assert_eq!(gas_used, 100_000);
@@ -513,7 +520,7 @@ mod test {
             let contract_amount_in = fetch_original_contract_amounts(client.clone(), pool_address, amount_out, block_number, false).await?;
 
             // under test
-            let (amount_in, gas_used) = pool.calculate_in_amount(&state_db, &pool.token0, &pool.token1, amount_out)?;
+            let (amount_in, gas_used) = pool.calculate_in_amount(&state_db, &EvmEnv::default(), &pool.token0, &pool.token1, amount_out)?;
 
             assert_eq!(amount_in, contract_amount_in, "{}", format!("Missmatch for pool={:?}, amount_out={}", pool_address, amount_out));
             assert_eq!(gas_used, 100_000);
