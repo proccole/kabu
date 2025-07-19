@@ -12,6 +12,7 @@ use kabu_evm_db::KabuDBError;
 use kabu_types_entities::{LatestBlock, Swap, SwapStep};
 use kabu_types_events::{MarketEvents, MessageSwapCompose, SwapComposeData, SwapComposeMessage};
 use revm::context::BlockEnv;
+use revm::context_interface::block::BlobExcessGasAndPrice;
 
 async fn arb_swap_steps_optimizer_task<
     DB: DatabaseRef<Error = KabuDBError> + Database<Error = KabuDBError> + DatabaseCommit + Send + Sync + Clone,
@@ -26,8 +27,12 @@ async fn arb_swap_steps_optimizer_task<
     if let Swap::BackrunSwapSteps((sp0, sp1)) = request.swap {
         let start_time = chrono::Local::now();
 
-        let _block_env =
-            BlockEnv { number: U256::from(header.number + 1), timestamp: U256::from(header.timestamp + 12), ..Default::default() };
+        let _block_env = BlockEnv {
+            number: U256::from(header.number + 1),
+            timestamp: U256::from(header.timestamp + 12),
+            blob_excess_gas_and_price: Some(BlobExcessGasAndPrice { excess_blob_gas: 0, blob_gasprice: 0 }),
+            ..Default::default()
+        };
 
         // TODO: Update optimize_swap_steps to work with KabuEVMWrapper
         match Ok::<(SwapStep, SwapStep), eyre::Error>((sp0.clone(), sp1.clone())) {

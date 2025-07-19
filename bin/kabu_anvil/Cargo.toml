@@ -12,6 +12,7 @@ exclude.workspace = true
 kabu = { workspace = true, features = ["full-json-rpc", "strategy-full"] }
 
 clap.workspace = true
+dotenvy.workspace = true
 eyre.workspace = true
 futures.workspace = true
 serde.workspace = true

@@ -108,10 +108,11 @@ async fn swap_router_worker<DB: DatabaseRef + Clone + Send + Sync + 'static, LDT
                                     )
                                 );
                             }
-                            _=>{
-                                error!("Unexpected message type received in swap router worker");
-                            }
 
+
+                            SwapComposeMessage::Estimate(_) => {
+                                debug!("SwapComposeMessage::Estimate received (ignored)");
+                            }
                         }
                     }
                     Err(e)=>{error!("compose_channel_rx {}",e)}

@@ -28,6 +28,7 @@ use kabu_types_blockchain::{debug_trace_call_pre_state, GethStateUpdate, GethSta
 use kabu_types_entities::{DataFetcher, FetchState, LatestBlock, MarketState, Swap};
 use kabu_types_events::{MarketEvents, MessageSwapCompose, SwapComposeData, SwapComposeMessage, TxComposeData};
 use revm::context::{BlockEnv, ContextTr};
+use revm::context_interface::block::BlobExcessGasAndPrice;
 
 lazy_static! {
     static ref COINBASE: Address = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326".parse().unwrap();
@@ -136,6 +137,7 @@ where
             number: U256::from(request.tx_compose.next_block_number),
             timestamp: U256::from(request.tx_compose.next_block_timestamp),
             basefee: request.tx_compose.next_block_base_fee,
+            blob_excess_gas_and_price: Some(BlobExcessGasAndPrice { excess_blob_gas: 0, blob_gasprice: 0 }),
             ..Default::default()
         };
 
@@ -203,6 +205,7 @@ where
             number: U256::from(request.tx_compose.next_block_number),
             timestamp: U256::from(request.tx_compose.next_block_timestamp),
             basefee: request.tx_compose.next_block_base_fee,
+            blob_excess_gas_and_price: Some(BlobExcessGasAndPrice { excess_blob_gas: 0, blob_gasprice: 0 }),
             ..Default::default()
         };
 

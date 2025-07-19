@@ -125,6 +125,7 @@ struct Commands {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    dotenvy::from_filename(".env.test").ok();
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| "debug,alloy_rpc_client=off,kabu_multicaller=trace".into());
     let fmt_layer = fmt::Layer::default().with_thread_ids(true).with_file(false).with_line_number(true).with_filter(env_filter);
 
@@ -313,6 +314,7 @@ async fn main() -> Result<()> {
                     pool_config.class,
                 )
                 .await?;
+
                 debug!(address=%pool_config.address, class=%pool_config.class, "Loaded pool");
             }
             PoolClass::Curve => {

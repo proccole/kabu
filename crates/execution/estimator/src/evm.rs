@@ -22,6 +22,7 @@ use kabu_evm_db::{AlloyDB, DatabaseKabuExt, KabuDBError};
 use kabu_evm_utils::evm_env::tx_req_to_env;
 use kabu_types_events::{HealthEvent, MessageHealthEvent, MessageSwapCompose, SwapComposeData, SwapComposeMessage, TxComposeData, TxState};
 use revm::context::BlockEnv;
+use revm::context_interface::block::BlobExcessGasAndPrice;
 use revm::{Database, DatabaseCommit, DatabaseRef};
 
 async fn estimator_task<N, DB>(
@@ -92,6 +93,8 @@ where
         block_env: BlockEnv {
             timestamp: U256::from(estimate_request.tx_compose.next_block_timestamp),
             number: U256::from(estimate_request.tx_compose.next_block_number),
+            basefee: estimate_request.tx_compose.next_block_base_fee,
+            blob_excess_gas_and_price: Some(BlobExcessGasAndPrice { excess_blob_gas: 0, blob_gasprice: 0 }),
             ..Default::default()
         },
         ..Default::default()

@@ -1,7 +1,5 @@
+use alloy_evm::EvmEnv;
 use alloy_primitives::{address, BlockNumber};
-use std::collections::BTreeMap;
-use std::env;
-
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use kabu_defi_address_book::TokenAddressEth;
 use kabu_defi_pools::{UniswapV2Pool, UniswapV3Pool};
@@ -11,6 +9,8 @@ use kabu_strategy_backrun::SwapCalculator;
 use kabu_types_blockchain::KabuDataTypesEthereum;
 use kabu_types_entities::required_state::RequiredStateReader;
 use kabu_types_entities::{Market, PoolClass, PoolId, PoolWrapper, SwapLine, SwapPath, Token};
+use std::collections::BTreeMap;
+use std::env;
 
 pub fn bench_swap_calculator(c: &mut Criterion) {
     let mut group = c.benchmark_group("swap_calculator");
@@ -70,7 +70,7 @@ pub fn bench_swap_calculator(c: &mut Criterion) {
     println!("SwapLine: {}", swap_line);
     group.bench_function("calculate", |b| {
         b.iter(|| {
-            SwapCalculator::calculate(black_box(&mut swap_line.clone()), black_box(&mut state_db.clone()))
+            SwapCalculator::calculate(black_box(&mut swap_line.clone()), black_box(&mut state_db.clone()), EvmEnv::default())
                 .expect("Failed to calculate swap");
         })
     });

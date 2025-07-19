@@ -21,7 +21,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
@@ -36,7 +35,6 @@ jobs:
       - run: make test
 
   swap-test-all:
-    if: false
     name: make swap-test-all
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -47,7 +45,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
@@ -73,7 +70,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
@@ -94,7 +90,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
       - uses: dtolnay/rust-toolchain@stable
 
@@ -108,7 +103,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
       - uses: dtolnay/rust-toolchain@clippy
       - name: install taplo
@@ -128,7 +122,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
       - uses: dtolnay/rust-toolchain@clippy
       - uses: Swatinem/rust-cache@v2
@@ -147,7 +140,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
       - uses: EmbarkStudios/cargo-deny-action@v1
         with:

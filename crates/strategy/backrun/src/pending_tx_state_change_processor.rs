@@ -1,4 +1,5 @@
 use alloy_eips::BlockNumberOrTag;
+use alloy_evm::EvmEnv;
 use alloy_network::Network;
 use alloy_primitives::{Address, BlockNumber, TxHash, U256};
 use alloy_provider::Provider;
@@ -7,6 +8,8 @@ use alloy_rpc_types::BlockOverrides;
 use alloy_rpc_types_trace::geth::GethDebugTracingCallOptions;
 use eyre::{eyre, Result};
 use lazy_static::lazy_static;
+use revm::context::{BlockEnv, CfgEnv};
+use revm::context_interface::block::BlobExcessGasAndPrice;
 use revm::{Database, DatabaseCommit, DatabaseRef};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
@@ -161,35 +164,46 @@ where
     affecting_tx.write().await.insert(tx_hash, !affected_pools.is_empty());
 
     //TODO : Fix Latest header is empty
-    if let Some(latest_header) = latest_block.read().await.block_header.clone() {
-        let next_block_number = latest_header.number + 1;
-        let next_block_timestamp = latest_header.timestamp + 12;
+    let Some(latest_header) = latest_block.read().await.block_header.clone() else {
+        error!("Latest header is empty");
+        return Err(eyre!("LATEST_HEADER_EMPTY"));
+    };
 
-        if !affected_pools.is_empty() {
-            let cur_state_db = market_state.read().await.state_db.clone();
-            let request = StateUpdateEvent::new(
-                next_block_number,
-                next_block_timestamp,
-                cur_next_base_fee,
-                cur_state_db,
-                state_update_vec,
-                Some(state_required_vec.clone()),
-                affected_pools,
-                vec![tx_hash],
-                vec![mempool_tx.tx.clone().unwrap()],
-                "pending_tx_searcher".to_string(),
-                9000,
-            );
-            if let Err(e) = state_updates_broadcaster.send(request) {
-                error!("state_updates_broadcaster : {}", e)
-            }
+    let next_block_number = latest_header.number + 1;
+    let next_block_timestamp = latest_header.timestamp + 12;
+
+    if !affected_pools.is_empty() {
+        let cur_state_db = market_state.read().await.state_db.clone();
+        let request = StateUpdateEvent::new(
+            next_block_number,
+            next_block_timestamp,
+            cur_next_base_fee,
+            cur_state_db,
+            state_update_vec,
+            Some(state_required_vec.clone()),
+            affected_pools,
+            vec![tx_hash],
+            vec![mempool_tx.tx.clone().unwrap()],
+            "pending_tx_searcher".to_string(),
+            9000,
+        );
+        if let Err(e) = state_updates_broadcaster.send(request) {
+            error!("state_updates_broadcaster : {}", e)
         }
-    } else {
-        error!("Latest header is empty")
     }
 
     if is_pool_code(&merged_state_update_vec) {
-        match get_affected_pools_from_code(client, market.clone(), &merged_state_update_vec).await {
+        let evm_env = EvmEnv {
+            cfg_env: CfgEnv::default(),
+            block_env: BlockEnv {
+                number: U256::from(next_block_number),
+                timestamp: U256::from(next_block_timestamp),
+                basefee: cur_next_base_fee,
+                blob_excess_gas_and_price: Some(BlobExcessGasAndPrice { excess_blob_gas: 0, blob_gasprice: 0 }),
+                ..Default::default()
+            },
+        };
+        match get_affected_pools_from_code(client, market.clone(), &merged_state_update_vec, &evm_env).await {
             Ok(affected_pools) => {
                 match affecting_tx.write().await.entry(tx_hash) {
                     Entry::Occupied(mut v) => {

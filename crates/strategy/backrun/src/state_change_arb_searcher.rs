@@ -7,6 +7,7 @@ use influxdb::{Timestamp, WriteQuery};
 use rayon::prelude::*;
 use rayon::{ThreadPool, ThreadPoolBuilder};
 use revm::context::{BlockEnv, CfgEnv};
+use revm::context_interface::block::BlobExcessGasAndPrice;
 use revm::{Database, DatabaseCommit, DatabaseRef};
 use std::collections::{BTreeMap, HashSet};
 use std::sync::Arc;
@@ -109,6 +110,7 @@ async fn state_change_arb_searcher_task<
         number: U256::from(state_update_event.next_block_number),
         timestamp: U256::from(state_update_event.next_block_timestamp),
         basefee: state_update_event.next_base_fee,
+        blob_excess_gas_and_price: Some(BlobExcessGasAndPrice { excess_blob_gas: 0, blob_gasprice: 0 }),
         ..Default::default()
     };
     let evm_env = EvmEnv::new(CfgEnv::new(), block_env);

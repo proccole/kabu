@@ -43,6 +43,7 @@ where
                 number: U256::from(target_block),
                 timestamp: U256::from(next_block_timestamp),
                 basefee: U256::from(next_block_base_fee),
+                blob_excess_gas_and_price: Some(BlobExcessGasAndPrice { excess_blob_gas: 0, blob_gasprice: 0 }),
                 ..BlockEnv::default()
             },
             ..Env::default()

@@ -18,6 +18,7 @@ pub async fn get_affected_pools_from_code<P, N>(
     client: P,
     market: SharedState<Market>,
     state_update: &GethStateUpdateVec,
+    evm_env: &EvmEnv,
 ) -> eyre::Result<BTreeMap<PoolWrapper, Vec<SwapDirection>>>
 where
     N: Network,
@@ -46,8 +47,8 @@ where
 
                             let state_db = market_state.state_db.clone().with_ext_db(ext_db);
 
-                            match UniswapV3EvmStateReader::factory(&state_db, &EvmEnv::default(), *address) {
-                                Ok(_factory_address) => match UniswapV2Pool::fetch_pool_data_evm(&state_db, &EvmEnv::default(), *address) {
+                            match UniswapV3EvmStateReader::factory(&state_db, evm_env, *address) {
+                                Ok(_factory_address) => match UniswapV2Pool::fetch_pool_data_evm(&state_db, evm_env, *address) {
                                     Ok(pool) => {
                                         let pool = PoolWrapper::new(Arc::new(pool));
                                         let protocol = pool.get_protocol();
@@ -85,11 +86,11 @@ where
 
                             let state_db = market_state.state_db.clone().with_ext_db(ext_db);
 
-                            match UniswapV3EvmStateReader::factory(&state_db, &EvmEnv::default(), *address) {
+                            match UniswapV3EvmStateReader::factory(&state_db, evm_env, *address) {
                                 Ok(factory_address) => {
                                     match get_protocol_by_factory(factory_address) {
                                         PoolProtocol::PancakeV3 => {
-                                            let pool = PancakeV3Pool::fetch_pool_data_evm(&state_db, &EvmEnv::default(), *address);
+                                            let pool = PancakeV3Pool::fetch_pool_data_evm(&state_db, evm_env, *address);
                                             match pool {
                                                 Ok(pool) => {
                                                     let swap_directions = pool.get_swap_directions();
@@ -103,7 +104,7 @@ where
                                             }
                                         }
                                         PoolProtocol::Maverick => {
-                                            let pool = MaverickPool::fetch_pool_data_evm(&state_db, &EvmEnv::default(), *address);
+                                            let pool = MaverickPool::fetch_pool_data_evm(&state_db, evm_env, *address);
                                             match pool {
                                                 Ok(pool) => {
                                                     let pool = PoolWrapper::new(Arc::new(pool));
@@ -118,7 +119,7 @@ where
                                                 }
                                             }
                                         }
-                                        _ => match UniswapV3Pool::fetch_pool_data_evm(&state_db, &EvmEnv::default(), *address) {
+                                        _ => match UniswapV3Pool::fetch_pool_data_evm(&state_db, evm_env, *address) {
                                             Ok(pool) => {
                                                 let pool = PoolWrapper::new(Arc::new(pool));
                                                 let swap_directions = pool.get_swap_directions();

@@ -63,7 +63,7 @@ pub fn block_env_from_block_header(block_header: &Header) -> BlockEnv {
         basefee: block_header.base_fee_per_gas.unwrap_or_default(),
         difficulty: block_header.difficulty,
         prevrandao: Some(block_header.parent_hash),
-        blob_excess_gas_and_price: None,
+        blob_excess_gas_and_price: Some(BlobExcessGasAndPrice { excess_blob_gas: 0, blob_gasprice: 0 }),
     }
 }
 
