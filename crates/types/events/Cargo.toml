@@ -10,6 +10,8 @@ repository.workspace = true
 [dependencies]
 kabu-types-blockchain.workspace = true
 kabu-types-entities.workspace = true
+kabu-types-market.workspace = true
+kabu-types-swap.workspace = true
 
 alloy-consensus.workspace = true
 alloy-eips.workspace = true

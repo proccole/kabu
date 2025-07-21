@@ -159,7 +159,7 @@ impl Display for PoolProtocol {
             Self::RocketEth => "RocketEth",
             Self::BalancerV1 => "BalancerV1",
             Self::BalancerV2 => "BalancerV2",
-            Self::Custom(x) => "Custom",
+            Self::Custom(_x) => "Custom",
         };
         write!(f, "{protocol_name}")
     }

@@ -6,7 +6,7 @@ use kabu_defi_abi::uniswap3::IUniswapV3Pool;
 use kabu_defi_abi::uniswap3::IUniswapV3Pool::slot0Return;
 use kabu_evm_db::KabuDBError;
 use kabu_evm_utils::evm_call;
-use kabu_types_entities::PoolError;
+use kabu_types_market::PoolError;
 use revm::DatabaseRef;
 
 pub struct UniswapV3EvmStateReader {}

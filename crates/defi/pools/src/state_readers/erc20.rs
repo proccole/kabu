@@ -5,7 +5,7 @@ use eyre::Result;
 use kabu_defi_abi::IERC20;
 use kabu_evm_db::KabuDBError;
 use kabu_evm_utils::evm_call;
-use kabu_types_entities::PoolError;
+use kabu_types_market::PoolError;
 use revm::DatabaseRef;
 
 pub struct ERC20StateReader {}

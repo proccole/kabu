@@ -12,8 +12,9 @@ use kabu_core_actors::{Actor, ActorResult, Broadcaster, Consumer, Producer, Work
 use kabu_core_actors_macros::{Accessor, Consumer, Producer};
 use kabu_core_blockchain::{Blockchain, Strategy};
 use kabu_evm_utils::NWETH;
-use kabu_types_entities::{MarketState, Swap};
 use kabu_types_events::{MarketEvents, MessageSwapCompose, SwapComposeData, SwapComposeMessage, TxComposeData};
+use kabu_types_market::MarketState;
+use kabu_types_swap::Swap;
 
 lazy_static! {
     static ref COINBASE: Address = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326".parse().unwrap();

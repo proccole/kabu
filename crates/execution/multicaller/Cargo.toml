@@ -12,7 +12,8 @@ kabu-defi-abi.workspace = true
 kabu-defi-address-book.workspace = true
 kabu-node-debug-provider.workspace = true
 kabu-types-blockchain.workspace = true
-kabu-types-entities.workspace = true
+kabu-types-market.workspace = true
+kabu-types-swap.workspace = true
 
 eyre.workspace = true
 k256.workspace = true

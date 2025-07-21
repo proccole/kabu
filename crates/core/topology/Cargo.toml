@@ -10,7 +10,7 @@ repository.workspace = true
 [dependencies]
 kabu-broadcast-accounts.workspace = true
 kabu-broadcast-broadcaster.workspace = true
-kabu-broadcast-flashbots.workspace = true
+kabu-broadcast-flashbots-client.workspace = true
 kabu-core-actors.workspace = true
 kabu-core-block-history.workspace = true
 kabu-core-blockchain.workspace = true
@@ -27,6 +27,8 @@ kabu-node-actor-config.workspace = true
 kabu-node-json-rpc.workspace = true
 kabu-types-blockchain.workspace = true
 kabu-types-entities.workspace = true
+kabu-types-market.workspace = true
+kabu-types-swap.workspace = true
 
 eyre.workspace = true
 revm.workspace = true

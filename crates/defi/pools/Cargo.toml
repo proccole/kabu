@@ -15,6 +15,7 @@ kabu-evm-db.workspace = true
 kabu-evm-utils.workspace = true
 kabu-types-blockchain.workspace = true
 kabu-types-entities.workspace = true
+kabu-types-market.workspace = true
 
 async-stream.workspace = true
 eyre.workspace = true

@@ -8,8 +8,8 @@ use tracing::{error, info};
 use kabu_core_actors::{Actor, ActorResult, Broadcaster, Producer, WorkerResult};
 use kabu_core_actors_macros::Producer;
 use kabu_core_blockchain::Blockchain;
-use kabu_types_entities::PoolLoaders;
 use kabu_types_events::LoomTask;
+use kabu_types_market::PoolLoaders;
 use tokio_stream::StreamExt;
 
 async fn protocol_pool_loader_worker<P, PL, N>(

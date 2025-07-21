@@ -2,7 +2,7 @@ use alloy_evm::EvmEnv;
 use alloy_primitives::utils::parse_units;
 use alloy_primitives::U256;
 use kabu_evm_db::KabuDBError;
-use kabu_types_entities::{SwapError, SwapErrorKind, SwapLine};
+use kabu_types_swap::{SwapError, SwapErrorKind, SwapLine};
 use lazy_static::lazy_static;
 use revm::DatabaseRef;
 

@@ -20,7 +20,8 @@ use crate::soltest::create_sol_test;
 use kabu_node_debug_provider::AnvilDebugProviderFactory;
 
 use kabu_defi_address_book::UniswapV2PoolAddress;
-use kabu_types_entities::{Market, MarketState, PoolId, PoolWrapper, Swap, SwapAmountType, SwapDirection, SwapLine};
+use kabu_types_market::{Market, MarketState, PoolId, PoolWrapper, SwapDirection};
+use kabu_types_swap::{Swap, SwapAmountType, SwapLine};
 
 use kabu_core_actors::SharedState;
 use kabu_defi_preloader::preload_market_state;

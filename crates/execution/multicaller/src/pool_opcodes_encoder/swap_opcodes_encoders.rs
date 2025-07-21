@@ -7,7 +7,8 @@ use alloy_primitives::{Address, Bytes};
 use eyre::OptionExt;
 use eyre::Result;
 use kabu_types_blockchain::MulticallerCalls;
-use kabu_types_entities::{Pool, PoolClass, SwapAmountType};
+use kabu_types_market::{Pool, PoolClass};
+use kabu_types_swap::SwapAmountType;
 use std::collections::HashMap;
 use std::sync::Arc;
 

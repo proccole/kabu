@@ -3,7 +3,7 @@ use alloy_primitives::{Address, Bytes, U256};
 use alloy_sol_types::SolInterface;
 use kabu_defi_abi::maverick::IMaverickPool;
 use kabu_defi_abi::maverick::IMaverickPool::IMaverickPoolCalls;
-use kabu_types_entities::Pool;
+use kabu_types_market::Pool;
 use lazy_static::lazy_static;
 
 lazy_static! {

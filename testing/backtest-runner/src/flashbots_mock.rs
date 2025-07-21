@@ -1,5 +1,4 @@
 use alloy_primitives::{Bytes, B256, U64};
-
 use serde::{Deserialize, Serialize};
 use wiremock::{
     matchers::{method, path},

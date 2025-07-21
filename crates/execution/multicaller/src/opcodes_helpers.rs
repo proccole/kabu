@@ -2,7 +2,7 @@ use alloy_primitives::{Address, U256};
 use eyre::Result;
 use kabu_defi_abi::AbiEncoderHelper;
 use kabu_types_blockchain::{MulticallerCall, MulticallerCalls};
-use kabu_types_entities::SwapAmountType;
+use kabu_types_swap::SwapAmountType;
 
 pub struct OpcodesHelpers {}
 

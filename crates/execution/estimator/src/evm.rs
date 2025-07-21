@@ -14,7 +14,7 @@ use tracing::{debug, error, info, trace};
 
 use kabu_core_blockchain::{Blockchain, Strategy};
 use kabu_evm_utils::{evm_access_list, NWETH};
-use kabu_types_entities::{EstimationError, Swap, SwapEncoder};
+use kabu_types_swap::{EstimationError, Swap, SwapEncoder};
 
 use kabu_core_actors::{subscribe, Actor, ActorResult, Broadcaster, Consumer, Producer, WorkerResult};
 use kabu_core_actors_macros::{Consumer, Producer};

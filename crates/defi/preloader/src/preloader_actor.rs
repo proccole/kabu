@@ -14,7 +14,8 @@ use kabu_core_blockchain::{Blockchain, BlockchainState};
 use kabu_defi_address_book::TokenAddressEth;
 use kabu_evm_utils::{BalanceCheater, NWETH};
 use kabu_types_blockchain::{GethStateUpdate, KabuDataTypes};
-use kabu_types_entities::{AccountNonceAndBalanceState, MarketState, TxSigners};
+use kabu_types_entities::{AccountNonceAndBalanceState, TxSigners};
+use kabu_types_market::MarketState;
 use revm::{Database, DatabaseCommit, DatabaseRef};
 use tracing::{debug, error, trace};
 

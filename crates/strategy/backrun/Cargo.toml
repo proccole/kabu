@@ -20,6 +20,8 @@ kabu-node-debug-provider.workspace = true
 kabu-types-blockchain.workspace = true
 kabu-types-entities.workspace = true
 kabu-types-events.workspace = true
+kabu-types-market.workspace = true
+kabu-types-swap.workspace = true
 
 chrono.workspace = true
 eyre.workspace = true

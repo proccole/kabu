@@ -7,7 +7,7 @@ use crate::opcodes_encoder::{OpcodesEncoder, OpcodesEncoderV2};
 use crate::SwapLineEncoder;
 use kabu_defi_abi::AbiEncoderHelper;
 use kabu_types_blockchain::{MulticallerCall, MulticallerCalls};
-use kabu_types_entities::{SwapAmountType, SwapStep};
+use kabu_types_swap::{SwapAmountType, SwapStep};
 
 lazy_static! {
     static ref BALANCER_VAULT_ADDRESS: Address = "0xBA12222222228d8Ba445958a75a0704d566BF2C8".parse().unwrap();

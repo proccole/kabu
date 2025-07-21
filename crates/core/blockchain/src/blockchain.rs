@@ -5,11 +5,12 @@ use influxdb::WriteQuery;
 use kabu_core_actors::{Broadcaster, SharedState};
 use kabu_types_blockchain::{ChainParameters, Mempool};
 use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEthereum};
-use kabu_types_entities::{AccountNonceAndBalanceState, LatestBlock, Market};
+use kabu_types_entities::{AccountNonceAndBalanceState, LatestBlock};
 use kabu_types_events::{
     LoomTask, MarketEvents, MempoolEvents, MessageBlock, MessageBlockHeader, MessageBlockLogs, MessageBlockStateUpdate, MessageHealthEvent,
     MessageMempoolDataUpdate, MessageTxCompose,
 };
+use kabu_types_market::Market;
 use tracing::error;
 
 #[derive(Clone)]

@@ -7,7 +7,7 @@ use eyre::{eyre, Result};
 use tokio::sync::broadcast::error::RecvError;
 use tracing::error;
 
-use kabu_broadcast_flashbots::Flashbots;
+use kabu_broadcast_flashbots_client::Flashbots;
 use kabu_core_actors::{subscribe, Actor, ActorResult, Broadcaster, Consumer, WorkerResult};
 use kabu_core_actors_macros::{Accessor, Consumer};
 use kabu_core_blockchain::Blockchain;

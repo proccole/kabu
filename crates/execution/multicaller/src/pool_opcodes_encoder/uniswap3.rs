@@ -6,7 +6,8 @@ use alloy_primitives::{Address, Bytes, U256};
 use eyre::{eyre, OptionExt};
 use kabu_defi_abi::AbiEncoderHelper;
 use kabu_types_blockchain::{MulticallerCall, MulticallerCalls};
-use kabu_types_entities::{Pool, PreswapRequirement, SwapAmountType};
+use kabu_types_market::{Pool, PreswapRequirement};
+use kabu_types_swap::SwapAmountType;
 use tracing::trace;
 
 pub struct UniswapV3SwapOpcodesEncoder {}
@@ -36,8 +37,8 @@ impl SwapOpcodesEncoderTrait for UniswapV3SwapOpcodesEncoder {
         };
 
         let pool_address = match cur_pool.get_address() {
-            kabu_types_entities::PoolId::Address(addr) => addr,
-            kabu_types_entities::PoolId::B256(_) => return Err(eyre!("Pool ID is B256, expected Address")),
+            kabu_types_market::PoolId::Address(addr) => addr,
+            kabu_types_market::PoolId::B256(_) => return Err(eyre!("Pool ID is B256, expected Address")),
         };
 
         let mut swap_opcode = MulticallerCall::new_call(
@@ -126,8 +127,8 @@ impl SwapOpcodesEncoderTrait for UniswapV3SwapOpcodesEncoder {
                     token_from_address,
                     &AbiEncoderHelper::encode_erc20_transfer(
                         match flash_pool.get_address() {
-                            kabu_types_entities::PoolId::Address(addr) => addr,
-                            kabu_types_entities::PoolId::B256(_) => return Err(eyre!("Pool ID is B256, expected Address")),
+                            kabu_types_market::PoolId::Address(addr) => addr,
+                            kabu_types_market::PoolId::B256(_) => return Err(eyre!("Pool ID is B256, expected Address")),
                         },
                         amount_in.unwrap_or_default(),
                     ),
@@ -154,8 +155,8 @@ impl SwapOpcodesEncoderTrait for UniswapV3SwapOpcodesEncoder {
             amount_in,
         );
         let pool_address = match flash_pool.get_address() {
-            kabu_types_entities::PoolId::Address(addr) => addr,
-            kabu_types_entities::PoolId::B256(_) => return Err(eyre!("Pool ID is B256, expected Address")),
+            kabu_types_market::PoolId::Address(addr) => addr,
+            kabu_types_market::PoolId::B256(_) => return Err(eyre!("Pool ID is B256, expected Address")),
         };
 
         let mut swap_opcode = MulticallerCall::new_call(
@@ -206,8 +207,8 @@ impl SwapOpcodesEncoderTrait for UniswapV3SwapOpcodesEncoder {
                 token_from_address,
                 &AbiEncoderHelper::encode_erc20_transfer(
                     match flash_pool.get_address() {
-                        kabu_types_entities::PoolId::Address(addr) => addr,
-                        kabu_types_entities::PoolId::B256(_) => return Err(eyre!("Pool ID is B256, expected Address")),
+                        kabu_types_market::PoolId::Address(addr) => addr,
+                        kabu_types_market::PoolId::B256(_) => return Err(eyre!("Pool ID is B256, expected Address")),
                     },
                     U256::ZERO,
                 ),
@@ -234,8 +235,8 @@ impl SwapOpcodesEncoderTrait for UniswapV3SwapOpcodesEncoder {
         );
 
         let pool_address = match flash_pool.get_address() {
-            kabu_types_entities::PoolId::Address(addr) => addr,
-            kabu_types_entities::PoolId::B256(_) => return Err(eyre!("Pool ID is B256, expected Address")),
+            kabu_types_market::PoolId::Address(addr) => addr,
+            kabu_types_market::PoolId::B256(_) => return Err(eyre!("Pool ID is B256, expected Address")),
         };
 
         let mut swap_opcode = MulticallerCall::new_call(

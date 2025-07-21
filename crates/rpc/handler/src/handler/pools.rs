@@ -7,7 +7,7 @@ use axum::http::StatusCode;
 use axum::Json;
 use kabu_evm_utils::error_handler::internal_error;
 use kabu_rpc_state::AppState;
-use kabu_types_entities::{PoolId, PoolWrapper};
+use kabu_types_market::{PoolId, PoolWrapper};
 use revm::{DatabaseCommit, DatabaseRef};
 use std::str::FromStr;
 

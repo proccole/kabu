@@ -5,7 +5,7 @@ pub mod broadcast {
     #[cfg(feature = "broadcast-broadcaster")]
     pub use kabu_broadcast_broadcaster as broadcaster;
     #[cfg(feature = "broadcast-flashbots")]
-    pub use kabu_broadcast_flashbots as flashbots;
+    pub use kabu_broadcast_flashbots_client as flashbots;
 }
 
 #[cfg(feature = "core")]
@@ -111,4 +111,8 @@ pub mod types {
     pub use kabu_types_entities as entities;
     #[cfg(feature = "types-events")]
     pub use kabu_types_events as events;
+    #[cfg(feature = "types-market")]
+    pub use kabu_types_market as market;
+    #[cfg(feature = "types-swap")]
+    pub use kabu_types_swap as swap;
 }

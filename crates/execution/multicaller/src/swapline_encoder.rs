@@ -10,8 +10,9 @@ use crate::ProtocolABIEncoderV2;
 use kabu_defi_abi::AbiEncoderHelper;
 use kabu_defi_address_book::TokenAddressEth;
 use kabu_types_blockchain::{MulticallerCall, MulticallerCalls};
-use kabu_types_entities::SwapAmountType::RelativeStack;
-use kabu_types_entities::{PoolWrapper, SwapAmountType, SwapLine, Token};
+use kabu_types_market::{PoolWrapper, Token};
+use kabu_types_swap::SwapAmountType::RelativeStack;
+use kabu_types_swap::{SwapAmountType, SwapLine};
 
 #[derive(Clone)]
 pub struct SwapLineEncoder {
@@ -367,8 +368,8 @@ impl SwapLineEncoder {
 
             let swap_to = next_pool
                 .map(|x| match x.get_address() {
-                    kabu_types_entities::PoolId::Address(addr) => addr,
-                    kabu_types_entities::PoolId::B256(_) => self.multicaller_address, // fallback to multicaller_address
+                    kabu_types_market::PoolId::Address(addr) => addr,
+                    kabu_types_market::PoolId::B256(_) => self.multicaller_address, // fallback to multicaller_address
                 })
                 .unwrap_or(self.multicaller_address);
 

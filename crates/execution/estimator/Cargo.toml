@@ -9,7 +9,7 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
-kabu-broadcast-flashbots.workspace = true
+kabu-broadcast-flashbots-client.workspace = true
 kabu-core-actors.workspace = true
 kabu-core-actors-macros.workspace = true
 kabu-core-blockchain.workspace = true
@@ -17,8 +17,8 @@ kabu-evm-db.workspace = true
 kabu-evm-utils.workspace = true
 kabu-node-debug-provider.workspace = true
 kabu-types-blockchain.workspace = true
-kabu-types-entities.workspace = true
 kabu-types-events.workspace = true
+kabu-types-swap.workspace = true
 
 
 chrono.workspace = true

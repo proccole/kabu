@@ -11,9 +11,8 @@ use kabu_defi_abi::IERC20;
 use kabu_defi_address_book::PeripheryAddress;
 use kabu_evm_db::KabuDBError;
 use kabu_evm_utils::evm_call;
-use kabu_types_entities::required_state::RequiredState;
-use kabu_types_entities::{
-    MaverickError, Pool, PoolAbiEncoder, PoolClass, PoolError, PoolId, PoolProtocol, PreswapRequirement, SwapDirection,
+use kabu_types_market::{
+    MaverickError, Pool, PoolAbiEncoder, PoolClass, PoolError, PoolId, PoolProtocol, PreswapRequirement, RequiredState, SwapDirection,
 };
 use lazy_static::lazy_static;
 use revm::DatabaseRef;
@@ -446,7 +445,7 @@ mod tests {
     use kabu_evm_db::KabuDBType;
     use kabu_node_debug_provider::AnvilDebugProviderFactory;
     use kabu_types_blockchain::KabuDataTypesEthereum;
-    use kabu_types_entities::required_state::RequiredStateReader;
+    use kabu_types_market::RequiredStateReader;
     use revm::database::CacheDB;
     use std::env;
     use tracing::debug;
@@ -473,7 +472,7 @@ mod tests {
 
         let block_number = 20045799u64;
 
-        use kabu_types_entities::MarketState;
+        use kabu_types_market::MarketState;
         let mut market_state = MarketState::new(KabuDBType::default());
         market_state.state_db.apply_geth_update(state_required);
         let _block = client.get_block_by_number(BlockNumberOrTag::Number(block_number)).await?.unwrap();

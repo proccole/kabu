@@ -20,8 +20,8 @@ use kabu::defi::address_book::UniswapV3PoolAddress;
 use kabu::defi::pools::UniswapV3Pool;
 use kabu::evm::db::{KabuDB, KabuDBType};
 use kabu::node::debug_provider::AnvilDebugProviderFactory;
-use kabu::types::entities::required_state::RequiredStateReader;
-use kabu::types::entities::{MarketState, Pool, PoolWrapper};
+use kabu::types::market::required_state::RequiredStateReader;
+use kabu::types::market::{MarketState, Pool, PoolWrapper};
 use kabu_types_blockchain::KabuDataTypesEthereum;
 
 #[allow(dead_code)]

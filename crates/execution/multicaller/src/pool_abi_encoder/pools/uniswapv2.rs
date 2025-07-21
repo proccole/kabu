@@ -3,7 +3,7 @@ use alloy_primitives::{Address, Bytes, U256};
 use alloy_sol_types::SolInterface;
 use eyre::eyre;
 use kabu_defi_abi::uniswap2::IUniswapV2Pair;
-use kabu_types_entities::Pool;
+use kabu_types_market::Pool;
 
 pub struct UniswapV2ProtocolAbiEncoder;
 

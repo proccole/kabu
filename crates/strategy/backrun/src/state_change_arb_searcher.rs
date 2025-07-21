@@ -23,11 +23,12 @@ use kabu_core_blockchain::{Blockchain, Strategy};
 use kabu_evm_db::{DatabaseHelpers, KabuDBError};
 use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEVM};
 use kabu_types_entities::strategy_config::StrategyConfig;
-use kabu_types_entities::{Market, PoolWrapper, Swap, SwapDirection, SwapError, SwapLine, SwapPath};
 use kabu_types_events::{
     BestTxSwapCompose, HealthEvent, Message, MessageHealthEvent, MessageSwapCompose, StateUpdateEvent, SwapComposeData, SwapComposeMessage,
     TxComposeData,
 };
+use kabu_types_market::{Market, PoolWrapper, SwapDirection, SwapPath};
+use kabu_types_swap::{Swap, SwapError, SwapLine};
 
 async fn state_change_arb_searcher_task<
     DB: DatabaseRef<Error = KabuDBError> + Database<Error = KabuDBError> + DatabaseCommit + Send + Sync + Clone + Default + 'static,

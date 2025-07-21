@@ -11,8 +11,9 @@ use crate::pool_opcodes_encoder::SwapOpcodesEncoderTrait;
 use kabu_defi_abi::AbiEncoderHelper;
 use kabu_defi_address_book::TokenAddressEth;
 use kabu_types_blockchain::{MulticallerCall, MulticallerCalls};
-use kabu_types_entities::Pool;
-use kabu_types_entities::{PreswapRequirement, SwapAmountType};
+use kabu_types_market::Pool;
+use kabu_types_market::PreswapRequirement;
+use kabu_types_swap::SwapAmountType;
 
 pub struct CurveSwapOpcodesEncoder;
 
@@ -49,8 +50,8 @@ impl SwapOpcodesEncoderTrait for CurveSwapOpcodesEncoder {
         //let pool_encoder = abi_encoder.cur_pool.get_encoder().ok_or_eyre("NO_POOL_ENCODER")?;
         let pool_id = cur_pool.get_address();
         let pool_address = match pool_id {
-            kabu_types_entities::PoolId::Address(addr) => addr,
-            kabu_types_entities::PoolId::B256(_) => {
+            kabu_types_market::PoolId::Address(addr) => addr,
+            kabu_types_market::PoolId::B256(_) => {
                 return Err(eyre!("B256 pool ID variant is not supported for Curve pools"));
             }
         };

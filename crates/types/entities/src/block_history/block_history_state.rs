@@ -1,7 +1,7 @@
-use crate::market_state::MarketStateConfig;
 use crate::BlockHistoryEntry;
 use kabu_evm_db::{DatabaseKabuExt, KabuDB};
 use kabu_types_blockchain::{GethStateUpdate, KabuDataTypes};
+use kabu_types_market::MarketStateConfig;
 use tracing::{error, trace};
 
 pub trait BlockHistoryState<LDT>

@@ -5,8 +5,8 @@ use eyre::Result;
 use std::collections::HashMap;
 
 use kabu_core_actors::{run_sync, Broadcaster};
-use kabu_types_entities::PoolLoaders;
 use kabu_types_events::LoomTask;
+use kabu_types_market::PoolLoaders;
 
 pub async fn process_log_entries<P, N>(
     log_entries: Vec<Log>,

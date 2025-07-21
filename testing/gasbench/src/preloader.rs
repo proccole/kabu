@@ -9,8 +9,7 @@ use kabu_defi_market::fetch_and_add_pool_by_pool_id;
 use kabu_defi_pools::PoolLoadersBuilder;
 use kabu_node_debug_provider::DebugProviderExt;
 use kabu_types_blockchain::KabuDataTypesEthereum;
-use kabu_types_entities::pool_config::PoolsLoadingConfig;
-use kabu_types_entities::{Market, MarketState, PoolClass, Token};
+use kabu_types_market::{Market, MarketState, PoolClass, PoolsLoadingConfig, Token};
 use revm::{Database, DatabaseCommit, DatabaseRef};
 use std::sync::Arc;
 

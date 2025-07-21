@@ -7,7 +7,7 @@ use crate::pool_abi_encoder::ProtocolABIEncoderV2;
 use crate::pool_opcodes_encoder::ProtocolSwapOpcodesEncoderV2;
 use crate::{SwapLineEncoder, SwapStepEncoder, DEFAULT_VIRTUAL_ADDRESS};
 use kabu_types_blockchain::MulticallerCalls;
-use kabu_types_entities::Swap;
+use kabu_types_swap::Swap;
 
 pub trait MulticallerEncoder {
     fn encode_calls(&self, calls: MulticallerCalls) -> Result<(Address, Bytes)>;

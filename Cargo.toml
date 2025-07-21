@@ -5,7 +5,7 @@ members = [
   "bin/keys",
   "crates/broadcast/accounts",
   "crates/broadcast/broadcaster",
-  "crates/broadcast/flashbots",
+  "crates/broadcast/flashbots-client",
   "crates/core/block-history-actor",
   "crates/core/blockchain",
   "crates/core/blockchain-actors",
@@ -38,6 +38,8 @@ members = [
   "crates/types/blockchain",
   "crates/types/entities",
   "crates/types/events",
+  "crates/types/market",
+  "crates/types/swap",
   "testing/backtest-runner",
   "testing/gasbench",
   "testing/nodebench",
@@ -58,7 +60,7 @@ version = "0.6.0"
 # broadcast
 kabu-broadcast-accounts = { path = "crates/broadcast/accounts" }
 kabu-broadcast-broadcaster = { path = "crates/broadcast/broadcaster" }
-kabu-broadcast-flashbots = { path = "crates/broadcast/flashbots" }
+kabu-broadcast-flashbots-client = { path = "crates/broadcast/flashbots-client" }
 # core
 kabu-core-actors = { path = "crates/core/actors" }
 kabu-core-actors-macros = { path = "crates/core/actors-macros" }
@@ -105,6 +107,8 @@ kabu-strategy-merger = { path = "crates/strategy/merger" }
 kabu-types-blockchain = { path = "crates/types/blockchain" }
 kabu-types-entities = { path = "crates/types/entities" }
 kabu-types-events = { path = "crates/types/events" }
+kabu-types-market = { path = "crates/types/market" }
+kabu-types-swap = { path = "crates/types/swap" }
 
 # logging
 dotenvy = "0.15"

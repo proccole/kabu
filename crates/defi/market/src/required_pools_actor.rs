@@ -14,8 +14,9 @@ use kabu_core_blockchain::{Blockchain, BlockchainState};
 use kabu_evm_db::KabuDBError;
 use kabu_node_debug_provider::DebugProviderExt;
 use kabu_types_blockchain::KabuDataTypesEVM;
-use kabu_types_entities::required_state::{RequiredState, RequiredStateReader};
-use kabu_types_entities::{Market, MarketState, PoolClass, PoolId, PoolLoaders};
+use kabu_types_market::required_state::{RequiredState, RequiredStateReader};
+use kabu_types_market::MarketState;
+use kabu_types_market::{Market, PoolClass, PoolId, PoolLoaders};
 
 async fn required_pools_loader_worker<P, N, DB, LDT>(
     client: P,

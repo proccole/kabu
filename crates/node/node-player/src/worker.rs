@@ -8,11 +8,11 @@ use kabu_core_actors::{Broadcaster, SharedState, WorkerResult};
 use kabu_evm_db::{DatabaseKabuExt, KabuDBError};
 use kabu_node_debug_provider::DebugProviderExt;
 use kabu_types_blockchain::{debug_trace_block, KabuDataTypesEthereum, Mempool};
-use kabu_types_entities::MarketState;
 use kabu_types_events::{
     BlockHeaderEventData, BlockLogs, BlockStateUpdate, BlockUpdate, Message, MessageBlock, MessageBlockHeader, MessageBlockLogs,
     MessageBlockStateUpdate,
 };
+use kabu_types_market::MarketState;
 use revm::{Database, DatabaseCommit, DatabaseRef};
 use std::ops::RangeInclusive;
 use std::time::Duration;

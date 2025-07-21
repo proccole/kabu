@@ -24,6 +24,7 @@ impl SwapPathSet {
         self.set.into_iter().collect()
     }
 
+    #[allow(dead_code)]
     pub fn arc_vec(self) -> Vec<Arc<SwapPath>> {
         self.set.into_iter().map(Arc::new).collect()
     }
@@ -117,6 +118,7 @@ fn build_swap_path_three_hopes_basic_in(
     Ok(ret)
 }
 // (Basic -> Token) -> (Token -> Token) -> (Token -> Token) -> (Token -> Basic)
+#[allow(dead_code)]
 fn build_swap_path_four_hopes_basic_in(
     market: &Market,
     pool: &PoolWrapper,
@@ -286,6 +288,7 @@ fn build_swap_path_three_hopes_basic_out(
     Ok(ret)
 }
 
+#[allow(dead_code)]
 fn build_swap_path_four_hopes_basic_out(
     market: &Market,
     pool: &PoolWrapper,

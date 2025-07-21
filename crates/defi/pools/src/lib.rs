@@ -1,7 +1,7 @@
 extern crate core;
 
 pub use curvepool::{CurvePool, CurvePoolAbiEncoder};
-pub use kabu_types_entities::pool_config::PoolsLoadingConfig;
+pub use kabu_types_market::PoolsLoadingConfig;
 pub use loaders::*;
 pub use maverickpool::MaverickPool;
 pub use pancakev3pool::PancakeV3Pool;

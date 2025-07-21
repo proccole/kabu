@@ -5,7 +5,7 @@ use std::hash::{Hash, Hasher};
 use serde::{Deserialize, Serialize};
 
 use alloy_primitives::Address;
-use kabu_types_entities::{PoolId, PoolProtocol, SwapPath};
+use kabu_types_market::{PoolId, PoolProtocol, SwapPath};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SwapLineDTO {

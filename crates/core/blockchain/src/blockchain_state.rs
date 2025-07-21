@@ -1,7 +1,8 @@
 use kabu_core_actors::SharedState;
 use kabu_evm_db::DatabaseKabuExt;
 use kabu_types_blockchain::KabuDataTypes;
-use kabu_types_entities::{BlockHistory, BlockHistoryState, MarketState};
+use kabu_types_entities::{BlockHistory, BlockHistoryState};
+use kabu_types_market::MarketState;
 use revm::{Database, DatabaseCommit, DatabaseRef};
 
 #[derive(Clone)]

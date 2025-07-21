@@ -8,8 +8,8 @@ use tracing::{debug, error};
 use kabu_core_actors::{subscribe, Actor, ActorResult, Broadcaster, Consumer, Producer, WorkerResult};
 use kabu_core_actors_macros::{Consumer, Producer};
 use kabu_core_blockchain::Blockchain;
-use kabu_types_entities::PoolLoaders;
 use kabu_types_events::{LoomTask, MessageBlockLogs};
+use kabu_types_market::PoolLoaders;
 
 use crate::logs_parser::process_log_entries;
 

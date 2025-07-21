@@ -4,7 +4,7 @@ use kabu_core_actors::SharedState;
 use kabu_evm_db::KabuDBError;
 use kabu_evm_utils::evm_env::header_to_block_env;
 use kabu_types_blockchain::Mempool;
-use kabu_types_entities::MarketState;
+use kabu_types_market::MarketState;
 use revm::{Database, DatabaseCommit, DatabaseRef};
 use tracing::debug;
 

@@ -13,9 +13,9 @@ use tracing::{debug, error, info};
 
 use kabu_core_blockchain::Strategy;
 use kabu_evm_utils::NWETH;
-use kabu_types_entities::{Swap, SwapEncoder};
+use kabu_types_swap::{Swap, SwapEncoder};
 
-use kabu_broadcast_flashbots::Flashbots;
+use kabu_broadcast_flashbots_client::Flashbots;
 use kabu_core_actors::{subscribe, Actor, ActorResult, Broadcaster, Consumer, Producer, WorkerResult};
 use kabu_core_actors_macros::{Consumer, Producer};
 use kabu_types_blockchain::KabuTx;

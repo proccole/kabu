@@ -12,7 +12,7 @@ use kabu_core_blockchain::Blockchain;
 use kabu_defi_address_book::TokenAddressEth;
 use kabu_defi_pools::protocols::CurveProtocol;
 use kabu_defi_pools::CurvePool;
-use kabu_types_entities::{Market, Pool};
+use kabu_types_market::{Market, Pool};
 use tracing::{debug, error, info};
 
 async fn price_worker<N: Network, P: Provider<N> + Clone + 'static>(client: P, market: SharedState<Market>, once: bool) -> WorkerResult {

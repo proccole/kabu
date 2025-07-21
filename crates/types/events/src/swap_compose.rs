@@ -4,7 +4,8 @@ use alloy_eips::eip2718::Encodable2718;
 use alloy_primitives::{Bytes, TxHash, U256};
 use eyre::{eyre, Result};
 use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEthereum};
-use kabu_types_entities::{PoolId, Swap};
+use kabu_types_market::PoolId;
+use kabu_types_swap::Swap;
 use revm::DatabaseRef;
 use std::ops::Deref;
 

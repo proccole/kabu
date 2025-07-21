@@ -3,7 +3,8 @@
 use alloy_consensus::Header;
 use alloy_primitives::TxHash;
 use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEVM, KabuDataTypesEthereum};
-use kabu_types_entities::{PoolWrapper, SwapDirection};
+use kabu_types_market::PoolWrapper;
+use kabu_types_market::SwapDirection;
 use revm::DatabaseRef;
 use std::collections::BTreeMap;
 

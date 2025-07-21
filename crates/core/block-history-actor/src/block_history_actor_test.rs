@@ -23,8 +23,8 @@ mod test {
         account_state_add_storage, account_state_with_nonce_and_balance, geth_state_update_add_account,
     };
     use kabu_types_blockchain::{GethStateUpdate, GethStateUpdateVec};
-    use kabu_types_entities::MarketState;
     use kabu_types_events::{BlockHeaderEventData, Message};
+    use kabu_types_market::MarketState;
     use std::time::Duration;
     use tracing::info;
 

@@ -1,4 +1,4 @@
-use kabu_types_entities::{PoolClass, PoolId};
+use kabu_types_market::{PoolClass, PoolId};
 
 #[derive(Clone, Debug)]
 pub enum LoomTask {

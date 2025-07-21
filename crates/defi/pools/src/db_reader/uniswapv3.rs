@@ -107,8 +107,9 @@ mod test {
     use kabu_evm_db::KabuDBType;
     use kabu_node_debug_provider::AnvilDebugProviderFactory;
     use kabu_types_blockchain::KabuDataTypesEthereum;
-    use kabu_types_entities::required_state::RequiredStateReader;
-    use kabu_types_entities::{MarketState, Pool};
+    use kabu_types_market::MarketState;
+    use kabu_types_market::Pool;
+    use kabu_types_market::RequiredStateReader;
 
     use crate::db_reader::UniswapV3DbReader;
     use crate::state_readers::UniswapV3EvmStateReader;

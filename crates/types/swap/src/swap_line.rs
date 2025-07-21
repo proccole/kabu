@@ -1,10 +1,11 @@
 use crate::swap_error::SwapErrorKind;
-use crate::swap_path::SwapPath;
-use crate::{CalculationResult, PoolId, PoolWrapper, SwapError, SwapStep, Token};
+use crate::{CalculationResult, SwapError, SwapStep};
 use alloy_evm::EvmEnv;
 use alloy_primitives::{Address, I256, U256};
 use eyre::{eyre, Result};
 use kabu_evm_db::KabuDBError;
+use kabu_types_market::SwapPath;
+use kabu_types_market::{PoolId, PoolWrapper, Token};
 use revm::DatabaseRef;
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -484,7 +485,7 @@ impl SwapLine {
                 if first_step_change && inc_direction && current_step < denominator {
                     inc_direction = false;
                     //TODO : Check why not used
-                    next_amount = prev_in_amount;
+                    let _next_amount = prev_in_amount;
                     current_in_amount = prev_in_amount;
                     first_step_change = true;
                     //debug!("inc direction changed {} {} {}", next_amount, current_profit, bestprofit.unwrap());
@@ -532,10 +533,10 @@ impl SwapLine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mock_pool::MockPool;
     use alloy_primitives::utils::parse_units;
     use alloy_primitives::Address;
     use kabu_defi_address_book::{TokenAddressEth, UniswapV2PoolAddress, UniswapV3PoolAddress};
+    use kabu_types_market::mock_pool::MockPool;
     use std::sync::Arc;
 
     fn default_swap_line() -> (MockPool, MockPool, SwapLine) {

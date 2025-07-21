@@ -10,8 +10,8 @@ use kabu_core_actors::{Actor, ActorResult, Broadcaster, Producer, WorkerResult};
 use kabu_core_actors_macros::Producer;
 use kabu_core_blockchain::Blockchain;
 use kabu_types_blockchain::KabuDataTypesEthereum;
-use kabu_types_entities::PoolLoaders;
 use kabu_types_events::LoomTask;
+use kabu_types_market::PoolLoaders;
 
 async fn history_pool_loader_one_shot_worker<P, PL, N>(
     client: P,

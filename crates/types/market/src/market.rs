@@ -8,9 +8,7 @@ use std::fmt::Display;
 use std::sync::Arc;
 use tracing::debug;
 
-use crate::{build_swap_path_vec, PoolId, SwapDirection};
-use crate::{PoolClass, PoolWrapper, Token};
-use crate::{SwapPath, SwapPaths};
+use crate::{build_swap_path_vec, PoolClass, PoolId, PoolWrapper, SwapDirection, SwapPath, SwapPaths, Token};
 
 /// The market struct contains all the pools and tokens.
 /// It keeps track if a pool is disabled or not and the swap paths.

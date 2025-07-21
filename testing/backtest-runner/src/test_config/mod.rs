@@ -1,11 +1,9 @@
-use std::collections::HashMap;
-
 use alloy_primitives::{Address, TxHash};
 use eyre::Result;
+use kabu::types::market::PoolClass;
 use serde::Deserialize;
+use std::collections::HashMap;
 use tokio::fs;
-
-use kabu::types::entities::PoolClass;
 
 #[derive(Deserialize, Debug)]
 pub struct TestConfig {

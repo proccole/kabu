@@ -14,9 +14,8 @@ use kabu_defi_abi::IERC20;
 use kabu_defi_address_book::PeripheryAddress;
 use kabu_evm_db::KabuDBError;
 use kabu_evm_utils::evm_call;
-use kabu_types_entities::required_state::RequiredState;
-use kabu_types_entities::{
-    Pool, PoolAbiEncoder, PoolClass, PoolError, PoolId, PoolProtocol, PreswapRequirement, SwapDirection, UniswapV3Error,
+use kabu_types_market::{
+    Pool, PoolAbiEncoder, PoolClass, PoolError, PoolId, PoolProtocol, PreswapRequirement, RequiredState, SwapDirection, UniswapV3Error,
 };
 use revm::DatabaseRef;
 use std::any::Any;
@@ -504,8 +503,8 @@ mod tests {
     use kabu_evm_db::KabuDBType;
     use kabu_node_debug_provider::AnvilDebugProviderFactory;
     use kabu_types_blockchain::KabuDataTypesEthereum;
-    use kabu_types_entities::required_state::RequiredStateReader;
-    use kabu_types_entities::MarketState;
+    use kabu_types_market::MarketState;
+    use kabu_types_market::RequiredStateReader;
     use revm::database::CacheDB;
     use std::env;
     use tracing::debug;

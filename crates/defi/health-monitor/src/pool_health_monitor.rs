@@ -10,8 +10,8 @@ use kabu_core_actors::{subscribe, Accessor, Actor, ActorResult, Broadcaster, Con
 use kabu_core_actors_macros::{Accessor, Consumer, Producer};
 use kabu_core_blockchain::Blockchain;
 use kabu_defi_address_book::TokenAddressEth;
-use kabu_types_entities::{Market, PoolId, PoolProtocol};
 use kabu_types_events::{HealthEvent, MessageHealthEvent};
+use kabu_types_market::{Market, PoolId, PoolProtocol};
 use lazy_static::lazy_static;
 
 lazy_static! {

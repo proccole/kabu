@@ -14,12 +14,13 @@ use kabu_core_actors::{Accessor, Consumer};
 use kabu_core_actors_macros::{Accessor, Consumer, Producer};
 use kabu_core_blockchain::{Blockchain, BlockchainState};
 use kabu_node_debug_provider::DebugProviderExt;
-use kabu_types_entities::required_state::RequiredStateReader;
-use kabu_types_entities::{Market, MarketState, PoolClass, PoolId, PoolLoaders, PoolWrapper, SwapDirection};
 use kabu_types_events::{LoomTask, MarketEvents};
+use kabu_types_market::required_state::RequiredStateReader;
+use kabu_types_market::MarketState;
+use kabu_types_market::SwapDirection;
+use kabu_types_market::{Market, PoolClass, PoolId, PoolLoaders, PoolWrapper, PoolsLoadingConfig};
 
 use kabu_types_blockchain::{get_touched_addresses, KabuDataTypes, KabuDataTypesEVM};
-use kabu_types_entities::pool_config::PoolsLoadingConfig;
 use revm::{Database, DatabaseCommit, DatabaseRef};
 use tokio::sync::Semaphore;
 

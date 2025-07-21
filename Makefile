@@ -91,9 +91,10 @@ udeps:
 # check files format with fmt and clippy
 .PHONY: pre-release
 pre-release:
-	cargo +stable fmt --all
-	cargo clippy --all-targets --all-features -- -D warnings
-	taplo format
+	make fmt
+	make clippy
+	make taplo
+	make udeps
 
 # replayer test
 .PHONY: replayer

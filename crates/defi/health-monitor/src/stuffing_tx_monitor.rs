@@ -12,7 +12,9 @@ use tracing::{error, info};
 
 use kabu_core_blockchain::Blockchain;
 use kabu_evm_utils::NWETH;
-use kabu_types_entities::{LatestBlock, Swap, Token};
+use kabu_types_entities::LatestBlock;
+use kabu_types_market::Token;
+use kabu_types_swap::Swap;
 
 use kabu_core_actors::{Accessor, Actor, ActorResult, Broadcaster, Consumer, Producer, SharedState, WorkerResult};
 use kabu_core_actors_macros::{Accessor, Consumer, Producer};

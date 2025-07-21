@@ -2,11 +2,12 @@ use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 
-use crate::{Swap, Token};
+use crate::Swap;
 use alloy_primitives::utils::format_units;
 use alloy_primitives::{Address, U256};
 use eyre::{eyre, OptionExt, Result};
 use kabu_evm_utils::NWETH;
+use kabu_types_market::Token;
 use lazy_static::lazy_static;
 use rand::random;
 use tracing::{error, info};

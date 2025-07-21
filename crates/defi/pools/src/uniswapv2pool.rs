@@ -9,9 +9,8 @@ use kabu_defi_abi::uniswap2::IUniswapV2Pair;
 use kabu_defi_abi::IERC20;
 use kabu_defi_address_book::FactoryAddress;
 use kabu_evm_db::KabuDBError;
-use kabu_types_entities::required_state::RequiredState;
-use kabu_types_entities::{
-    Pool, PoolAbiEncoder, PoolClass, PoolError, PoolId, PoolProtocol, PreswapRequirement, SwapDirection, UniswapV2Error,
+use kabu_types_market::{
+    Pool, PoolAbiEncoder, PoolClass, PoolError, PoolId, PoolProtocol, PreswapRequirement, RequiredState, SwapDirection, UniswapV2Error,
 };
 use lazy_static::lazy_static;
 use revm::DatabaseRef;
@@ -386,7 +385,7 @@ mod test {
     use kabu_evm_db::KabuDBType;
     use kabu_node_debug_provider::{AnvilDebugProviderFactory, AnvilDebugProviderType};
     use kabu_types_blockchain::KabuDataTypesEthereum;
-    use kabu_types_entities::required_state::RequiredStateReader;
+    use kabu_types_market::RequiredStateReader;
     use rand::Rng;
     use std::env;
 

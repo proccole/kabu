@@ -1,6 +1,7 @@
-use crate::{PoolError, PoolId, SwapPath};
-use alloy_primitives::{Address, U256};
+use alloy_primitives::{hex, Address, U256};
 use eyre::{eyre, Report};
+use kabu_types_market::SwapPath;
+use kabu_types_market::{PoolError, PoolId};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
@@ -69,7 +70,7 @@ pub enum SwapErrorKind {
 
 impl From<PoolError> for SwapErrorKind {
     fn from(err: PoolError) -> Self {
-        use crate::{CurveError, MaverickError, UniswapV2Error, UniswapV3Error};
+        use kabu_types_market::{CurveError, MaverickError, UniswapV2Error, UniswapV3Error};
 
         match err {
             // UniswapV2 errors

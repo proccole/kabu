@@ -14,8 +14,8 @@ use kabu_evm_db::{DatabaseKabuExt, KabuDBError};
 use kabu_node_debug_provider::DebugProviderExt;
 use kabu_types_blockchain::Mempool;
 use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEthereum};
-use kabu_types_entities::MarketState;
 use kabu_types_events::{MessageBlock, MessageBlockHeader, MessageBlockLogs, MessageBlockStateUpdate, MessageTxCompose};
+use kabu_types_market::MarketState;
 use tokio::task::JoinHandle;
 
 #[derive(Producer, Consumer, Accessor)]

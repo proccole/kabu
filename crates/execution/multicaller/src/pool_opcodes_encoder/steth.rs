@@ -7,7 +7,8 @@ use eyre::{eyre, Result};
 use kabu_defi_abi::AbiEncoderHelper;
 use kabu_defi_address_book::TokenAddressEth;
 use kabu_types_blockchain::{MulticallerCall, MulticallerCalls};
-use kabu_types_entities::{Pool, PoolId, SwapAmountType};
+use kabu_types_market::{Pool, PoolId};
+use kabu_types_swap::SwapAmountType;
 
 pub struct StEthSwapEncoder();
 

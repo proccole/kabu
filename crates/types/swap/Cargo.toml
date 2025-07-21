@@ -1,0 +1,24 @@
+[package]
+name = "kabu-types-swap"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+[dependencies]
+kabu-evm-db.workspace = true
+kabu-evm-utils.workspace = true
+kabu-types-market.workspace = true
+
+eyre.workspace = true
+lazy_static.workspace = true
+rand.workspace = true
+tracing.workspace = true
+
+alloy-primitives.workspace = true
+alloy-sol-types.workspace = true
+
+alloy-evm.workspace = true
+revm.workspace = true

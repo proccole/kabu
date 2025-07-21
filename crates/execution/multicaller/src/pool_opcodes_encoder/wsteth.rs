@@ -7,7 +7,8 @@ use eyre::{eyre, Result};
 use kabu_defi_abi::AbiEncoderHelper;
 use kabu_defi_address_book::TokenAddressEth;
 use kabu_types_blockchain::{MulticallerCall, MulticallerCalls};
-use kabu_types_entities::{Pool, SwapAmountType};
+use kabu_types_market::Pool;
+use kabu_types_swap::SwapAmountType;
 
 pub struct WstEthSwapEncoder {}
 
@@ -26,8 +27,8 @@ impl SwapOpcodesEncoderTrait for WstEthSwapEncoder {
         multicaller: Address,
     ) -> Result<()> {
         let pool_address = match cur_pool.get_address() {
-            kabu_types_entities::PoolId::Address(addr) => addr,
-            kabu_types_entities::PoolId::B256(_) => return Err(eyre!("Pool ID is B256, expected Address")),
+            kabu_types_market::PoolId::Address(addr) => addr,
+            kabu_types_market::PoolId::B256(_) => return Err(eyre!("Pool ID is B256, expected Address")),
         };
 
         if token_from_address == TokenAddressEth::WETH && token_to_address == TokenAddressEth::WSTETH {

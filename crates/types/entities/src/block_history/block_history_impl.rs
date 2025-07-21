@@ -1,5 +1,4 @@
 use crate::block_history::block_history_state::BlockHistoryState;
-use crate::market_state::MarketStateConfig;
 use alloy_json_rpc::RpcRecv;
 use alloy_network::{BlockResponse, Network};
 use alloy_primitives::{BlockHash, BlockNumber};
@@ -8,6 +7,7 @@ use alloy_rpc_types::{BlockId, Filter};
 use eyre::{eyre, ErrReport, OptionExt, Result};
 use kabu_node_debug_provider::DebugProviderExt;
 use kabu_types_blockchain::{debug_trace_block, KabuBlock, KabuDataTypes, KabuDataTypesEVM, KabuHeader};
+use kabu_types_market::MarketStateConfig;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::marker::PhantomData;

@@ -25,8 +25,10 @@ use kabu_evm_utils::evm_env::tx_req_to_env;
 use kabu_evm_utils::evm_transact;
 use kabu_node_debug_provider::DebugProviderExt;
 use kabu_types_blockchain::{debug_trace_call_pre_state, GethStateUpdate, GethStateUpdateVec, KabuDataTypes, KabuTx, TRACING_CALL_OPTS};
-use kabu_types_entities::{DataFetcher, FetchState, LatestBlock, MarketState, Swap};
+use kabu_types_entities::{DataFetcher, FetchState, LatestBlock};
 use kabu_types_events::{MarketEvents, MessageSwapCompose, SwapComposeData, SwapComposeMessage, TxComposeData};
+use kabu_types_market::MarketState;
+use kabu_types_swap::Swap;
 use revm::context::{BlockEnv, ContextTr};
 use revm::context_interface::block::BlobExcessGasAndPrice;
 

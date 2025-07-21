@@ -1,5 +1,5 @@
 use alloy_primitives::{BlockHash, BlockNumber, TxHash};
-use kabu_types_entities::PoolId;
+use kabu_types_market::PoolId;
 
 #[derive(Clone, Debug)]
 pub enum MarketEvents {

@@ -1,6 +1,6 @@
 use crate::Message;
 use alloy_primitives::TxHash;
-use kabu_types_entities::{EstimationError, SwapError};
+use kabu_types_swap::{EstimationError, SwapError};
 
 #[derive(Clone, Debug)]
 pub enum HealthEvent {

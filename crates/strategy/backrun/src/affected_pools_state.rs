@@ -3,7 +3,8 @@ use std::collections::BTreeMap;
 use alloy_primitives::U256;
 use kabu_core_actors::SharedState;
 use kabu_types_blockchain::GethStateUpdateVec;
-use kabu_types_entities::{Market, PoolId, PoolWrapper, SwapDirection};
+use kabu_types_market::SwapDirection;
+use kabu_types_market::{Market, PoolId, PoolWrapper};
 use tracing::debug;
 
 pub async fn get_affected_pools_from_state_update(

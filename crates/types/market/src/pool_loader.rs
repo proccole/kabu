@@ -38,7 +38,7 @@ where
     P: Provider<N> + 'static,
     LDT: KabuDataTypes,
 {
-    provider: Option<P>,
+    _provider: Option<P>,
     config: Option<PoolsLoadingConfig>,
     pub map: HashMap<PoolClass, Arc<dyn PoolLoader<P, N, LDT>>>,
 }
@@ -58,7 +58,7 @@ where
     }
 
     pub fn with_provider<NP: Provider<N>>(self, provider: NP) -> PoolLoaders<NP, N, LDT> {
-        PoolLoaders { provider: Some(provider), map: HashMap::new(), config: self.config }
+        PoolLoaders { _provider: Some(provider), map: HashMap::new(), config: self.config }
     }
 
     pub fn add_loader<L: PoolLoader<P, N, LDT> + Send + Sync + Clone + 'static>(self, pool_class: PoolClass, loader: L) -> Self {
@@ -75,7 +75,7 @@ where
     LDT: KabuDataTypes,
 {
     fn default() -> Self {
-        Self { provider: None, map: Default::default(), config: None }
+        Self { _provider: None, map: Default::default(), config: None }
     }
 }
 
@@ -86,7 +86,7 @@ where
     LDT: KabuDataTypesEVM + 'static,
 {
     pub fn determine_pool_class(&self, log_entry: &<KabuDataTypesEthereum as KabuDataTypes>::Log) -> Option<(PoolId, PoolClass)> {
-        for (pool_class, pool_loader) in self.map.iter() {
+        for (_pool_class, pool_loader) in self.map.iter() {
             if let Some((pool_id, pool_class)) = pool_loader.get_pool_class_by_log(log_entry) {
                 return Some((pool_id, pool_class));
             }

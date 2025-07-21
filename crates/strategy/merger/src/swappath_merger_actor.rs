@@ -9,8 +9,9 @@ use kabu_core_actors::{subscribe, Accessor, Actor, ActorResult, Broadcaster, Con
 use kabu_core_actors_macros::{Accessor, Consumer, Producer};
 use kabu_core_blockchain::{Blockchain, Strategy};
 use kabu_evm_db::KabuDBError;
-use kabu_types_entities::{LatestBlock, Swap, SwapStep};
+use kabu_types_entities::LatestBlock;
 use kabu_types_events::{MarketEvents, MessageSwapCompose, SwapComposeData, SwapComposeMessage};
+use kabu_types_swap::{Swap, SwapStep};
 use revm::context::BlockEnv;
 use revm::context_interface::block::BlobExcessGasAndPrice;
 
@@ -232,8 +233,9 @@ where
 mod test {
     use alloy_primitives::{Address, U256};
     use kabu_evm_db::KabuDB;
-    use kabu_types_entities::{Swap, SwapAmountType, SwapLine, SwapPath, Token};
     use kabu_types_events::SwapComposeData;
+    use kabu_types_market::Token;
+    use kabu_types_swap::{Swap, SwapAmountType, SwapLine, SwapPath};
     use std::sync::Arc;
 
     #[test]

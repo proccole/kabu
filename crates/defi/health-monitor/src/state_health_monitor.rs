@@ -14,8 +14,8 @@ use kabu_core_actors_macros::{Accessor, Consumer};
 use kabu_core_blockchain::{Blockchain, BlockchainState};
 use kabu_evm_db::DatabaseKabuExt;
 use kabu_types_blockchain::KabuDataTypes;
-use kabu_types_entities::{MarketState, PoolId};
 use kabu_types_events::{MarketEvents, MessageTxCompose, TxComposeMessageType};
+use kabu_types_market::{MarketState, PoolId};
 use revm::DatabaseRef;
 
 async fn verify_pool_state_task<P: Provider<Ethereum> + 'static, DB: DatabaseKabuExt>(

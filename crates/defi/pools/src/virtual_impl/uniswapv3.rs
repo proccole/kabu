@@ -5,7 +5,7 @@ use alloy::primitives::{Address, I256, U256};
 use eyre::eyre;
 use kabu_defi_uniswap_v3_math::tick_math::{MAX_SQRT_RATIO, MAX_TICK, MIN_SQRT_RATIO, MIN_TICK};
 use kabu_evm_db::KabuDBError;
-use kabu_types_entities::Pool;
+use kabu_types_market::Pool;
 use revm::DatabaseRef;
 
 pub struct UniswapV3PoolVirtual;
@@ -97,8 +97,8 @@ impl UniswapV3PoolVirtual {
         let sqrt_price_limit_x_96 = if zero_for_one { MIN_SQRT_RATIO + U256_1 } else { MAX_SQRT_RATIO - U256_1 };
 
         let pool_address = match pool.get_address() {
-            kabu_types_entities::PoolId::Address(addr) => addr,
-            kabu_types_entities::PoolId::B256(_) => return Err(eyre!("B256 pool ID variant not supported")),
+            kabu_types_market::PoolId::Address(addr) => addr,
+            kabu_types_market::PoolId::B256(_) => return Err(eyre!("B256 pool ID variant not supported")),
         };
 
         let slot0 = UniswapV3DbReader::slot0(&db, pool_address)?;
@@ -226,8 +226,8 @@ impl UniswapV3PoolVirtual {
         let sqrt_price_limit_x_96 = if zero_for_one { MIN_SQRT_RATIO + U256_1 } else { MAX_SQRT_RATIO - U256_1 };
 
         let pool_address = match pool.get_address() {
-            kabu_types_entities::PoolId::Address(addr) => addr,
-            kabu_types_entities::PoolId::B256(_) => return Err(eyre!("B256 pool ID variant not supported")),
+            kabu_types_market::PoolId::Address(addr) => addr,
+            kabu_types_market::PoolId::B256(_) => return Err(eyre!("B256 pool ID variant not supported")),
         };
 
         let slot0 = UniswapV3DbReader::slot0(&db, pool_address)?;

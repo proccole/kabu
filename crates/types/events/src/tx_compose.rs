@@ -1,7 +1,8 @@
 use crate::{Message, TxState};
 use alloy_primitives::{Address, BlockNumber, Bytes, TxHash, U256};
 use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEthereum};
-use kabu_types_entities::{LoomTxSigner, Swap};
+use kabu_types_entities::LoomTxSigner;
+use kabu_types_swap::Swap;
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]

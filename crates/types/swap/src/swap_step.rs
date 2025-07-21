@@ -6,14 +6,16 @@ use alloy_primitives::{I256, U256};
 use eyre::{eyre, Result};
 use tracing::error;
 
-use crate::{PoolWrapper, SwapAmountType, SwapLine, Token};
+use crate::{SwapAmountType, SwapLine};
 use alloy_primitives::Address;
 use kabu_evm_db::KabuDBError;
+use kabu_types_market::{PoolWrapper, Token};
 use revm::DatabaseRef;
 
 #[derive(Clone, Debug)]
 pub struct SwapStep {
     swap_line_vec: Vec<SwapLine>,
+    #[allow(dead_code)]
     swap_from: Option<Address>,
     swap_to: Address,
 }
@@ -175,7 +177,7 @@ impl SwapStep {
 
         if split_index_start > 0 {
             let (mut split_0_0, mut split_0_1) = swap_path_0.split(split_index_start)?;
-            let (split_1_0, mut split_1_1) = swap_path_1.split(split_index_start)?;
+            let (_split_1_0, mut split_1_1) = swap_path_1.split(split_index_start)?;
 
             let mut swap_step_0 = SwapStep::new(multicaller);
             let mut swap_step_1 = SwapStep::new(multicaller);
@@ -203,7 +205,7 @@ impl SwapStep {
 
         if split_index_end > 0 {
             let (mut split_0_0, mut split_0_1) = swap_path_0.split(swap_path_0.pools().len() - split_index_end)?;
-            let (mut split_1_0, split_1_1) = swap_path_1.split(swap_path_1.pools().len() - split_index_end)?;
+            let (mut split_1_0, _split_1_1) = swap_path_1.split(swap_path_1.pools().len() - split_index_end)?;
 
             let mut swap_step_0 = SwapStep::new(multicaller);
             let mut swap_step_1 = SwapStep::new(multicaller);
@@ -355,7 +357,7 @@ impl SwapStep {
             swap_path.amount_in = SwapAmountType::Set(cur_in_amount);
 
             match swap_path.calculate_with_in_amount(db, evm_env, cur_in_amount) {
-                Ok((amount, gas, calculation_results)) => {
+                Ok((amount, gas, _calculation_results)) => {
                     out_amount += amount;
                     swap_path.amount_out = SwapAmountType::Set(amount);
                     gas_used += gas;
@@ -391,7 +393,7 @@ impl SwapStep {
             swap_path.amount_out = SwapAmountType::Set(cur_out_amount);
 
             match swap_path.calculate_with_out_amount(db, evm_env, cur_out_amount) {
-                Ok((amount, gas, calculation_results)) => {
+                Ok((amount, gas, _calculation_results)) => {
                     in_amount += amount;
                     gas_used += gas;
                     swap_path.amount_in = SwapAmountType::Set(amount);
@@ -492,7 +494,7 @@ impl SwapStep {
             swap_path_1.amount_in = SwapAmountType::Set(in_amount);
         }
 
-        step_1.calculate_with_in_amount(db, evm_env, None);
+        let _ = step_1.calculate_with_in_amount(db, evm_env, None);
 
         let cur_profit = Self::arb_result(&step_0, &step_1);
         if cur_profit.is_positive() {
@@ -522,11 +524,11 @@ impl SwapStep {
                 return if Self::arb_result(&step_0, &step_1).is_positive() { Ok((step_0, step_1)) } else { Err(eyre!("TOO_MANY_STEPS")) };
             }
 
-            let step0in = step_0.get_in_amount()?;
-            let step0out = step_0.get_out_amount()?;
-            let step1in = step_1.get_in_amount()?;
-            let step1out = step_1.get_out_amount()?;
-            let profit = Self::arb_result(&step_0, &step_1);
+            let _step0in = step_0.get_in_amount()?;
+            let _step0out = step_0.get_out_amount()?;
+            let _step1in = step_1.get_in_amount()?;
+            let _step1out = step_1.get_out_amount()?;
+            let _profit = Self::arb_result(&step_0, &step_1);
 
             //debug!("middle_amount Steps :  {} in {} out {} in {} out {} profit {}", counter, step0in, step0out, step1in, step1out, profit);
 
@@ -568,7 +570,7 @@ impl SwapStep {
                 match new_amount_in {
                     Some(new_amount_in) => {
                         if swap_path_1_calc.amount_in.unwrap() != new_amount_in {
-                            let (out_amount, gas, calculation_results) =
+                            let (out_amount, gas, _calculation_results) =
                                 swap_path_1_calc.calculate_with_in_amount(db, evm_env, new_amount_in).unwrap_or((U256::ZERO, 0, vec![]));
                             swap_path_1_calc.amount_out = SwapAmountType::Set(out_amount);
                             swap_path_1_calc.amount_in = SwapAmountType::Set(new_amount_in);
@@ -675,8 +677,8 @@ impl SwapStep {
         }
          */
 
-        let step_0_in_amount = step_0.get_in_amount().unwrap_or(U256::MAX);
-        let step_1_out_amount = step_1.get_out_amount().unwrap_or(U256::ZERO);
+        let _step_0_in_amount = step_0.get_in_amount().unwrap_or(U256::MAX);
+        let _step_1_out_amount = step_1.get_out_amount().unwrap_or(U256::ZERO);
 
         let denominator = U256::from(10000);
         let step_multiplier = U256::from(500);
@@ -694,11 +696,11 @@ impl SwapStep {
                 return if Self::arb_result(&step_0, &step_1).is_positive() { Ok((step_0, step_1)) } else { Err(eyre!("TOO_MANY_STEPS")) };
             }
 
-            let step0in = step_0.get_in_amount()?;
-            let step0out = step_0.get_out_amount()?;
-            let step1in = step_1.get_in_amount()?;
-            let step1out = step_1.get_out_amount()?;
-            let profit = Self::arb_result(&step_0, &step_1);
+            let _step0in = step_0.get_in_amount()?;
+            let _step0out = step_0.get_out_amount()?;
+            let _step1in = step_1.get_in_amount()?;
+            let _step1out = step_1.get_out_amount()?;
+            let _profit = Self::arb_result(&step_0, &step_1);
 
             //debug!("in_amount Steps :  {} in {} out {} in {} out {} profit {}", counter, step0in, step0out, step1in, step1out, profit);
 

@@ -6,7 +6,8 @@ use alloy_primitives::{Address, Bytes, U256};
 use eyre::eyre;
 use kabu_defi_abi::AbiEncoderHelper;
 use kabu_types_blockchain::{MulticallerCall, MulticallerCalls};
-use kabu_types_entities::{Pool, PoolId, PreswapRequirement, SwapAmountType};
+use kabu_types_market::{Pool, PoolId, PreswapRequirement};
+use kabu_types_swap::SwapAmountType;
 use tracing::{trace, warn};
 
 pub struct UniswapV2SwapOpcodesEncoder;

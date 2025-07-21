@@ -14,7 +14,7 @@ kabu-core-actors-macros.workspace = true
 kabu-core-blockchain.workspace = true
 kabu-defi-address-book.workspace = true
 kabu-defi-pools.workspace = true
-kabu-types-entities.workspace = true
+kabu-types-market.workspace = true
 
 tokio.workspace = true
 tracing.workspace = true

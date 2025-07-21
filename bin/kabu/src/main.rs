@@ -9,7 +9,7 @@ use kabu::evm::db::{AlloyDB, KabuDB};
 use kabu::node::actor_config::NodeBlockActorConfig;
 use kabu::node::exex::mempool_worker;
 use kabu::types::blockchain::KabuDataTypesEthereum;
-use kabu::types::entities::MarketState;
+use kabu_types_market::MarketState;
 use reth::chainspec::{Chain, EthereumChainSpecParser};
 use reth::cli::Cli;
 use reth_node_ethereum::node::EthereumAddOns;
