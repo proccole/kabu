@@ -1,16 +1,7 @@
 [workspace]
-default-members = [
-  "bin/kabu_backrun",
-  "bin/kabu_exex",
-  "bin/keys",
-  "testing/backtest-runner",
-  "testing/gasbench",
-  "testing/nodebench",
-  "testing/replayer",
-]
+default-members = ["bin/kabu", "bin/keys", "testing/backtest-runner", "testing/gasbench", "testing/nodebench", "testing/replayer"]
 members = [
-  "bin/kabu_backrun",
-  "bin/kabu_exex",
+  "bin/kabu",
   "bin/keys",
   "crates/broadcast/accounts",
   "crates/broadcast/broadcaster",
@@ -33,7 +24,6 @@ members = [
   "crates/evm/utils",
   "crates/execution/estimator",
   "crates/execution/multicaller",
-  "crates/kabu",
   "crates/metrics",
   "crates/node/debug-provider",
   "crates/node/exex",
@@ -94,7 +84,7 @@ kabu-evm-utils = { path = "crates/evm/utils" }
 kabu-execution-estimator = { path = "crates/execution/estimator" }
 kabu-execution-multicaller = { path = "crates/execution/multicaller" }
 # loom
-kabu = { path = "crates/kabu" }
+kabu = { path = "bin/kabu" }
 # metrics
 kabu-metrics = { path = "crates/metrics" }
 # node

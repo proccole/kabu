@@ -4869,6 +4869,12 @@ dependencies = [
 name = "kabu"
 version = "0.6.0"
 dependencies = [
+ "alloy",
+ "axum",
+ "clap",
+ "eyre",
+ "futures-util",
+ "hex",
  "kabu-broadcast-accounts",
  "kabu-broadcast-broadcaster",
  "kabu-broadcast-flashbots",
@@ -4906,6 +4912,22 @@ dependencies = [
  "kabu-types-blockchain",
  "kabu-types-entities",
  "kabu-types-events",
+ "reth",
+ "reth-chainspec",
+ "reth-db",
+ "reth-execution-types",
+ "reth-exex",
+ "reth-exex-test-utils",
+ "reth-node-api",
+ "reth-node-core",
+ "reth-node-ethereum",
+ "reth-primitives",
+ "reth-provider",
+ "reth-rpc-convert",
+ "reth-testing-utils",
+ "tokio",
+ "tracing",
+ "tracing-subscriber 0.3.19",
 ]
 
 [[package]]
@@ -5920,49 +5942,6 @@ dependencies = [
  "kabu-types-entities",
  "op-alloy",
  "revm",
-]
-
-[[package]]
-name = "kabu_backrun"
-version = "0.3.0"
-dependencies = [
- "alloy",
- "alloy-primitives",
- "env_logger",
- "eyre",
- "futures",
- "kabu",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "kabu_exex"
-version = "0.6.0"
-dependencies = [
- "alloy",
- "axum",
- "clap",
- "eyre",
- "futures-util",
- "hex",
- "kabu",
- "reth",
- "reth-chainspec",
- "reth-db",
- "reth-execution-types",
- "reth-exex",
- "reth-exex-test-utils",
- "reth-node-api",
- "reth-node-core",
- "reth-node-ethereum",
- "reth-primitives",
- "reth-provider",
- "reth-rpc-convert",
- "reth-testing-utils",
- "tokio",
- "tracing",
- "tracing-subscriber 0.3.19",
 ]
 
 [[package]]
