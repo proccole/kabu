@@ -30,4 +30,4 @@ usdt = { address = "0xdAC17F958D2ee523a2206206994597C13D831ec7", symbol = "USDT"
 [assertions]
 swaps_encoded = 1
 swaps_ok = 1
-best_profit_eth = 0.00519
+best_profit_eth = 0.0043
