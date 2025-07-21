@@ -8,38 +8,9 @@ homepage.workspace = true
 repository.workspace = true
 
 [dependencies]
-kabu-broadcast-accounts.workspace = true
 kabu-broadcast-broadcaster.workspace = true
-kabu-core-actors.workspace = true
-kabu-core-block-history.workspace = true
-kabu-core-blockchain.workspace = true
-kabu-core-mempool.workspace = true
-kabu-defi-health-monitor.workspace = true
-kabu-defi-market.workspace = true
-kabu-defi-pools.workspace = true
-kabu-defi-preloader.workspace = true
-kabu-defi-price.workspace = true
-kabu-evm-db.workspace = true
-kabu-execution-estimator.workspace = true
-kabu-execution-multicaller.workspace = true
-kabu-node-actor-config.workspace = true
-kabu-node-json-rpc.workspace = true
-kabu-types-blockchain.workspace = true
-kabu-types-entities.workspace = true
-kabu-types-market.workspace = true
-kabu-types-swap.workspace = true
 
 eyre.workspace = true
-revm.workspace = true
 serde.workspace = true
 strum_macros.workspace = true
-tokio.workspace = true
 toml.workspace = true
-tracing.workspace = true
-
-# alloy
-alloy-primitives.workspace = true
-alloy-provider.workspace = true
-alloy-rpc-client.workspace = true
-alloy-transport-ipc.workspace = true
-alloy-transport-ws.workspace = true
