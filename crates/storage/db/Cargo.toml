@@ -10,6 +10,5 @@ version.workspace = true
 
 [dependencies]
 bb8.workspace = true
-diesel.workspace = true
 diesel-async.workspace = true
 thiserror.workspace = true

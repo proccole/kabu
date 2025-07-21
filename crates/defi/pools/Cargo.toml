@@ -20,9 +20,7 @@ async-stream.workspace = true
 eyre.workspace = true
 futures.workspace = true
 lazy_static.workspace = true
-reth-storage-api.workspace = true
 revm.workspace = true
-strum.workspace = true
 tokio-stream.workspace = true
 tracing.workspace = true
 
@@ -39,9 +37,7 @@ debug-calculation = []
 kabu-node-debug-provider.workspace = true
 
 alloy-rpc-client.workspace = true
-alloy-transport.workspace = true
 dotenvy.workspace = true
 env_logger.workspace = true
 rand.workspace = true
 tokio.workspace = true
-url.workspace = true

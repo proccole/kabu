@@ -16,7 +16,6 @@ kabu-defi-abi.workspace = true
 kabu-defi-address-book.workspace = true
 kabu-defi-pools.workspace = true
 kabu-evm-db.workspace = true
-kabu-evm-utils.workspace = true
 kabu-node-debug-provider.workspace = true
 kabu-types-blockchain.workspace = true
 kabu-types-entities.workspace = true
@@ -34,7 +33,6 @@ tokio.workspace = true
 tracing.workspace = true
 
 # alloy
-alloy-consensus.workspace = true
 alloy-eips.workspace = true
 alloy-evm.workspace = true
 alloy-network.workspace = true
@@ -43,7 +41,6 @@ alloy-provider.workspace = true
 alloy-rpc-types.workspace = true
 alloy-rpc-types-trace.workspace = true
 alloy-sol-types.workspace = true
-alloy-transport.workspace = true
 
 [[bench]]
 harness = false

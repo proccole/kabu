@@ -8,18 +8,13 @@ homepage.workspace = true
 repository.workspace = true
 
 [dependencies]
-kabu-evm-db.workspace = true
-kabu-evm-utils.workspace = true
 kabu-types-blockchain.workspace = true
 kabu-types-entities.workspace = true
 
 alloy-consensus.workspace = true
 alloy-eips.workspace = true
 alloy-primitives.workspace = true
-alloy-rpc-types.workspace = true
 revm.workspace = true
-
-op-alloy.workspace = true
 
 chrono.workspace = true
 eyre.workspace = true

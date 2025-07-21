@@ -9,7 +9,6 @@ repository.workspace = true
 exclude.workspace = true
 
 [dependencies]
-kabu-core-actors.workspace = true
 kabu-core-blockchain.workspace = true
 kabu-core-blockchain-actors.workspace = true
 kabu-evm-db.workspace = true

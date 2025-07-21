@@ -115,6 +115,22 @@ jobs:
           sudo mv taplo /usr/local/bin/taplo
       - run: make taplo-check
 
+  unused-deps:
+    name: check unused dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cargo-machete
+        run: cargo install cargo-machete --locked
+      - run: 'echo "pub const KEY_ENCRYPTION_PWD: [u8; 16] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];" > crates/types/entities/src/private.rs'
+      - name: Check for unused dependencies
+        run: cargo-machete --with-metadata
+
   clippy:
     name: make clippy
     runs-on: ubuntu-latest

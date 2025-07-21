@@ -12,14 +12,12 @@ version.workspace = true
 kabu-core-actors.workspace = true
 kabu-core-actors-macros.workspace = true
 kabu-core-blockchain.workspace = true
-kabu-defi-pools.workspace = true
 kabu-evm-db.workspace = true
 kabu-node-debug-provider.workspace = true
 kabu-types-blockchain.workspace = true
 kabu-types-entities.workspace = true
 kabu-types-events.workspace = true
 
-async-stream.workspace = true
 eyre.workspace = true
 tokio.workspace = true
 tokio-stream.workspace = true
@@ -31,7 +29,6 @@ alloy-network.workspace = true
 alloy-primitives.workspace = true
 alloy-provider.workspace = true
 alloy-rpc-types.workspace = true
-alloy-transport.workspace = true
 
 #revm
 revm.workspace = true

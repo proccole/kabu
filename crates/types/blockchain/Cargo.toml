@@ -12,24 +12,18 @@ kabu-node-debug-provider.workspace = true
 
 chrono.workspace = true
 eyre.workspace = true
-hex.workspace = true
 lazy_static.workspace = true
-serde.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-
-revm.workspace = true
 
 # alloy
 alloy-consensus.workspace = true
 alloy-eips.workspace = true
 alloy-primitives.workspace = true
 alloy-provider.workspace = true
-alloy-rlp.workspace = true
 alloy-rpc-types.workspace = true
 alloy-rpc-types-eth.workspace = true
 alloy-rpc-types-trace.workspace = true
-alloy-transport.workspace = true
 
 
 op-alloy.workspace = true
@@ -37,7 +31,6 @@ op-alloy.workspace = true
 [dev-dependencies]
 dotenvy.workspace = true
 env_logger.workspace = true
-serde.workspace = true
 serde_json.workspace = true
 url.workspace = true
 

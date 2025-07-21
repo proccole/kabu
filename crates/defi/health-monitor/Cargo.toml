@@ -24,7 +24,6 @@ eyre.workspace = true
 influxdb.workspace = true
 lazy_static.workspace = true
 tikv-jemalloc-ctl.workspace = true
-tikv-jemallocator.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 
@@ -34,7 +33,6 @@ alloy-eips.workspace = true
 alloy-network.workspace = true
 alloy-primitives.workspace = true
 alloy-provider.workspace = true
-alloy-transport.workspace = true
 
 #revm
 revm.workspace = true

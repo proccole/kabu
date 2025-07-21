@@ -10,7 +10,6 @@ repository.workspace = true
 [dependencies]
 kabu-defi-abi.workspace = true
 kabu-defi-address-book.workspace = true
-kabu-evm-utils.workspace = true
 kabu-node-debug-provider.workspace = true
 kabu-types-blockchain.workspace = true
 kabu-types-entities.workspace = true
@@ -29,9 +28,7 @@ alloy-provider.workspace = true
 alloy-rpc-types.workspace = true
 alloy-rpc-types-trace.workspace = true
 alloy-signer-local.workspace = true
-alloy-sol-macro.workspace = true
 alloy-sol-types.workspace = true
-alloy-transport.workspace = true
 
 
 [dev-dependencies]

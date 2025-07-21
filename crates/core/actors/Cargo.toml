@@ -8,9 +8,6 @@ homepage.workspace = true
 repository.workspace = true
 
 [dependencies]
-kabu-core-actors-macros.workspace = true
-
-async-trait.workspace = true
 eyre.workspace = true
 futures.workspace = true
 tokio.workspace = true

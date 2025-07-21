@@ -83,6 +83,11 @@ taplo-check:
 deny-check:
 	cargo deny --all-features check
 
+# check for unused dependencies
+.PHONY: udeps
+udeps:
+	cargo install cargo-machete --locked && cargo-machete --with-metadata
+
 # check files format with fmt and clippy
 .PHONY: pre-release
 pre-release:

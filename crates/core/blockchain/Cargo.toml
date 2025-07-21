@@ -9,7 +9,6 @@ repository.workspace = true
 
 [dependencies]
 kabu-core-actors.workspace = true
-kabu-core-actors-macros.workspace = true
 kabu-defi-address-book.workspace = true
 kabu-evm-db.workspace = true
 kabu-types-blockchain.workspace = true

@@ -27,10 +27,5 @@ alloy-eips.workspace = true
 alloy-network.workspace = true
 alloy-primitives.workspace = true
 alloy-provider.workspace = true
-alloy-rlp.workspace = true
 alloy-rpc-types.workspace = true
 alloy-sol-types.workspace = true
-alloy-transport.workspace = true
-
-#revm
-revm.workspace = true

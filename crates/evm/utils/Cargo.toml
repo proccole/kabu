@@ -15,7 +15,6 @@ kabu-node-debug-provider.workspace = true
 kabu-types-blockchain.workspace = true
 
 # misc
-auto_impl.workspace = true
 axum.workspace = true
 either.workspace = true
 eyre.workspace = true
@@ -25,8 +24,6 @@ tracing.workspace = true
 
 # revm
 revm.workspace = true
-revm-inspectors.workspace = true
-revm-state.workspace = true
 
 # alloy
 alloy.workspace = true
@@ -40,5 +37,3 @@ alloy-rpc-types-trace.workspace = true
 # reth
 reth-db.workspace = true
 reth-primitives.workspace = true
-reth-rpc.workspace = true
-reth-rpc-convert.workspace = true

@@ -14,7 +14,6 @@ kabu = { workspace = true, features = ["full-json-rpc", "strategy-full"] }
 clap.workspace = true
 dotenvy.workspace = true
 eyre.workspace = true
-futures.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
@@ -24,25 +23,15 @@ tracing-subscriber.workspace = true
 wiremock.workspace = true
 
 # alloy
-alloy-consensus.workspace = true
 alloy-evm.workspace = true
-alloy-node-bindings.workspace = true
 alloy-primitives.workspace = true
 alloy-provider.workspace = true
 alloy-rpc-types.workspace = true
 alloy-rpc-types-eth.workspace = true
-alloy-rpc-types-trace.workspace = true
-alloy-transport-http.workspace = true
-alloy-transport-ipc.workspace = true
-alloy-transport-ws.workspace = true
-
-revm.workspace = true
 
 [dev-dependencies]
 chrono.workspace = true
 criterion = { version = "0.5.1", features = ["async_tokio"] }
-futures.workspace = true
-kabu-evm-utils.workspace = true
 kabu-types-blockchain.workspace = true
 num_cpus.workspace = true
 rand.workspace = true

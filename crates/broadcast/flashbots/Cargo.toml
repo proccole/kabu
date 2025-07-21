@@ -8,13 +8,8 @@ homepage.workspace = true
 repository.workspace = true
 
 [dependencies]
-chrono.workspace = true
 env_logger.workspace = true
 eyre.workspace = true
-futures-core.workspace = true
-futures-util.workspace = true
-pin-project.workspace = true
-rand.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -29,7 +24,6 @@ alloy-json-rpc.workspace = true
 alloy-network.workspace = true
 alloy-primitives.workspace = true
 alloy-provider.workspace = true
-alloy-rlp.workspace = true
 alloy-rpc-types.workspace = true
 alloy-signer.workspace = true
 alloy-signer-local.workspace = true

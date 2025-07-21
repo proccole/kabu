@@ -15,10 +15,7 @@ kabu-node-debug-provider.workspace = true
 kabu-types-blockchain.workspace = true
 
 aes.workspace = true
-async-stream.workspace = true
-auto_impl.workspace = true
 eyre.workspace = true
-futures.workspace = true
 hex.workspace = true
 indexmap.workspace = true
 lazy_static.workspace = true
@@ -39,22 +36,12 @@ alloy-json-rpc.workspace = true
 alloy-network.workspace = true
 alloy-primitives.workspace = true
 alloy-provider.workspace = true
-alloy-rlp.workspace = true
 alloy-rpc-types.workspace = true
 alloy-rpc-types-trace.workspace = true
-alloy-signer.workspace = true
 alloy-signer-local.workspace = true
 alloy-sol-types.workspace = true
-alloy-transport.workspace = true
 
 revm.workspace = true
-
-reth-chainspec.workspace = true
-reth-db.workspace = true
-reth-node-builder.workspace = true
-reth-node-ethereum.workspace = true
-reth-provider.workspace = true
-reth-revm.workspace = true
 
 
 [build-dependencies]
@@ -64,11 +51,7 @@ rand.workspace = true
 [dev-dependencies]
 alloy-node-bindings.workspace = true
 alloy-rpc-client.workspace = true
-chrono.workspace = true
 criterion = { version = "0.5.1", features = ["async_tokio"] }
-futures.workspace = true
-num_cpus.workspace = true
-rayon.workspace = true
 serde_json.workspace = true
 
 [[bench]]

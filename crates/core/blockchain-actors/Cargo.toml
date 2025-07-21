@@ -32,7 +32,6 @@ kabu-node-actor-config.workspace = true
 kabu-node-debug-provider.workspace = true
 kabu-node-json-rpc.workspace = true
 kabu-rpc-handler.workspace = true
-kabu-rpc-state.workspace = true
 kabu-storage-db.workspace = true
 kabu-strategy-backrun.workspace = true
 kabu-strategy-merger.workspace = true
@@ -44,11 +43,9 @@ eyre.workspace = true
 tokio-util.workspace = true
 
 # alloy
-alloy-json-rpc.workspace = true
 alloy-network.workspace = true
 alloy-primitives.workspace = true
 alloy-provider.workspace = true
-alloy-transport.workspace = true
 
 #revm
 revm.workspace = true
