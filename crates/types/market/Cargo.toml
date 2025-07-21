@@ -31,3 +31,6 @@ alloy-rpc-types-trace.workspace = true
 alloy-sol-types.workspace = true
 
 revm.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

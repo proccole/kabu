@@ -504,7 +504,6 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::MarketState;
     use alloy_node_bindings::Anvil;
     use alloy_primitives::{Address, U256};
     use alloy_provider::ext::AnvilApi;
@@ -515,6 +514,7 @@ mod test {
     use kabu_evm_utils::geth_state_update::*;
     use kabu_node_debug_provider::AnvilProviderExt;
     use kabu_types_blockchain::{GethStateUpdate, KabuDataTypesEthereum};
+    use kabu_types_market::MarketState;
     use std::sync::Arc;
     use tokio::sync::RwLock;
 

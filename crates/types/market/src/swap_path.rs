@@ -266,13 +266,13 @@ impl SwapPaths {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::pool::DefaultAbiSwapEncoder;
+    use crate::required_state::RequiredState;
     use crate::SwapDirection;
+    use crate::{Pool, PoolAbiEncoder, PoolClass, PoolError, PoolProtocol, PreswapRequirement};
     use alloy_evm::EvmEnv;
     use alloy_primitives::{Address, U256};
     use kabu_evm_db::KabuDBError;
-    use kabu_types_market::pool::DefaultAbiSwapEncoder;
-    use kabu_types_market::required_state::RequiredState;
-    use kabu_types_market::{Pool, PoolAbiEncoder, PoolClass, PoolError, PoolProtocol, PreswapRequirement};
     use revm::DatabaseRef;
     use std::any::Any;
     use tokio::task::JoinHandle;

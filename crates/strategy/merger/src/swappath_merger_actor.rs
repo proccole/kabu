@@ -234,8 +234,9 @@ mod test {
     use alloy_primitives::{Address, U256};
     use kabu_evm_db::KabuDB;
     use kabu_types_events::SwapComposeData;
+    use kabu_types_market::SwapPath;
     use kabu_types_market::Token;
-    use kabu_types_swap::{Swap, SwapAmountType, SwapLine, SwapPath};
+    use kabu_types_swap::{Swap, SwapAmountType, SwapLine};
     use std::sync::Arc;
 
     #[test]

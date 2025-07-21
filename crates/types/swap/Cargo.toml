@@ -22,3 +22,6 @@ alloy-sol-types.workspace = true
 
 alloy-evm.workspace = true
 revm.workspace = true
+
+[dev-dependencies]
+kabu-defi-address-book.workspace = true

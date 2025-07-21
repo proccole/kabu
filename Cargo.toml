@@ -170,7 +170,15 @@ criterion = { version = "0.6.0", features = ["async_tokio"] }
 wiremock = "0.6.2"
 
 # revm
-revm = { version = "27.0.2", features = ["blst", "optional_balance_check", "secp256k1", "std"], default-features = false }
+revm = { version = "27.0.2", features = [
+  "blst",
+  "optional_balance_check",
+  "optional_block_gas_limit",
+  "optional_eip3607",
+  "optional_no_base_fee",
+  "secp256k1",
+  "std",
+], default-features = false }
 
 op-alloy = { version = "0.18.7", features = ["consensus", "network", "provider", "rpc-types"] }
 

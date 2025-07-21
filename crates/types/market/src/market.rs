@@ -294,7 +294,7 @@ mod tests {
         let pool_address = Address::random();
         let token0 = Address::random();
         let token1 = Address::random();
-        let mock_pool = MockPool { address: pool_address, token0, token1 };
+        let mock_pool = MockPool::new(token0, token1, pool_address);
 
         let result = market.add_pool(mock_pool);
 
@@ -335,7 +335,7 @@ mod tests {
     fn test_get_pool() {
         let mut market = Market::default();
         let pool_address = Address::random();
-        let mock_pool = MockPool { address: pool_address, token0: Address::ZERO, token1: Address::ZERO };
+        let mock_pool = MockPool::new(Address::ZERO, Address::ZERO, pool_address);
         market.add_pool(mock_pool.clone());
 
         let pool = market.get_pool(&PoolId::Address(pool_address));
@@ -347,7 +347,7 @@ mod tests {
     fn test_is_pool() {
         let mut market = Market::default();
         let pool_address = Address::random();
-        let mock_pool = MockPool { address: pool_address, token0: Address::ZERO, token1: Address::ZERO };
+        let mock_pool = MockPool::new(Address::ZERO, Address::ZERO, pool_address);
         market.add_pool(mock_pool.clone());
 
         let is_pool = market.is_pool(&PoolId::Address(pool_address));
@@ -372,7 +372,7 @@ mod tests {
         let pool_address = Address::random();
         let token0 = Address::random();
         let token1 = Address::random();
-        let mock_pool = MockPool { address: pool_address, token0, token1 };
+        let mock_pool = MockPool::new(token0, token1, pool_address);
         market.add_pool(mock_pool.clone());
 
         assert!(!market.is_pool_disabled(&PoolId::Address(pool_address)));
@@ -395,8 +395,8 @@ mod tests {
         let pool_address = Address::random();
         let token0 = Address::random();
         let token1 = Address::random();
-        let mock_pool = MockPool { address: pool_address, token0, token1 };
-        market.add_pool(mock_pool);
+        let mock_pool = MockPool::new(token0, token1, pool_address);
+        let _ = market.add_pool(mock_pool);
 
         let pools = market.get_token_token_pools(&token0, &token1);
 
@@ -409,8 +409,8 @@ mod tests {
         let pool_address = Address::random();
         let token0 = Address::random();
         let token1 = Address::random();
-        let mock_pool = MockPool { address: pool_address, token0, token1 };
-        market.add_pool(mock_pool);
+        let mock_pool = MockPool::new(token0, token1, pool_address);
+        let _ = market.add_pool(mock_pool);
 
         let tokens = market.get_token_tokens(&token0);
 
@@ -423,8 +423,8 @@ mod tests {
         let pool_address = Address::random();
         let token0 = Address::random();
         let token1 = Address::random();
-        let mock_pool = MockPool { address: pool_address, token0, token1 };
-        market.add_pool(mock_pool);
+        let mock_pool = MockPool::new(token0, token1, pool_address);
+        let _ = market.add_pool(mock_pool);
 
         let pools = market.get_token_pools(&token0).cloned();
 
@@ -442,13 +442,13 @@ mod tests {
         // Swap pool: token weth -> token1
         let pool_address1 = Address::random();
         let token1 = Address::random();
-        let mock_pool1 = PoolWrapper::new(Arc::new(MockPool { address: pool_address1, token0: TokenAddressEth::WETH, token1 }));
-        market.add_pool(mock_pool1.clone());
+        let mock_pool1 = PoolWrapper::new(Arc::new(MockPool::new(TokenAddressEth::WETH, token1, pool_address1)));
+        let _ = market.add_pool(mock_pool1.clone());
 
         // Swap pool: token weth -> token1
         let pool_address2 = Address::random();
-        let mock_pool2 = PoolWrapper::new(Arc::new(MockPool { address: pool_address2, token0: TokenAddressEth::WETH, token1 }));
-        market.add_pool(mock_pool2.clone());
+        let mock_pool2 = PoolWrapper::new(Arc::new(MockPool::new(TokenAddressEth::WETH, token1, pool_address2)));
+        let _ = market.add_pool(mock_pool2.clone());
 
         // Add test swap paths
         let mut directions = BTreeMap::new();
@@ -507,18 +507,18 @@ mod tests {
 
         // Swap pool: weth -> token1
         let pool_address1 = Address::random();
-        let mock_pool = PoolWrapper::new(Arc::new(MockPool { address: pool_address1, token0: token1, token1: TokenAddressEth::WETH }));
-        market.add_pool(mock_pool);
+        let mock_pool = PoolWrapper::new(Arc::new(MockPool::new(token1, TokenAddressEth::WETH, pool_address1)));
+        let _ = market.add_pool(mock_pool);
 
         // Swap pool: token1 -> token2
         let pool_address2 = Address::random();
-        let mock_pool2 = PoolWrapper::new(Arc::new(MockPool { address: pool_address2, token0: token1, token1: token2 }));
-        market.add_pool(mock_pool2);
+        let mock_pool2 = PoolWrapper::new(Arc::new(MockPool::new(token1, token2, pool_address2)));
+        let _ = market.add_pool(mock_pool2);
 
         // Swap pool: token2 -> weth
         let pool_address3 = Address::random();
-        let mock_pool3 = PoolWrapper::new(Arc::new(MockPool { address: pool_address3, token0: token2, token1: TokenAddressEth::WETH }));
-        market.add_pool(mock_pool3.clone());
+        let mock_pool3 = PoolWrapper::new(Arc::new(MockPool::new(token2, TokenAddressEth::WETH, pool_address3)));
+        let _ = market.add_pool(mock_pool3.clone());
 
         // under test
         let mut directions = BTreeMap::new();

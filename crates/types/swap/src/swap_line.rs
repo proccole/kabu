@@ -537,15 +537,14 @@ mod tests {
     use alloy_primitives::Address;
     use kabu_defi_address_book::{TokenAddressEth, UniswapV2PoolAddress, UniswapV3PoolAddress};
     use kabu_types_market::mock_pool::MockPool;
+    use kabu_types_market::Pool;
     use std::sync::Arc;
 
     fn default_swap_line() -> (MockPool, MockPool, SwapLine) {
         let token0 = Arc::new(Token::new_with_data(TokenAddressEth::WETH, Some("WETH".to_string()), None, Some(18), true, false));
         let token1 = Arc::new(Token::new_with_data(TokenAddressEth::USDT, Some("USDT".to_string()), None, Some(6), true, false));
-        let pool1 =
-            MockPool { token0: TokenAddressEth::WETH, token1: TokenAddressEth::USDT, address: UniswapV3PoolAddress::WETH_USDT_3000 };
-        let pool2_address = Address::random();
-        let pool2 = MockPool { token0: TokenAddressEth::WETH, token1: TokenAddressEth::USDT, address: UniswapV2PoolAddress::WETH_USDT };
+        let pool1 = MockPool::new(TokenAddressEth::WETH, TokenAddressEth::USDT, UniswapV3PoolAddress::WETH_USDT_3000);
+        let pool2 = MockPool::new(TokenAddressEth::WETH, TokenAddressEth::USDT, UniswapV2PoolAddress::WETH_USDT);
 
         let swap_path =
             SwapPath::new(vec![token0.clone(), token1.clone(), token1.clone(), token0.clone()], vec![pool1.clone(), pool2.clone()]);
@@ -598,8 +597,8 @@ mod tests {
         let (pool1, pool2, swap_line) = default_swap_line();
 
         let pools = swap_line.pools();
-        assert_eq!(pools.first().unwrap().get_address(), PoolId::Address(pool1.address));
-        assert_eq!(pools.get(1).unwrap().get_address(), PoolId::Address(pool2.address));
+        assert_eq!(pools.first().unwrap().get_address(), pool1.get_address());
+        assert_eq!(pools.get(1).unwrap().get_address(), pool2.get_address());
     }
 
     #[test]
@@ -623,7 +622,7 @@ mod tests {
         let (pool1, _, swap_line) = default_swap_line();
 
         let pool = swap_line.get_first_pool();
-        assert_eq!(pool.unwrap().get_address(), PoolId::Address(pool1.address));
+        assert_eq!(pool.unwrap().get_address(), pool1.get_address());
     }
 
     #[test]
@@ -631,6 +630,6 @@ mod tests {
         let (_, pool2, swap_line) = default_swap_line();
 
         let pool = swap_line.get_last_pool();
-        assert_eq!(pool.unwrap().get_address(), PoolId::Address(pool2.address));
+        assert_eq!(pool.unwrap().get_address(), pool2.get_address());
     }
 }
