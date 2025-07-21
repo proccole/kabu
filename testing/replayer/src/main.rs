@@ -42,6 +42,7 @@ struct Commands {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    dotenvy::from_filename(".env.test").ok();
     let start_block_number = 20179184;
 
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
@@ -115,6 +116,7 @@ async fn main() -> Result<()> {
 
     let mut cur_header: Header = Header::default();
 
+    println!("Replayer started for block number: {start_block_number}");
     loop {
         select! {
             header = header_sub.recv() => {
@@ -124,7 +126,7 @@ async fn main() -> Result<()> {
                         info!("Block header received: block_number={}, block_hash={}", header.number, header.hash);
 
                         if let Some(terminate_after_block_count) = args.terminate_after_block_count {
-                            println!("Replay current_block={}/{}", header.number, start_block_number + terminate_after_block_count);
+                            println!("Replay current_block={} of {}", header.number, start_block_number + terminate_after_block_count);
                             if header.number >= start_block_number + terminate_after_block_count {
                                 println!("Successful for start_block_number={}, current_block={}, terminate_after_block_count={}", start_block_number, header.number, terminate_after_block_count);
                                 exit(0);

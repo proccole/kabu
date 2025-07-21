@@ -1,5 +1,5 @@
 [package]
-name = "replayer"
+name = "kabu-replayer"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -28,6 +28,7 @@ kabu-types-events.workspace = true
 alloy.workspace = true
 alloy-evm.workspace = true
 clap.workspace = true
+dotenvy.workspace = true
 eyre.workspace = true
 futures.workspace = true
 serde.workspace = true

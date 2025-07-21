@@ -3596,38 +3596,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42012b0f064e01aa58b545fe3727f90f7dd4020f4a3ea735b50344965f5a57e9"
 
 [[package]]
-name = "gasbench"
-version = "0.6.0"
-dependencies = [
- "alloy-evm",
- "alloy-network",
- "alloy-primitives",
- "alloy-provider",
- "alloy-rpc-types",
- "alloy-transport",
- "clap",
- "colored",
- "env_logger",
- "eyre",
- "kabu-core-actors",
- "kabu-defi-address-book",
- "kabu-defi-market",
- "kabu-defi-pools",
- "kabu-defi-preloader",
- "kabu-evm-db",
- "kabu-evm-utils",
- "kabu-execution-multicaller",
- "kabu-node-debug-provider",
- "kabu-types-blockchain",
- "kabu-types-entities",
- "revm",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "generator"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4941,6 +4909,43 @@ dependencies = [
 ]
 
 [[package]]
+name = "kabu-backtest-runner"
+version = "0.6.0"
+dependencies = [
+ "alloy-consensus",
+ "alloy-evm",
+ "alloy-node-bindings",
+ "alloy-primitives",
+ "alloy-provider",
+ "alloy-rpc-types",
+ "alloy-rpc-types-eth",
+ "alloy-rpc-types-trace",
+ "alloy-transport-http",
+ "alloy-transport-ipc",
+ "alloy-transport-ws",
+ "chrono",
+ "clap",
+ "criterion 0.5.1",
+ "dotenvy",
+ "eyre",
+ "futures",
+ "kabu",
+ "kabu-evm-utils",
+ "kabu-types-blockchain",
+ "num_cpus",
+ "rand 0.9.1",
+ "rayon",
+ "revm",
+ "serde",
+ "serde_json",
+ "tokio",
+ "toml 0.9.2",
+ "tracing",
+ "tracing-subscriber 0.3.19",
+ "wiremock",
+]
+
+[[package]]
 name = "kabu-broadcast-accounts"
 version = "0.6.0"
 dependencies = [
@@ -5482,6 +5487,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "kabu-gasbench"
+version = "0.6.0"
+dependencies = [
+ "alloy-evm",
+ "alloy-network",
+ "alloy-primitives",
+ "alloy-provider",
+ "alloy-rpc-types",
+ "alloy-transport",
+ "clap",
+ "colored",
+ "env_logger",
+ "eyre",
+ "kabu-core-actors",
+ "kabu-defi-address-book",
+ "kabu-defi-market",
+ "kabu-defi-pools",
+ "kabu-defi-preloader",
+ "kabu-evm-db",
+ "kabu-evm-utils",
+ "kabu-execution-multicaller",
+ "kabu-node-debug-provider",
+ "kabu-types-blockchain",
+ "kabu-types-entities",
+ "revm",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "kabu-metrics"
 version = "0.6.0"
 dependencies = [
@@ -5605,6 +5642,60 @@ dependencies = [
  "revm",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "kabu-nodebench"
+version = "0.6.0"
+dependencies = [
+ "alloy",
+ "chrono",
+ "clap",
+ "env_logger",
+ "eyre",
+ "futures",
+ "kabu-core-actors",
+ "kabu-core-blockchain",
+ "kabu-core-blockchain-actors",
+ "kabu-evm-db",
+ "kabu-execution-multicaller",
+ "kabu-node-actor-config",
+ "kabu-types-blockchain",
+ "kabu-types-events",
+ "tokio",
+]
+
+[[package]]
+name = "kabu-replayer"
+version = "0.6.0"
+dependencies = [
+ "alloy",
+ "alloy-evm",
+ "clap",
+ "dotenvy",
+ "eyre",
+ "futures",
+ "kabu-core-actors",
+ "kabu-core-actors-macros",
+ "kabu-core-blockchain",
+ "kabu-core-blockchain-actors",
+ "kabu-defi-abi",
+ "kabu-defi-address-book",
+ "kabu-defi-pools",
+ "kabu-evm-db",
+ "kabu-evm-utils",
+ "kabu-execution-multicaller",
+ "kabu-node-debug-provider",
+ "kabu-node-player",
+ "kabu-types-blockchain",
+ "kabu-types-entities",
+ "kabu-types-events",
+ "serde",
+ "tokio",
+ "toml 0.9.2",
+ "tracing",
+ "tracing-subscriber 0.3.19",
+ "url",
 ]
 
 [[package]]
@@ -5829,43 +5920,6 @@ dependencies = [
  "kabu-types-entities",
  "op-alloy",
  "revm",
-]
-
-[[package]]
-name = "kabu_anvil"
-version = "0.6.0"
-dependencies = [
- "alloy-consensus",
- "alloy-evm",
- "alloy-node-bindings",
- "alloy-primitives",
- "alloy-provider",
- "alloy-rpc-types",
- "alloy-rpc-types-eth",
- "alloy-rpc-types-trace",
- "alloy-transport-http",
- "alloy-transport-ipc",
- "alloy-transport-ws",
- "chrono",
- "clap",
- "criterion 0.5.1",
- "dotenvy",
- "eyre",
- "futures",
- "kabu",
- "kabu-evm-utils",
- "kabu-types-blockchain",
- "num_cpus",
- "rand 0.9.1",
- "rayon",
- "revm",
- "serde",
- "serde_json",
- "tokio",
- "toml 0.9.2",
- "tracing",
- "tracing-subscriber 0.3.19",
- "wiremock",
 ]
 
 [[package]]
@@ -6528,27 +6582,6 @@ dependencies = [
  "security-framework 2.11.1",
  "security-framework-sys",
  "tempfile",
-]
-
-[[package]]
-name = "nodebench"
-version = "0.6.0"
-dependencies = [
- "alloy",
- "chrono",
- "clap",
- "env_logger",
- "eyre",
- "futures",
- "kabu-core-actors",
- "kabu-core-blockchain",
- "kabu-core-blockchain-actors",
- "kabu-evm-db",
- "kabu-execution-multicaller",
- "kabu-node-actor-config",
- "kabu-types-blockchain",
- "kabu-types-events",
- "tokio",
 ]
 
 [[package]]
@@ -7720,38 +7753,6 @@ checksum = "78ef7fa9ed0256d64a688a3747d0fef7a88851c18a5e1d57f115f38ec2e09366"
 dependencies = [
  "hashbrown 0.15.2",
  "memchr",
-]
-
-[[package]]
-name = "replayer"
-version = "0.6.0"
-dependencies = [
- "alloy",
- "alloy-evm",
- "clap",
- "eyre",
- "futures",
- "kabu-core-actors",
- "kabu-core-actors-macros",
- "kabu-core-blockchain",
- "kabu-core-blockchain-actors",
- "kabu-defi-abi",
- "kabu-defi-address-book",
- "kabu-defi-pools",
- "kabu-evm-db",
- "kabu-evm-utils",
- "kabu-execution-multicaller",
- "kabu-node-debug-provider",
- "kabu-node-player",
- "kabu-types-blockchain",
- "kabu-types-entities",
- "kabu-types-events",
- "serde",
- "tokio",
- "toml 0.9.2",
- "tracing",
- "tracing-subscriber 0.3.19",
- "url",
 ]
 
 [[package]]

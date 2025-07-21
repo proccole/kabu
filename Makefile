@@ -95,7 +95,7 @@ pre-release:
 replayer:
 	@echo "Running Replayer test case: $(FILE)\n"
 	@RL=${RL:-info}; \
-	RUST_LOG=$(RL) cargo run --package replayer --bin replayer -- --terminate-after-block-count 10; \
+	RUST_LOG=$(RL) cargo run --package kabu-replayer --bin kabu-replayer -- --terminate-after-block-count 10; \
 	EXIT_CODE=$$?; \
 	if [ $$EXIT_CODE -ne 0 ]; then \
 		echo "\n\033[0;31mError: Replayer tester exited with code $$EXIT_CODE\033[0m\n"; \
@@ -108,7 +108,7 @@ replayer:
 swap-test:
 	@echo "Running anvil swap test case: $(FILE)\n"
 	@RL=${RL:-info}; \
-    RUST_LOG=$(RL) cargo run --package kabu_anvil --bin kabu_anvil -- --config $(FILE) --timeout 25 --wait-init 3; \
+    RUST_LOG=$(RL) cargo run --package kabu-backtest-runner --bin kabu-backtest-runner -- --config $(FILE) --timeout 25 --wait-init 3; \
 	EXIT_CODE=$$?; \
 	if [ $$EXIT_CODE -ne 0 ]; then \
 		echo "\n\033[0;31mError: Anvil swap tester exited with code $$EXIT_CODE\033[0m\n"; \
@@ -118,35 +118,35 @@ swap-test:
 	fi
 
 .PHONY: swap-test-1
-swap-test-1: FILE="./bin/kabu_anvil/test_18498188.toml"
+swap-test-1: FILE="./testing/backtest-runner/test_18498188.toml"
 swap-test-1: swap-test
 
 .PHONY: swap-test-2
-swap-test-2: FILE="./bin/kabu_anvil/test_18567709.toml"
+swap-test-2: FILE="./testing/backtest-runner/test_18567709.toml"
 swap-test-2: swap-test
 
 .PHONY: swap-test-3
-swap-test-3: FILE="./bin/kabu_anvil/test_19101578.toml"
+swap-test-3: FILE="./testing/backtest-runner/test_19101578.toml"
 swap-test-3: swap-test
 
 .PHONY: swap-test-4
-swap-test-4:FILE="./bin/kabu_anvil/test_19109955.toml"
+swap-test-4:FILE="./testing/backtest-runner/test_19109955.toml"
 swap-test-4: swap-test
 
 .PHONY: swap-test-5
-swap-test-5:FILE="./bin/kabu_anvil/test_20927846.toml"
+swap-test-5:FILE="./testing/backtest-runner/test_20927846.toml"
 swap-test-5: swap-test
 
 .PHONY: swap-test-6
-swap-test-6:FILE="./bin/kabu_anvil/test_20935488.toml"
+swap-test-6:FILE="./testing/backtest-runner/test_20935488.toml"
 swap-test-6: swap-test
 
 #.PHONY: swap-test-7
-#swap-test-7:FILE="./bin/kabu_anvil/test_20937428.toml"
+#swap-test-7:FILE="./testing/backtest-runner/test_20937428.toml"
 #swap-test-7: swap-test
 
 .PHONY: swap-test-8
-swap-test-8:FILE="./bin/kabu_anvil/test_21035613.toml"
+swap-test-8:FILE="./testing/backtest-runner/test_21035613.toml"
 swap-test-8: swap-test
 
 .PHONY: swap-test-all

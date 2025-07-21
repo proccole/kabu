@@ -1,13 +1,17 @@
 [workspace]
-default-members = ["bin/gasbench", "bin/kabu_anvil", "bin/kabu_backrun", "bin/kabu_exex", "bin/keys", "bin/nodebench", "bin/replayer"]
-members = [
-  "bin/gasbench",
-  "bin/kabu_anvil",
+default-members = [
   "bin/kabu_backrun",
   "bin/kabu_exex",
   "bin/keys",
-  "bin/nodebench",
-  "bin/replayer",
+  "testing/backtest-runner",
+  "testing/gasbench",
+  "testing/nodebench",
+  "testing/replayer",
+]
+members = [
+  "bin/kabu_backrun",
+  "bin/kabu_exex",
+  "bin/keys",
   "crates/broadcast/accounts",
   "crates/broadcast/broadcaster",
   "crates/broadcast/flashbots",
@@ -44,6 +48,10 @@ members = [
   "crates/types/blockchain",
   "crates/types/entities",
   "crates/types/events",
+  "testing/backtest-runner",
+  "testing/gasbench",
+  "testing/nodebench",
+  "testing/replayer",
 ]
 resolver = "2"
 
