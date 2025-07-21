@@ -1,7 +1,8 @@
 #WETH PEPE ARB CASE WITH TWO STUFFING
 #ALL POOLS PRELOADED
 [modules]
-signer = false
+signer = true
+flashbots = true
 
 
 [settings]

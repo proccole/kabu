@@ -1,8 +1,8 @@
 # WETH -> GOAT -> GOAT -> WETH ARB CASE
 # replay tx with loom for 0x28243575d2f32061fb0044d6338e73907d3e5324aa3644cb849035e398ec375e
 [modules]
-signer = false
-
+signer = true
+flashbots = true
 
 [settings]
 block = 21035613

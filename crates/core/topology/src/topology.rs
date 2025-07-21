@@ -12,7 +12,6 @@ use alloy_transport_ws::WsConnect;
 use eyre::{eyre, Result};
 use kabu_broadcast_accounts::{InitializeSignersOneShotBlockingActor, NonceAndBalanceMonitorActor, TxSignersActor};
 use kabu_broadcast_broadcaster::FlashbotsBroadcastActor;
-use kabu_broadcast_flashbots_client::Flashbots;
 use kabu_core_actors::{Accessor, Actor, Consumer, Producer, SharedState, WorkerResult};
 use kabu_core_block_history::BlockHistoryActor;
 use kabu_core_blockchain::{Blockchain, BlockchainState, Strategy};
@@ -23,7 +22,7 @@ use kabu_defi_pools::PoolLoadersBuilder;
 use kabu_defi_preloader::MarketStatePreloadedOneShotActor;
 use kabu_defi_price::PriceActor;
 use kabu_evm_db::{DatabaseKabuExt, KabuDBError};
-use kabu_execution_estimator::{EvmEstimatorActor, GethEstimatorActor};
+use kabu_execution_estimator::EvmEstimatorActor;
 use kabu_execution_multicaller::MulticallerSwapEncoder;
 use kabu_node_actor_config::NodeBlockActorConfig;
 use kabu_node_json_rpc::{NodeBlockActor, NodeMempoolActor};
@@ -458,11 +457,9 @@ impl<
             for (name, params) in broadcaster_actors {
                 match params {
                     BroadcasterConfig::Flashbots(params) => {
-                        let client = self.get_client(params.client.as_ref())?;
                         let blockchain = self.get_blockchain(params.blockchain.as_ref())?;
 
-                        let flashbots_client = Flashbots::new(client, "https://relay.flashbots.net", None).with_default_relays();
-                        let mut flashbots_actor = FlashbotsBroadcastActor::new(flashbots_client, true);
+                        let mut flashbots_actor = FlashbotsBroadcastActor::new(None, true)?.with_default_relays()?;
                         match flashbots_actor.consume(blockchain.tx_compose_channel()).start() {
                             Ok(r) => {
                                 tasks.extend(r);
@@ -583,29 +580,6 @@ impl<
                             }
                             Err(e) => {
                                 panic!("Error starting EVM estimator actor {name} @ {} : {}", blockchain.chain_id(), e)
-                            }
-                        }
-                    }
-                    EstimatorConfig::Geth(params) => {
-                        let client = self.get_client(params.client.as_ref())?;
-                        let blockchain = self.get_blockchain(params.blockchain.as_ref())?;
-                        let strategy = self.get_strategy(params.blockchain.as_ref())?;
-                        let multicaller_address = self.get_multicaller_address(params.encoder.as_ref())?;
-
-                        let mut encoder = self.swap_encoder.clone();
-                        encoder.set_address(multicaller_address);
-
-                        let flashbots_client = Arc::new(Flashbots::new(client, "https://relay.flashbots.net", None).with_default_relays());
-
-                        let mut geth_estimator_actor = GethEstimatorActor::new(flashbots_client, encoder);
-                        match geth_estimator_actor.consume(strategy.swap_compose_channel()).produce(strategy.swap_compose_channel()).start()
-                        {
-                            Ok(r) => {
-                                tasks.extend(r);
-                                info!("Geth estimator actor started successfully {name} @ {}", blockchain.chain_id())
-                            }
-                            Err(e) => {
-                                panic!("Error starting Geth estimator actor for {name} @ {} : {}", blockchain.chain_id(), e)
                             }
                         }
                     }

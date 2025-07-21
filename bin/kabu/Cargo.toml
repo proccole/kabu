@@ -20,7 +20,6 @@ path = "src/main.rs"
 # broadcast
 kabu-broadcast-accounts = { workspace = true, optional = true }
 kabu-broadcast-broadcaster = { workspace = true, optional = true }
-kabu-broadcast-flashbots-client = { workspace = true, optional = true }
 # core
 kabu-core-actors = { workspace = true, optional = true }
 kabu-core-actors-macros = { workspace = true, optional = true }
@@ -104,7 +103,6 @@ types = []
 
 broadcast-accounts = ["broadcast", "dep:kabu-broadcast-accounts"]
 broadcast-broadcaster = ["broadcast", "dep:kabu-broadcast-broadcaster"]
-broadcast-flashbots = ["broadcast", "dep:kabu-broadcast-flashbots-client"]
 
 core-actors = ["core", "dep:kabu-core-actors"]
 core-actors-macros = ["core", "dep:kabu-core-actors-macros"]
@@ -177,7 +175,7 @@ full-json-rpc = [
   "types-full",
 ]
 
-broadcast-full = ["broadcast-accounts", "broadcast-broadcaster", "broadcast-flashbots"]
+broadcast-full = ["broadcast-accounts", "broadcast-broadcaster"]
 core-full = [
   "core-actors",
   "core-actors-macros",

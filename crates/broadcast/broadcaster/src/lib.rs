@@ -1,5 +1,3 @@
-pub use anvil::AnvilBroadcastActor;
-pub use flashbots::FlashbotsBroadcastActor;
+pub use flashbots::{FlashbotsBroadcastActor, RelayConfig};
 
-mod anvil;
 mod flashbots;

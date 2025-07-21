@@ -1,7 +1,8 @@
 #WETH GROK AND WBTC ARB CASE WITH  NEW WBTC CRV POOL
 # 0x67857131Ae32f72739a2c8d0bd0e812793D8BB24 UNI3 CRV-WBTC Pool created
 [modules]
-signer = false
+signer = true
+flashbots = true
 price = true
 
 

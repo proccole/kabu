@@ -4,8 +4,6 @@ pub mod broadcast {
     pub use kabu_broadcast_accounts as accounts;
     #[cfg(feature = "broadcast-broadcaster")]
     pub use kabu_broadcast_broadcaster as broadcaster;
-    #[cfg(feature = "broadcast-flashbots")]
-    pub use kabu_broadcast_flashbots_client as flashbots;
 }
 
 #[cfg(feature = "core")]

@@ -1,5 +1,5 @@
 use eyre::Result;
-use kabu_broadcast_flashbots_client::client::RelayConfig;
+use kabu_broadcast_broadcaster::RelayConfig;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs;
@@ -146,7 +146,7 @@ pub struct FlashbotsRelayConfig {
 
 impl From<FlashbotsRelayConfig> for RelayConfig {
     fn from(config: FlashbotsRelayConfig) -> Self {
-        RelayConfig { id: config.id, name: config.name, url: config.url, no_sign: config.no_sign }
+        RelayConfig { id: config.id as u64, name: config.name, url: config.url, no_sign: config.no_sign }
     }
 }
 
@@ -181,20 +181,10 @@ pub struct EvmEstimatorConfig {
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct GethEstimatorConfig {
-    pub client: Option<String>,
-    #[serde(rename = "bc")]
-    pub blockchain: Option<String>,
-    pub encoder: Option<String>,
-}
-
-#[derive(Clone, Debug, Deserialize)]
 #[serde(tag = "type")]
 pub enum EstimatorConfig {
     #[serde(rename = "evm")]
     Evm(EvmEstimatorConfig),
-    #[serde(rename = "geth")]
-    Geth(GethEstimatorConfig),
 }
 
 #[derive(Clone, Debug, Deserialize)]

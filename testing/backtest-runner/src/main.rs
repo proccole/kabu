@@ -10,9 +10,7 @@ use alloy_rpc_types_eth::TransactionTrait;
 use clap::Parser;
 use eyre::{OptionExt, Result};
 use kabu::broadcast::accounts::{InitializeSignersOneShotBlockingActor, NonceAndBalanceMonitorActor, TxSignersActor};
-use kabu::broadcast::broadcaster::{AnvilBroadcastActor, FlashbotsBroadcastActor};
-use kabu::broadcast::flashbots::client::RelayConfig;
-use kabu::broadcast::flashbots::Flashbots;
+use kabu::broadcast::broadcaster::{FlashbotsBroadcastActor, RelayConfig};
 use kabu::core::actors::{Accessor, Actor, Broadcaster, Consumer, Producer, SharedState};
 use kabu::core::block_history::BlockHistoryActor;
 use kabu::core::router::SwapRouterActor;
@@ -364,14 +362,6 @@ async fn main() -> Result<()> {
     let swap_compose_channel: Broadcaster<MessageSwapCompose<KabuDBType>> = Broadcaster::new(100);
     let tx_compose_channel: Broadcaster<MessageTxCompose> = Broadcaster::new(100);
 
-    let mut broadcast_actor = AnvilBroadcastActor::new(client.clone());
-    match broadcast_actor.consume(tx_compose_channel.clone()).start() {
-        Err(e) => error!("{}", e),
-        _ => {
-            info!("Broadcast actor started successfully")
-        }
-    }
-
     // Start estimator actor
     let mut estimator_actor = EvmEstimatorActor::new_with_provider(multicaller_encoder.clone(), Some(client.clone()));
     match estimator_actor.consume(swap_compose_channel.clone()).produce(swap_compose_channel.clone()).start() {
@@ -505,8 +495,7 @@ async fn main() -> Result<()> {
     }
     if test_config.modules.flashbots {
         let relays = vec![RelayConfig { id: 1, url: mock_server.as_ref().unwrap().uri(), name: "relay".to_string(), no_sign: Some(false) }];
-        let flashbots = Flashbots::new(client.clone(), "https://unused", None).with_relays(relays);
-        let mut flashbots_broadcast_actor = FlashbotsBroadcastActor::new(flashbots, true);
+        let mut flashbots_broadcast_actor = FlashbotsBroadcastActor::new(None, true)?.with_relays(relays)?;
         match flashbots_broadcast_actor.consume(tx_compose_channel.clone()).start() {
             Err(e) => {
                 error!("{}", e)

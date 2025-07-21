@@ -4,9 +4,7 @@ use alloy_provider::Provider;
 use axum::Router;
 use eyre::{eyre, Result};
 use kabu_broadcast_accounts::{InitializeSignersOneShotBlockingActor, NonceAndBalanceMonitorActor, TxSignersActor};
-use kabu_broadcast_broadcaster::FlashbotsBroadcastActor;
-use kabu_broadcast_flashbots_client::client::RelayConfig;
-use kabu_broadcast_flashbots_client::Flashbots;
+use kabu_broadcast_broadcaster::{FlashbotsBroadcastActor, RelayConfig};
 use kabu_core_actors::{Actor, ActorsManager, SharedState};
 use kabu_core_block_history::BlockHistoryActor;
 use kabu_core_blockchain::{Blockchain, BlockchainState, Strategy};
@@ -22,7 +20,7 @@ use kabu_defi_preloader::MarketStatePreloadedOneShotActor;
 use kabu_defi_price::PriceActor;
 use kabu_evm_db::{DatabaseKabuExt, KabuDBError};
 use kabu_evm_utils::NWETH;
-use kabu_execution_estimator::{EvmEstimatorActor, GethEstimatorActor};
+use kabu_execution_estimator::EvmEstimatorActor;
 use kabu_execution_multicaller::MulticallerSwapEncoder;
 use kabu_metrics::InfluxDbWriterActor;
 use kabu_node_actor_config::NodeBlockActorConfig;
@@ -295,12 +293,12 @@ where
 
     /// Starts flashbots broadcaster
     pub fn with_flashbots_broadcaster(&mut self, allow_broadcast: bool) -> Result<&mut Self> {
-        let flashbots = match self.relays.is_empty() {
-            true => Flashbots::new(self.provider.clone(), "https://relay.flashbots.net", None).with_default_relays(),
-            false => Flashbots::new(self.provider.clone(), "https://relay.flashbots.net", None).with_relays(self.relays.clone()),
+        let flashbots_actor = match self.relays.is_empty() {
+            true => FlashbotsBroadcastActor::new(None, allow_broadcast)?.with_default_relays()?,
+            false => FlashbotsBroadcastActor::new(None, allow_broadcast)?.with_relays(self.relays.clone())?,
         };
 
-        self.actor_manager.start(FlashbotsBroadcastActor::new(flashbots, allow_broadcast).on_bc(&self.bc))?;
+        self.actor_manager.start(flashbots_actor.on_bc(&self.bc))?;
         Ok(self)
     }
 
@@ -394,13 +392,6 @@ where
         }
 
         self.actor_manager.start_and_wait(actor.on_bc(&self.bc, &self.state))?;
-        Ok(self)
-    }
-
-    pub fn with_geth_estimator(&mut self) -> Result<&mut Self> {
-        let flashbots = Flashbots::new(self.provider.clone(), "https://relay.flashbots.net", None).with_default_relays();
-
-        self.actor_manager.start(GethEstimatorActor::new(Arc::new(flashbots), self.encoder.clone().unwrap()).on_bc(&self.strategy))?;
         Ok(self)
     }
 

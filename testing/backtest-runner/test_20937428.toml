@@ -1,7 +1,8 @@
 # WETH -> USDC -> TSUKA -> ODIN -> WBTC -> WETH ARB CASE
 # replay tx with loom for 0x840cf4634cb8927ef1aaa00a8680f7ec7147ad27b975d733099b9a732dfd9211
 [modules]
-signer = false
+signer = true
+flashbots = true
 
 
 [settings]

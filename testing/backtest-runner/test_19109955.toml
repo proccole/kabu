@@ -1,6 +1,7 @@
 # WETH SYM ARB CASE
 [modules]
-signer = false
+signer = true
+flashbots = true
 
 
 [settings]

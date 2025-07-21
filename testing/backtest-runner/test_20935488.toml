@@ -1,7 +1,8 @@
 # ITO KOBOSU WETH ARB CASE
 # replay tx with loom for 0xdc89197a90ba2c9f9a285cc7335b8f0917413d85bebd1764110d786a4753bde2
 [modules]
-signer = false
+signer = true
+flashbots = true
 
 
 [settings]

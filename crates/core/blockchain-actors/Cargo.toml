@@ -11,7 +11,6 @@ version.workspace = true
 [dependencies]
 kabu-broadcast-accounts.workspace = true
 kabu-broadcast-broadcaster.workspace = true
-kabu-broadcast-flashbots-client.workspace = true
 kabu-core-actors.workspace = true
 kabu-core-block-history.workspace = true
 kabu-core-blockchain.workspace = true

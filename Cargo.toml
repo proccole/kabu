@@ -5,7 +5,6 @@ members = [
   "bin/keys",
   "crates/broadcast/accounts",
   "crates/broadcast/broadcaster",
-  "crates/broadcast/flashbots-client",
   "crates/core/block-history-actor",
   "crates/core/blockchain",
   "crates/core/blockchain-actors",
@@ -60,7 +59,6 @@ version = "0.6.0"
 # broadcast
 kabu-broadcast-accounts = { path = "crates/broadcast/accounts" }
 kabu-broadcast-broadcaster = { path = "crates/broadcast/broadcaster" }
-kabu-broadcast-flashbots-client = { path = "crates/broadcast/flashbots-client" }
 # core
 kabu-core-actors = { path = "crates/core/actors" }
 kabu-core-actors-macros = { path = "crates/core/actors-macros" }
@@ -206,11 +204,12 @@ alloy-json-rpc = "1.0.18"
 alloy-network = "1.0.18"
 alloy-node-bindings = "1.0.18"
 alloy-primitives = { version = "1.2.0", features = ["map-foldhash", "map-fxhash", "rand"], default-features = false }
-alloy-provider = { version = "1.0.18", features = ["anvil-api", "anvil-node", "debug-api", "ipc", "pubsub", "reqwest", "ws"] }
+alloy-provider = { version = "1.0.18", features = ["anvil-api", "anvil-node", "debug-api", "ipc", "mev-api", "pubsub", "reqwest", "ws"] }
 alloy-pubsub = "1.0.18"
 alloy-rpc-client = { version = "1.0.18", features = ["ipc", "pubsub", "reqwest", "ws"] }
 alloy-rpc-types = "1.0.18"
 alloy-rpc-types-eth = "1.0.18"
+alloy-rpc-types-mev = "1.0.18"
 alloy-rpc-types-trace = "1.0.18"
 alloy-signer = "1.0.18"
 alloy-signer-local = "1.0.18"

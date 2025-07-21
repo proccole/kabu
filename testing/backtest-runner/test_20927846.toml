@@ -1,6 +1,7 @@
 # CHAD_0x5c CHAD_0x7d WETH ARB CASE
 [modules]
-signer = false
+signer = true
+flashbots = true
 
 
 [settings]
