@@ -6,7 +6,7 @@ use kabu_core_actors::{Accessor, Consumer, SharedState};
 use kabu_core_actors_macros::{Accessor, Consumer, Producer};
 use kabu_core_blockchain::{Blockchain, BlockchainState};
 use kabu_evm_db::DatabaseKabuExt;
-use kabu_types_blockchain::{KabuDataTypes, KabuHeader};
+use kabu_types_blockchain::KabuDataTypes;
 use kabu_types_events::MessageBlockHeader;
 use kabu_types_market::{Market, MarketState};
 use revm::DatabaseRef;
@@ -38,7 +38,7 @@ async fn metrics_recorder_worker<DB: DatabaseKabuExt + DatabaseRef + Send + Sync
         };
 
         let current_timestamp = chrono::Utc::now();
-        let block_latency = current_timestamp.timestamp() as f64 - block_header.inner.header.get_timestamp() as f64;
+        let block_latency = current_timestamp.timestamp() as f64 - block_header.inner.header.timestamp as f64;
 
         // check if we received twice the same block number
 
@@ -58,7 +58,7 @@ async fn metrics_recorder_worker<DB: DatabaseKabuExt + DatabaseRef + Send + Sync
 
         let influx_channel_clone = influx_channel_tx.clone();
 
-        let block_number = block_header.inner.header.get_number();
+        let block_number = block_header.inner.header.number;
 
         if let Some(influx_tx) = influx_channel_clone {
             if let Err(e) = tokio::time::timeout(Duration::from_secs(2), async move {

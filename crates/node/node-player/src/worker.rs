@@ -132,7 +132,7 @@ where
                     Ok(block_logs) => {
                         debug!("Mempool logs : {}", logs.len());
                         logs.extend(block_logs);
-                        let logs_update = BlockLogs { block_header: block_header.clone(), logs };
+                        let logs_update = BlockLogs { block_header: block_header.clone(), logs, _phantom: std::marker::PhantomData };
                         if let Err(e) = block_logs_channel.send(Message::new_with_time(logs_update)) {
                             error!("new_block_logs_channel.send error: {e}");
                         }
@@ -163,9 +163,11 @@ where
 
                 match debug_trace_block(provider.clone(), BlockId::Hash(curblock_hash.into()), true).await {
                     Ok((_, post)) => {
-                        if let Err(e) =
-                            block_state_update_channel.send(Message::new_with_time(BlockStateUpdate { block_header, state_update: post }))
-                        {
+                        if let Err(e) = block_state_update_channel.send(Message::new_with_time(BlockStateUpdate {
+                            block_header,
+                            state_update: post,
+                            _phantom: std::marker::PhantomData,
+                        })) {
                             error!("new_block_state_update_channel error: {e}");
                         }
                     }

@@ -21,7 +21,7 @@ use kabu_core_actors::{subscribe, Accessor, Actor, ActorResult, Broadcaster, Con
 use kabu_core_actors_macros::{Accessor, Consumer, Producer};
 use kabu_core_blockchain::{Blockchain, Strategy};
 use kabu_evm_db::{DatabaseHelpers, KabuDBError};
-use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEVM};
+use kabu_types_blockchain::KabuDataTypes;
 use kabu_types_entities::strategy_config::StrategyConfig;
 use kabu_types_events::{
     BestTxSwapCompose, HealthEvent, Message, MessageHealthEvent, MessageSwapCompose, StateUpdateEvent, SwapComposeData, SwapComposeMessage,
@@ -32,7 +32,7 @@ use kabu_types_swap::{Swap, SwapError, SwapLine};
 
 async fn state_change_arb_searcher_task<
     DB: DatabaseRef<Error = KabuDBError> + Database<Error = KabuDBError> + DatabaseCommit + Send + Sync + Clone + Default + 'static,
-    LDT: KabuDataTypesEVM,
+    LDT: KabuDataTypes,
 >(
     thread_pool: Arc<ThreadPool>,
     backrun_config: BackrunConfig,
@@ -232,7 +232,7 @@ async fn state_change_arb_searcher_task<
 
 pub async fn state_change_arb_searcher_worker<
     DB: DatabaseRef<Error = KabuDBError> + Database<Error = KabuDBError> + DatabaseCommit + Send + Sync + Clone + Default + 'static,
-    LDT: KabuDataTypesEVM,
+    LDT: KabuDataTypes,
 >(
     backrun_config: BackrunConfig,
     market: SharedState<Market>,
@@ -287,7 +287,7 @@ pub struct StateChangeArbSearcherActor<DB: Clone + Send + Sync + 'static, LDT: K
 
 impl<
         DB: DatabaseRef<Error = KabuDBError> + Database<Error = KabuDBError> + DatabaseCommit + Send + Sync + Clone + 'static,
-        LDT: KabuDataTypesEVM + 'static,
+        LDT: KabuDataTypes + 'static,
     > StateChangeArbSearcherActor<DB, LDT>
 {
     pub fn new(backrun_config: BackrunConfig) -> StateChangeArbSearcherActor<DB, LDT> {
@@ -315,7 +315,7 @@ impl<
 
 impl<
         DB: DatabaseRef<Error = KabuDBError> + Database<Error = KabuDBError> + DatabaseCommit + Send + Sync + Clone + Default + 'static,
-        LDT: KabuDataTypesEVM + 'static,
+        LDT: KabuDataTypes + 'static,
     > Actor for StateChangeArbSearcherActor<DB, LDT>
 {
     fn start(&self) -> ActorResult {

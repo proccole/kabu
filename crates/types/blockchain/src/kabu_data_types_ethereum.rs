@@ -1,27 +1,20 @@
 use crate::kabu_data_types::KabuTransactionRequest;
-use crate::{GethStateUpdate, KabuBlock, KabuDataTypes, KabuDataTypesEVM, KabuTx};
+use crate::{KabuBlock, KabuDataTypes, KabuTx};
 use alloy_consensus::Transaction as TransactionTrait;
 use alloy_eips::eip2718::Encodable2718;
 use alloy_primitives::{Address, Bytes, TxHash, TxKind};
 use alloy_provider::network::TransactionBuilder;
 use alloy_provider::network::TransactionResponse;
-use alloy_rpc_types_eth::{Block as EthBlock, Header, Log, Transaction, TransactionReceipt, TransactionRequest};
+use alloy_rpc_types_eth::{Block as EthBlock, Header, Transaction, TransactionReceipt, TransactionRequest};
 #[derive(Clone, Debug, Default)]
-pub struct KabuDataTypesEthereum {
-    _private: (),
-}
+pub struct KabuDataTypesEthereum;
 
 impl KabuDataTypes for KabuDataTypesEthereum {
     type Transaction = Transaction;
     type TransactionRequest = TransactionRequest;
     type TransactionReceipt = TransactionReceipt;
     type Block = EthBlock;
-    type Header = Header;
-    type Log = Log;
-    type StateUpdate = GethStateUpdate;
 }
-
-impl KabuDataTypesEVM for KabuDataTypesEthereum {}
 
 impl KabuTx<KabuDataTypesEthereum> for Transaction {
     fn get_gas_price(&self) -> u128 {
@@ -58,7 +51,7 @@ impl KabuBlock<KabuDataTypesEthereum> for EthBlock {
         self.transactions.as_transactions().unwrap_or_default().to_vec()
     }
 
-    fn get_header(&self) -> <KabuDataTypesEthereum as KabuDataTypes>::Header {
+    fn get_header(&self) -> Header {
         self.header.clone()
     }
 }

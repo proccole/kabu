@@ -1,7 +1,8 @@
 use alloy_primitives::{BlockNumber, TxHash};
+use alloy_rpc_types_eth::Log;
 use chrono::{DateTime, Utc};
 
-use crate::FetchState;
+use crate::{FetchState, GethStateUpdate};
 use crate::{KabuDataTypes, KabuDataTypesEthereum};
 
 #[derive(Clone, Debug)]
@@ -10,11 +11,11 @@ pub struct MempoolTx<D: KabuDataTypes> {
     pub tx_hash: TxHash,
     pub time: DateTime<Utc>,
     pub tx: Option<D::Transaction>,
-    pub logs: Option<Vec<D::Log>>,
+    pub logs: Option<Vec<Log>>,
     pub mined: Option<BlockNumber>,
     pub failed: Option<bool>,
-    pub state_update: Option<D::StateUpdate>,
-    pub pre_state: Option<FetchState<D::StateUpdate>>,
+    pub state_update: Option<GethStateUpdate>,
+    pub pre_state: Option<FetchState<GethStateUpdate>>,
 }
 
 impl MempoolTx<KabuDataTypesEthereum> {

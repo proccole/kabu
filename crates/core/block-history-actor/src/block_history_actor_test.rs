@@ -51,7 +51,7 @@ mod test {
         tokio::time::sleep(Duration::from_millis(100)).await;
 
         if let Some(logs) = logs {
-            let logs_msg = BlockLogs { block_header: header.clone(), logs };
+            let logs_msg = BlockLogs { block_header: header.clone(), logs, _phantom: std::marker::PhantomData };
 
             if let Err(e) = bc.new_block_logs_channel().send(Message::new(logs_msg)) {
                 error!("bc.new_block_with_tx_channel().send : {}", e)
@@ -61,7 +61,7 @@ mod test {
         tokio::time::sleep(Duration::from_millis(100)).await;
 
         if let Some(state_update) = state_update {
-            let state_update_msg = BlockStateUpdate { block_header: header.clone(), state_update };
+            let state_update_msg = BlockStateUpdate { block_header: header.clone(), state_update, _phantom: std::marker::PhantomData };
             if let Err(e) = bc.new_block_state_update_channel().send(Message::new(state_update_msg)) {
                 error!("bc.new_block_with_tx_channel().send : {}", e)
             }

@@ -106,7 +106,7 @@ async fn process_chain(
                 size: Some(U256::from(reth_header.size())),
             };
 
-            let log_update = BlockLogs { block_header: block_header.clone(), logs };
+            let log_update = BlockLogs { block_header: block_header.clone(), logs, _phantom: std::marker::PhantomData };
 
             if let Err(e) = logs_channel.send(Message::new_with_time(log_update)) {
                 error!(error=?e.to_string(), "logs_channel.send")
@@ -143,7 +143,11 @@ async fn process_chain(
                     size: Some(U256::from(reth_header.size())),
                 };
 
-                let block_state_update = BlockStateUpdate { block_header: block_header.clone(), state_update: vec![state_update] };
+                let block_state_update = BlockStateUpdate {
+                    block_header: block_header.clone(),
+                    state_update: vec![state_update],
+                    _phantom: std::marker::PhantomData,
+                };
 
                 if let Err(e) = state_update_channel.send(Message::new_with_time(block_state_update)) {
                     error!(error=?e.to_string(), "block_with_tx_channel.send")

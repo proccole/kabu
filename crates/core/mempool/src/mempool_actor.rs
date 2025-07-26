@@ -9,7 +9,7 @@ use kabu_core_actors::{run_sync, subscribe, Accessor, Actor, ActorResult, Broadc
 use kabu_core_actors_macros::{Accessor, Consumer, Producer};
 use kabu_core_blockchain::Blockchain;
 use kabu_types_blockchain::{ChainParameters, Mempool, MempoolTx};
-use kabu_types_blockchain::{KabuBlock, KabuDataTypes, KabuDataTypesEthereum, KabuHeader, KabuTx};
+use kabu_types_blockchain::{KabuBlock, KabuDataTypes, KabuDataTypesEthereum, KabuTx};
 use kabu_types_events::{MempoolEvents, MessageBlock, MessageBlockHeader, MessageMempoolDataUpdate};
 
 pub async fn new_mempool_worker<LDT: KabuDataTypes>(
@@ -92,15 +92,15 @@ pub async fn new_mempool_worker<LDT: KabuDataTypes>(
                     }
                 };
 
-                current_gas_price = block_header.header.get_base_fee();
-                let block_number = block_header.header.get_number();
+                current_gas_price = block_header.header.base_fee_per_gas.map(|fee| fee as u128);
+                let block_number = block_header.header.number;
 
                 let mempool_len = mempool.read().await.len();
                 debug!("Mempool len {}", mempool_len);
 
 
                 let mempool_read_guard = mempool.read().await;
-                let next_base_fee =  block_header.header.get_next_base_fee(&chain_parameters);
+                let next_base_fee = chain_parameters.calc_next_block_base_fee_from_header(&block_header.header);
 
                 let ok_txes = mempool_read_guard.filter_ok_by_gas_price(next_base_fee as u128);
                 debug!("Mempool gas update {} {}", next_base_fee, ok_txes.len());
@@ -165,12 +165,12 @@ pub async fn new_mempool_worker<LDT: KabuDataTypes>(
                     }
 
                     mempool_write_guard
-                        .set_mined(tx.get_tx_hash(), block_with_txs.get_header().get_number())
+                        .set_mined(tx.get_tx_hash(), block_with_txs.get_header().number)
                         .set_nonce(tx.get_from(), tx.get_nonce());
                 }
                 let start_time_utc =   chrono::Utc::now();
                 let write_query = WriteQuery::new(Timestamp::from(start_time_utc), "mempool")
-                    .add_tag("block", block_with_txs.get_header().get_number())
+                    .add_tag("block", block_with_txs.get_header().number)
                     .add_field("tx_count_block", tx_count as u64)
                     .add_field("tx_count_found", mempool_tx_counter)
                     .add_field("tx_mempool_size", mempool_size as u64);

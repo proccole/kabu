@@ -3,7 +3,6 @@ use alloy_eips::{BlockId, BlockNumberOrTag};
 use alloy_network::Network;
 use alloy_primitives::{Address, Log, U256};
 use alloy_provider::Provider;
-use alloy_rpc_types::eth::Log as EthLog;
 use alloy_rpc_types::TransactionTrait;
 use alloy_sol_types::SolEventInterface;
 use kabu_core_actors::{Accessor, Actor, ActorResult, Broadcaster, Consumer, SharedState, WorkerResult};
@@ -61,7 +60,7 @@ pub async fn nonce_and_balance_monitor_worker<LDT>(
     market_events_rx: Broadcaster<MarketEvents>,
 ) -> WorkerResult
 where
-    LDT: KabuDataTypes<Log = EthLog>,
+    LDT: KabuDataTypes,
 {
     let mut market_events = market_events_rx.subscribe();
 
@@ -196,7 +195,7 @@ impl<P, N, LDT> Actor for NonceAndBalanceMonitorActor<P, N, LDT>
 where
     N: Network,
     P: Provider<N> + Send + Sync + Clone + 'static,
-    LDT: KabuDataTypes<Log = EthLog> + 'static,
+    LDT: KabuDataTypes + 'static,
 {
     fn start(&self) -> ActorResult {
         let mut handles = Vec::new();

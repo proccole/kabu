@@ -20,7 +20,7 @@ use kabu_types_market::MarketState;
 use kabu_types_market::SwapDirection;
 use kabu_types_market::{Market, PoolClass, PoolId, PoolLoaders, PoolWrapper, PoolsLoadingConfig};
 
-use kabu_types_blockchain::{get_touched_addresses, KabuDataTypes, KabuDataTypesEVM};
+use kabu_types_blockchain::{get_touched_addresses, KabuDataTypes};
 use revm::{Database, DatabaseCommit, DatabaseRef};
 use tokio::sync::Semaphore;
 
@@ -110,7 +110,7 @@ where
     P: Provider<N> + DebugProviderExt<N> + Send + Sync + Clone + 'static,
     PL: Provider<N> + Send + Sync + Clone + 'static,
     DB: DatabaseRef + Database + DatabaseCommit + Send + Sync + Clone + 'static,
-    LDT: KabuDataTypesEVM + 'static,
+    LDT: KabuDataTypes + 'static,
 {
     debug!(%pool_id, %pool_class, "Fetching pool");
 
@@ -128,7 +128,7 @@ where
     N: Network<TransactionRequest = LDT::TransactionRequest>,
     P: Provider<N> + DebugProviderExt<N> + Send + Sync + Clone + 'static,
     DB: Database + DatabaseRef + DatabaseCommit + Send + Sync + Clone + 'static,
-    LDT: KabuDataTypesEVM,
+    LDT: KabuDataTypes,
 {
     match pool_wrapped.get_state_required() {
         Ok(required_state) => match RequiredStateReader::<LDT>::fetch_calls_and_slots::<N, P>(client, required_state, None).await {

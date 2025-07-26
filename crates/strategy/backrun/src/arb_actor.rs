@@ -8,7 +8,7 @@ use kabu_core_actors::{Accessor, Actor, ActorResult, Broadcaster, Consumer, Prod
 use kabu_core_actors_macros::{Accessor, Consumer, Producer};
 use kabu_evm_db::KabuDBError;
 use kabu_node_debug_provider::DebugProviderExt;
-use kabu_types_blockchain::{KabuDataTypesEVM, Mempool};
+use kabu_types_blockchain::{KabuDataTypes, Mempool};
 use kabu_types_entities::{BlockHistory, LatestBlock};
 use kabu_types_events::{MarketEvents, MempoolEvents, MessageHealthEvent, MessageSwapCompose};
 use kabu_types_market::{Market, MarketState};
@@ -18,7 +18,7 @@ use tokio::task::JoinHandle;
 use tracing::info;
 
 #[derive(Accessor, Consumer, Producer)]
-pub struct StateChangeArbActor<P, N, DB: Clone + Send + Sync + 'static, LDT: KabuDataTypesEVM + 'static> {
+pub struct StateChangeArbActor<P, N, DB: Clone + Send + Sync + 'static, LDT: KabuDataTypes + 'static> {
     backrun_config: BackrunConfig,
     client: P,
     use_blocks: bool,
@@ -52,7 +52,7 @@ where
     N: Network,
     P: Provider<N> + DebugProviderExt<N> + Send + Sync + Clone + 'static,
     DB: DatabaseRef + Send + Sync + Clone + 'static,
-    LDT: KabuDataTypesEVM + 'static,
+    LDT: KabuDataTypes + 'static,
 {
     pub fn new(client: P, use_blocks: bool, use_mempool: bool, backrun_config: BackrunConfig) -> StateChangeArbActor<P, N, DB, LDT> {
         StateChangeArbActor {
@@ -80,7 +80,7 @@ where
     N: Network<TransactionRequest = LDT::TransactionRequest>,
     P: Provider<N> + DebugProviderExt<N> + Send + Sync + Clone + 'static,
     DB: DatabaseRef<Error = KabuDBError> + Database<Error = KabuDBError> + DatabaseCommit + Send + Sync + Clone + Default + 'static,
-    LDT: KabuDataTypesEVM + 'static,
+    LDT: KabuDataTypes + 'static,
 {
     fn start(&self) -> ActorResult {
         let searcher_pool_update_channel = Broadcaster::new(100);

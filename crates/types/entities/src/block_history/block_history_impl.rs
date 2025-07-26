@@ -3,10 +3,10 @@ use alloy_json_rpc::RpcRecv;
 use alloy_network::{BlockResponse, Network};
 use alloy_primitives::{BlockHash, BlockNumber};
 use alloy_provider::Provider;
-use alloy_rpc_types::{BlockId, Filter};
+use alloy_rpc_types::{BlockId, Filter, Header, Log};
 use eyre::{eyre, ErrReport, OptionExt, Result};
 use kabu_node_debug_provider::DebugProviderExt;
-use kabu_types_blockchain::{debug_trace_block, KabuBlock, KabuDataTypes, KabuDataTypesEVM, KabuHeader};
+use kabu_types_blockchain::{debug_trace_block, GethStateUpdateVec, KabuBlock, KabuDataTypes};
 use kabu_types_market::MarketStateConfig;
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -15,16 +15,10 @@ use tracing::{debug, error};
 
 #[derive(Clone, Debug)]
 pub struct BlockHistoryEntry<LDT: KabuDataTypes> {
-    pub header: LDT::Header,
+    pub header: Header,
     pub block: Option<LDT::Block>,
-    pub logs: Option<Vec<LDT::Log>>,
-    pub state_update: Option<Vec<LDT::StateUpdate>>,
-}
-
-impl<LDT: KabuDataTypes> Default for BlockHistoryEntry<LDT> {
-    fn default() -> Self {
-        Self { header: LDT::Header::default(), block: None, logs: None, state_update: None }
-    }
+    pub logs: Option<Vec<Log>>,
+    pub state_update: Option<GethStateUpdateVec>,
 }
 
 impl<LDT> BlockHistoryEntry<LDT>
@@ -32,10 +26,10 @@ where
     LDT: KabuDataTypes,
 {
     pub fn new(
-        header: LDT::Header,
+        header: Header,
         block: Option<LDT::Block>,
-        logs: Option<Vec<LDT::Log>>,
-        state_update: Option<Vec<LDT::StateUpdate>>,
+        logs: Option<Vec<Log>>,
+        state_update: Option<GethStateUpdateVec>,
     ) -> BlockHistoryEntry<LDT> {
         BlockHistoryEntry { header, block, logs, state_update }
     }
@@ -45,19 +39,19 @@ where
     }
 
     pub fn hash(&self) -> BlockHash {
-        self.header.get_hash()
+        self.header.hash
     }
 
     pub fn parent_hash(&self) -> BlockHash {
-        self.header.get_parent_hash()
+        self.header.parent_hash
     }
 
     pub fn number(&self) -> BlockNumber {
-        self.header.get_number()
+        self.header.number
     }
 
     pub fn timestamp(&self) -> u64 {
-        self.header.get_timestamp()
+        self.header.timestamp
     }
 }
 
@@ -100,9 +94,9 @@ impl<S, LDT: KabuDataTypes> BlockHistory<S, LDT> {
         self.block_entries.is_empty()
     }
 
-    fn get_or_insert_entry_with_header(&mut self, header: LDT::Header) -> &mut BlockHistoryEntry<LDT> {
-        let block_number = header.get_number();
-        let block_hash = header.get_hash();
+    fn get_or_insert_entry_with_header(&mut self, header: Header) -> &mut BlockHistoryEntry<LDT> {
+        let block_number = header.number;
+        let block_hash = header.hash;
 
         //todo: process reorg
         if self.latest_block_number <= block_number {
@@ -120,8 +114,8 @@ impl<S, LDT: KabuDataTypes> BlockHistory<S, LDT> {
         self.block_entries.entry(block_hash).or_insert(BlockHistoryEntry::new(header, None, None, None))
     }
 
-    fn get_or_insert_entry_mut(&mut self, block_hash: BlockHash) -> &mut BlockHistoryEntry<LDT> {
-        self.block_entries.entry(block_hash).or_default()
+    fn get_entry_mut_or_panic(&mut self, block_hash: BlockHash) -> &mut BlockHistoryEntry<LDT> {
+        self.block_entries.get_mut(&block_hash).expect("Block entry should exist")
     }
 
     fn set_entry(&mut self, entry: BlockHistoryEntry<LDT>) {
@@ -137,14 +131,14 @@ impl<S, LDT: KabuDataTypes> BlockHistory<S, LDT> {
         }
     }
 
-    pub fn add_block_header(&mut self, block_header: LDT::Header) -> Result<bool> {
-        let block_hash = block_header.get_hash();
-        let block_number = block_header.get_number();
+    pub fn add_block_header(&mut self, block_header: Header) -> Result<bool> {
+        let block_hash = block_header.hash;
+        let block_number = block_header.number;
         let mut is_new = false;
 
         if !self.contains_block(&block_hash) {
             let market_history_entry = self.get_or_insert_entry_with_header(block_header.clone());
-            let parent_block_hash = block_header.get_parent_hash();
+            let parent_block_hash = block_header.parent_hash;
 
             if block_number >= self.latest_block_number {
                 is_new = true;
@@ -169,8 +163,8 @@ impl<S, LDT: KabuDataTypes> BlockHistory<S, LDT> {
     }
 
     pub fn add_block(&mut self, block: LDT::Block) -> Result<()> {
-        let block_hash = block.get_header().get_hash();
-        let block_number = block.get_header().get_number();
+        let block_hash = block.get_header().hash;
+        let block_number = block.get_header().number;
 
         let market_history_entry = self.get_or_insert_entry_with_header(block.get_header());
 
@@ -191,8 +185,8 @@ impl<S, LDT: KabuDataTypes> BlockHistory<S, LDT> {
         Ok(())
     }
 
-    pub fn add_state_diff(&mut self, block_hash: BlockHash, state_diff: Vec<LDT::StateUpdate>) -> Result<()> {
-        let market_history_entry = self.get_or_insert_entry_mut(block_hash);
+    pub fn add_state_diff(&mut self, block_hash: BlockHash, state_diff: GethStateUpdateVec) -> Result<()> {
+        let market_history_entry = self.get_entry_mut_or_panic(block_hash);
 
         if market_history_entry.state_update.is_none() {
             market_history_entry.state_update = Some(state_diff);
@@ -209,8 +203,8 @@ impl<S, LDT: KabuDataTypes> BlockHistory<S, LDT> {
         }
     }
 
-    pub fn add_logs(&mut self, block_hash: BlockHash, logs: Vec<LDT::Log>) -> Result<()> {
-        let market_history_entry = self.get_or_insert_entry_mut(block_hash);
+    pub fn add_logs(&mut self, block_hash: BlockHash, logs: Vec<Log>) -> Result<()> {
+        let market_history_entry = self.get_entry_mut_or_panic(block_hash);
 
         if market_history_entry.logs.is_none() {
             market_history_entry.logs = Some(logs);
@@ -248,7 +242,7 @@ impl<S, LDT: KabuDataTypes> BlockHistory<S, LDT> {
     }
 
     pub fn get_first_block_number(&self) -> Option<BlockNumber> {
-        self.block_entries.values().map(|x| x.header.get_number()).min()
+        self.block_entries.values().map(|x| x.header.number).min()
     }
 
     pub fn contains_block(&self, block_hash: &BlockHash) -> bool {
@@ -265,7 +259,7 @@ pub struct BlockHistoryManager<P, N, DB, LDT> {
 // where
 //     P: Provider<Ethereum> + DebugProviderExt<Ethereum> + Send + Sync + Clone + 'static,
 //     S: BlockHistoryState<LDT> + Clone,
-//     LDT: KabuDataTypesEVM,
+//     LDT: KabuDataTypes,
 // {
 //     pub async fn fetch_entry_data(&self, entry: &mut BlockHistoryEntry<LDT>) -> Result<()> {
 //         if entry.logs.is_none() {
@@ -303,15 +297,15 @@ where
     N: Network<BlockResponse = LDT::Block>,
     P: Provider<N> + DebugProviderExt<N> + Send + Sync + Clone + 'static,
     S: BlockHistoryState<LDT> + Clone,
-    LDT: KabuDataTypesEVM,
+    LDT: KabuDataTypes,
     LDT::Block: BlockResponse + RpcRecv,
 {
     pub fn init(&self, current_state: S, depth: usize, block: LDT::Block) -> BlockHistory<S, LDT>
     where
         P: Provider<N> + Send + Sync + Clone + 'static,
     {
-        let latest_block_number = <alloy_rpc_types::Header as KabuHeader<LDT>>::get_number(&block.get_header());
-        let block_hash = <alloy_rpc_types::Header as KabuHeader<LDT>>::get_hash(&block.get_header());
+        let latest_block_number = block.get_header().number;
+        let block_hash = block.get_header().hash;
 
         let block_entry = BlockHistoryEntry::new(block.get_header().clone(), Some(block), None, None);
 
@@ -424,7 +418,7 @@ where
         market_state_config: &MarketStateConfig,
         block_hash: BlockHash,
     ) -> Result<S> {
-        let mut entry = block_history.get_or_insert_entry_mut(block_hash).clone();
+        let mut entry = block_history.get_entry_mut_or_panic(block_hash).clone();
         if !entry.is_fetched() {
             self.fetch_entry_data(&mut entry).await?;
         }
@@ -436,10 +430,10 @@ where
         Ok(db)
     }
 
-    pub async fn set_chain_head(&self, block_history: &mut BlockHistory<S, LDT>, header: LDT::Header) -> Result<(bool, usize)> {
+    pub async fn set_chain_head(&self, block_history: &mut BlockHistory<S, LDT>, header: Header) -> Result<(bool, usize)> {
         let mut reorg_depth = 0;
         let mut is_new_block = false;
-        let parent_hash = KabuHeader::<LDT>::get_parent_hash(&header);
+        let parent_hash = header.parent_hash;
         let first_block_number = block_history.get_first_block_number();
 
         if let Ok(is_new) = block_history.add_block_header(header) {

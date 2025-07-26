@@ -3,7 +3,7 @@ use crate::Message;
 use alloy_eips::eip2718::Encodable2718;
 use alloy_primitives::{Bytes, TxHash, U256};
 use eyre::{eyre, Result};
-use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEthereum};
+use kabu_types_blockchain::{GethStateUpdateVec, KabuDataTypes, KabuDataTypesEthereum};
 use kabu_types_market::PoolId;
 use kabu_types_swap::Swap;
 use revm::DatabaseRef;
@@ -56,7 +56,7 @@ pub struct SwapComposeData<DB, LDT: KabuDataTypes = KabuDataTypesEthereum> {
     pub swap: Swap,
     pub prestate: Option<DB>,
     pub poststate: Option<DB>,
-    pub poststate_update: Option<Vec<LDT::StateUpdate>>,
+    pub poststate_update: Option<GethStateUpdateVec>,
     pub origin: Option<String>,
     pub tips_pct: Option<u32>,
     pub tips: Option<U256>,

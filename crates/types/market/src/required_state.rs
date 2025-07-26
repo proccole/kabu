@@ -10,7 +10,7 @@ use std::marker::PhantomData;
 use tracing::{error, trace};
 
 use kabu_node_debug_provider::DebugProviderExt;
-use kabu_types_blockchain::{debug_trace_call_pre_state, GethStateUpdate, GethStateUpdateVec, KabuDataTypesEVM};
+use kabu_types_blockchain::{debug_trace_call_pre_state, GethStateUpdate, GethStateUpdateVec};
 use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEthereum, KabuTransactionRequest};
 
 #[derive(Clone, Debug, Default)]
@@ -64,7 +64,7 @@ pub struct RequiredStateReader<LDT: KabuDataTypes = KabuDataTypesEthereum> {
 
 impl<LDT> RequiredStateReader<LDT>
 where
-    LDT: KabuDataTypesEVM,
+    LDT: KabuDataTypes,
 {
     pub async fn fetch_calls_and_slots<
         N: Network<TransactionRequest = LDT::TransactionRequest>,
@@ -73,7 +73,7 @@ where
         client: C,
         required_state: RequiredState,
         block_number: Option<BlockNumber>,
-    ) -> Result<LDT::StateUpdate> {
+    ) -> Result<GethStateUpdate> {
         let block_id = if block_number.is_none() {
             BlockId::Number(BlockNumberOrTag::Latest)
         } else {

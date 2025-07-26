@@ -4,11 +4,12 @@ use alloy::primitives::Bytes;
 use alloy::primitives::Log as EVMLog;
 use alloy::sol_types::SolEventInterface;
 use alloy_evm::EvmEnv;
+use alloy_rpc_types::Log;
 use eyre::eyre;
 use futures::Stream;
 use kabu_defi_abi::uniswap3::IUniswapV3Pool::IUniswapV3PoolEvents;
 use kabu_evm_db::KabuDBError;
-use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEVM, KabuDataTypesEthereum};
+use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEthereum};
 use kabu_types_market::PoolClass;
 use kabu_types_market::{get_protocol_by_factory, PoolId, PoolLoader, PoolProtocol, PoolWrapper};
 use revm::DatabaseRef;
@@ -23,9 +24,9 @@ impl<P, N, LDT> PoolLoader<P, N, LDT> for UniswapV3PoolLoader<P, N, LDT>
 where
     N: Network,
     P: Provider<N> + Clone + 'static,
-    LDT: KabuDataTypesEVM + 'static,
+    LDT: KabuDataTypes + 'static,
 {
-    fn get_pool_class_by_log(&self, log_entry: &LDT::Log) -> Option<(PoolId, PoolClass)> {
+    fn get_pool_class_by_log(&self, log_entry: &Log) -> Option<(PoolId, PoolClass)> {
         let log_entry: Option<EVMLog> = EVMLog::new(log_entry.address(), log_entry.topics().to_vec(), log_entry.data().data.clone());
         match log_entry {
             Some(log_entry) => match IUniswapV3PoolEvents::decode_log(&log_entry) {

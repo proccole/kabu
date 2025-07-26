@@ -6,7 +6,7 @@ use tracing::{debug, error};
 
 use kabu_core_actors::{subscribe, Broadcaster, WorkerResult};
 use kabu_node_debug_provider::DebugProviderExt;
-use kabu_types_blockchain::{debug_trace_block, KabuDataTypesEVM};
+use kabu_types_blockchain::{debug_trace_block, KabuDataTypes};
 use kabu_types_events::{BlockStateUpdate, Message, MessageBlockStateUpdate};
 
 pub async fn new_node_block_state_worker<P, N, LDT>(
@@ -17,7 +17,7 @@ pub async fn new_node_block_state_worker<P, N, LDT>(
 where
     N: Network,
     P: Provider<N> + DebugProviderExt<N> + Send + Sync + Clone + 'static,
-    LDT: KabuDataTypesEVM,
+    LDT: KabuDataTypes,
 {
     subscribe!(block_header_receiver);
 
@@ -28,7 +28,11 @@ where
 
             match debug_trace_block(client.clone(), BlockId::Hash(block_header.hash.into()), true).await {
                 Ok((_, post)) => {
-                    if let Err(e) = sender.send(Message::new_with_time(BlockStateUpdate { block_header, state_update: post })) {
+                    if let Err(e) = sender.send(Message::new_with_time(BlockStateUpdate {
+                        block_header,
+                        state_update: post,
+                        _phantom: std::marker::PhantomData,
+                    })) {
                         error!("Broadcaster error {}", e)
                     }
                 }

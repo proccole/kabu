@@ -3,9 +3,10 @@ use crate::{PoolClass, PoolId, PoolWrapper};
 use alloy_network::{Ethereum, Network};
 use alloy_primitives::Bytes;
 use alloy_provider::Provider;
+use alloy_rpc_types::Log;
 use eyre::{eyre, Result};
 use kabu_evm_db::KabuDBError;
-use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEVM, KabuDataTypesEthereum};
+use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEthereum};
 use revm::DatabaseRef;
 use std::collections::HashMap;
 use std::future::Future;
@@ -20,7 +21,7 @@ where
     P: Provider<N>,
     LDT: Send + Sync + KabuDataTypes,
 {
-    fn get_pool_class_by_log(&self, log_entry: &LDT::Log) -> Option<(PoolId, PoolClass)>;
+    fn get_pool_class_by_log(&self, log_entry: &Log) -> Option<(PoolId, PoolClass)>;
     fn fetch_pool_by_id<'a>(&'a self, pool_id: PoolId) -> Pin<Box<dyn Future<Output = Result<PoolWrapper>> + Send + 'a>>;
     fn fetch_pool_by_id_from_provider<'a>(
         &'a self,
@@ -83,9 +84,9 @@ impl<P, N, LDT> PoolLoaders<P, N, LDT>
 where
     N: Network,
     P: Provider<N> + 'static,
-    LDT: KabuDataTypesEVM + 'static,
+    LDT: KabuDataTypes + 'static,
 {
-    pub fn determine_pool_class(&self, log_entry: &<KabuDataTypesEthereum as KabuDataTypes>::Log) -> Option<(PoolId, PoolClass)> {
+    pub fn determine_pool_class(&self, log_entry: &Log) -> Option<(PoolId, PoolClass)> {
         for (_pool_class, pool_loader) in self.map.iter() {
             if let Some((pool_id, pool_class)) = pool_loader.get_pool_class_by_log(log_entry) {
                 return Some((pool_id, pool_class));

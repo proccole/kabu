@@ -13,7 +13,7 @@ use kabu_core_actors_macros::{Accessor, Consumer};
 use kabu_core_blockchain::{Blockchain, BlockchainState};
 use kabu_evm_db::KabuDBError;
 use kabu_node_debug_provider::DebugProviderExt;
-use kabu_types_blockchain::KabuDataTypesEVM;
+use kabu_types_blockchain::KabuDataTypes;
 use kabu_types_market::required_state::{RequiredState, RequiredStateReader};
 use kabu_types_market::MarketState;
 use kabu_types_market::{Market, PoolClass, PoolId, PoolLoaders};
@@ -30,7 +30,7 @@ where
     N: Network<TransactionRequest = LDT::TransactionRequest>,
     P: Provider<N> + DebugProviderExt<N> + Send + Sync + Clone + 'static,
     DB: Database<Error = KabuDBError> + DatabaseRef<Error = KabuDBError> + DatabaseCommit + Send + Sync + Clone + 'static,
-    LDT: KabuDataTypesEVM + 'static,
+    LDT: KabuDataTypes + 'static,
 {
     for (pool_id, pool_class) in pools {
         debug!(class=%pool_class, %pool_id, "Loading pool");
@@ -84,7 +84,7 @@ where
     N: Network,
     P: Provider<N> + DebugProviderExt<N> + Send + Sync + Clone + 'static,
     DB: Database + DatabaseRef + DatabaseCommit + Clone + Send + Sync + 'static,
-    LDT: KabuDataTypesEVM + 'static,
+    LDT: KabuDataTypes + 'static,
 {
     client: P,
     pool_loaders: Arc<PoolLoaders<P, N, LDT>>,
@@ -102,7 +102,7 @@ where
     N: Network,
     P: Provider<N> + DebugProviderExt<N> + Send + Sync + Clone + 'static,
     DB: Database + DatabaseRef + DatabaseCommit + Clone + Send + Sync + 'static,
-    LDT: KabuDataTypesEVM + 'static,
+    LDT: KabuDataTypes + 'static,
 {
     pub fn new(client: P, pool_loaders: Arc<PoolLoaders<P, N, LDT>>) -> Self {
         Self { client, pools: Vec::new(), pool_loaders, required_state: None, market: None, market_state: None, _n: PhantomData }
@@ -128,7 +128,7 @@ where
     N: Network<TransactionRequest = LDT::TransactionRequest>,
     P: Provider<N> + DebugProviderExt<N> + Send + Sync + Clone + 'static,
     DB: Database<Error = KabuDBError> + DatabaseRef<Error = KabuDBError> + DatabaseCommit + Send + Sync + Clone + 'static,
-    LDT: KabuDataTypesEVM + 'static,
+    LDT: KabuDataTypes + 'static,
 {
     fn start(&self) -> ActorResult {
         let task = tokio::task::spawn(required_pools_loader_worker(

@@ -8,7 +8,7 @@ use alloy_provider::Provider;
 use alloy_rpc_types::Header;
 use kabu_core_actors::{ActorResult, Broadcaster, WorkerResult};
 use kabu_node_debug_provider::DebugProviderExt;
-use kabu_types_blockchain::KabuDataTypesEVM;
+use kabu_types_blockchain::KabuDataTypes;
 use kabu_types_events::{MessageBlock, MessageBlockHeader, MessageBlockLogs, MessageBlockStateUpdate};
 use tokio::task::JoinHandle;
 
@@ -20,9 +20,9 @@ pub fn new_eth_node_block_workers_starter<P, N, LDT>(
     new_block_state_update_channel: Option<Broadcaster<MessageBlockStateUpdate<LDT>>>,
 ) -> ActorResult
 where
-    N: Network<HeaderResponse = LDT::Header, BlockResponse = LDT::Block>,
+    N: Network<HeaderResponse = Header, BlockResponse = LDT::Block>,
     P: Provider<N> + DebugProviderExt<N> + Send + Sync + Clone + 'static,
-    LDT: KabuDataTypesEVM,
+    LDT: KabuDataTypes,
     LDT::Block: RpcRecv + BlockResponse,
 {
     let new_header_internal_channel: Broadcaster<Header> = Broadcaster::new(10);

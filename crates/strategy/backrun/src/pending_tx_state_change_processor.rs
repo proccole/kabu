@@ -22,7 +22,7 @@ use kabu_core_actors::{subscribe, Accessor, Actor, ActorResult, Broadcaster, Con
 use kabu_core_actors_macros::{Accessor, Consumer, Producer};
 use kabu_core_blockchain::{Blockchain, BlockchainState, Strategy};
 use kabu_node_debug_provider::DebugProviderExt;
-use kabu_types_blockchain::{debug_trace_call_diff, GethStateUpdateVec, KabuDataTypesEVM, KabuTx, Mempool, TRACING_CALL_OPTS};
+use kabu_types_blockchain::{debug_trace_call_diff, GethStateUpdateVec, KabuDataTypes, KabuTx, Mempool, TRACING_CALL_OPTS};
 use kabu_types_entities::LatestBlock;
 use kabu_types_events::{MarketEvents, MempoolEvents, StateUpdateEvent};
 use kabu_types_market::{accounts_vec_len, storage_vec_len};
@@ -55,7 +55,7 @@ where
     N: Network<TransactionRequest = LDT::TransactionRequest>,
     P: Provider<N> + DebugProviderExt<N> + Send + Sync + Clone + 'static,
     DB: DatabaseRef + Database + DatabaseCommit + Clone + Send + Sync + 'static,
-    LDT: KabuDataTypesEVM,
+    LDT: KabuDataTypes,
 {
     let mut state_update_vec: GethStateUpdateVec = Vec::new();
     let mut state_required_vec: GethStateUpdateVec = Vec::new();
@@ -270,7 +270,7 @@ where
     N: Network<TransactionRequest = LDT::TransactionRequest>,
     P: Provider<N> + DebugProviderExt<N> + Send + Sync + Clone + 'static,
     DB: DatabaseRef + Database + DatabaseCommit + Clone + Send + Sync + 'static,
-    LDT: KabuDataTypesEVM,
+    LDT: KabuDataTypes,
 {
     subscribe!(mempool_events_rx);
     subscribe!(market_events_rx);
@@ -337,7 +337,7 @@ where
 }
 
 #[derive(Accessor, Consumer, Producer)]
-pub struct PendingTxStateChangeProcessorActor<P, N, DB: Clone + Send + Sync + 'static, LDT: KabuDataTypesEVM + 'static> {
+pub struct PendingTxStateChangeProcessorActor<P, N, DB: Clone + Send + Sync + 'static, LDT: KabuDataTypes + 'static> {
     client: P,
     #[accessor]
     market: Option<SharedState<Market>>,
@@ -361,7 +361,7 @@ where
     N: Network,
     P: Provider<N> + DebugProviderExt<N> + Send + Sync + Clone + 'static,
     DB: DatabaseRef + Send + Sync + Clone + 'static,
-    LDT: KabuDataTypesEVM + 'static,
+    LDT: KabuDataTypes + 'static,
 {
     pub fn new(client: P) -> PendingTxStateChangeProcessorActor<P, N, DB, LDT> {
         PendingTxStateChangeProcessorActor {
@@ -396,7 +396,7 @@ where
     N: Network<TransactionRequest = LDT::TransactionRequest>,
     P: Provider<N> + DebugProviderExt<N> + Send + Sync + Clone + 'static,
     DB: DatabaseRef + Database + DatabaseCommit + Send + Sync + Clone + 'static,
-    LDT: KabuDataTypesEVM + 'static,
+    LDT: KabuDataTypes + 'static,
 {
     fn start(&self) -> ActorResult {
         let task = tokio::task::spawn(pending_tx_state_change_worker(

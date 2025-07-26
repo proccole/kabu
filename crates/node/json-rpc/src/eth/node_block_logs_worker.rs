@@ -7,7 +7,7 @@ use tokio::sync::broadcast::Receiver;
 use tracing::{debug, error};
 
 use kabu_core_actors::{subscribe, Broadcaster, WorkerResult};
-use kabu_types_blockchain::KabuDataTypesEVM;
+use kabu_types_blockchain::KabuDataTypes;
 use kabu_types_events::{BlockLogs, Message, MessageBlockLogs};
 
 pub async fn new_node_block_logs_worker<N, P, LDT>(
@@ -18,7 +18,7 @@ pub async fn new_node_block_logs_worker<N, P, LDT>(
 where
     N: Network,
     P: Provider<N> + Send + Sync + 'static,
-    LDT: KabuDataTypesEVM,
+    LDT: KabuDataTypes,
 {
     subscribe!(block_header_receiver);
 
@@ -33,7 +33,9 @@ where
             while err_counter < 3 {
                 match client.get_logs(&filter).await {
                     Ok(logs) => {
-                        if let Err(e) = sender.send(Message::new_with_time(BlockLogs { block_header, logs })) {
+                        if let Err(e) =
+                            sender.send(Message::new_with_time(BlockLogs { block_header, logs, _phantom: std::marker::PhantomData }))
+                        {
                             error!("Broadcaster error {}", e);
                         }
                         break;
@@ -62,7 +64,7 @@ pub async fn new_node_block_logs_worker_reth<N: Network, P: Provider<N> + Send +
             let filter = Filter::new().at_block_hash(block_header.hash());
 
             let logs = client.get_logs(&filter).await?;
-            if let Err(e) = sender.send(Message::new_with_time(BlockLogs { block_header, logs })) {
+            if let Err(e) = sender.send(Message::new_with_time(BlockLogs { block_header, logs, _phantom: std::marker::PhantomData })) {
                 error!("Broadcaster error {}", e);
             }
         }

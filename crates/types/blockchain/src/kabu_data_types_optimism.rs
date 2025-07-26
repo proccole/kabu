@@ -1,27 +1,20 @@
 use crate::kabu_data_types::KabuTransactionRequest;
-use crate::{GethStateUpdate, KabuBlock, KabuDataTypes, KabuDataTypesEVM, KabuTx};
+use crate::{KabuBlock, KabuDataTypes, KabuTx};
 use alloy_consensus::Transaction as TransactionTrait;
 use alloy_primitives::{Address, Bytes, TxHash, TxKind};
 use alloy_provider::network::{TransactionBuilder, TransactionResponse};
-use alloy_rpc_types_eth::{Block as EthBlock, Header, Log};
+use alloy_rpc_types_eth::{Block as EthBlock, Header};
 use op_alloy::rpc_types::{OpTransactionReceipt, OpTransactionRequest, Transaction as OpTransaction};
 
 #[derive(Clone, Debug, Default)]
-pub struct KabuDataTypesOptimism {
-    _private: (),
-}
+pub struct KabuDataTypesOptimism;
 
 impl KabuDataTypes for KabuDataTypesOptimism {
     type Transaction = OpTransaction;
     type TransactionRequest = OpTransactionRequest;
     type TransactionReceipt = OpTransactionReceipt;
     type Block = EthBlock<OpTransaction, Header>;
-    type Header = Header;
-    type Log = Log;
-    type StateUpdate = GethStateUpdate;
 }
-
-impl KabuDataTypesEVM for KabuDataTypesOptimism {}
 
 impl KabuTx<KabuDataTypesOptimism> for OpTransaction {
     fn get_gas_price(&self) -> u128 {
@@ -61,7 +54,7 @@ impl KabuBlock<KabuDataTypesOptimism> for EthBlock<OpTransaction, Header> {
         self.transactions.clone().into_transactions_vec()
     }
 
-    fn get_header(&self) -> <KabuDataTypesOptimism as KabuDataTypes>::Header {
+    fn get_header(&self) -> Header {
         self.header.clone()
     }
 }

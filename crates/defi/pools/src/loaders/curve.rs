@@ -1,11 +1,12 @@
 use crate::protocols::CurveProtocol;
 use crate::{pool_loader, CurvePool};
 use alloy::primitives::Bytes;
+use alloy_rpc_types::Log;
 use async_stream::stream;
 use eyre::eyre;
 use futures::Stream;
 use kabu_evm_db::KabuDBError;
-use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEVM, KabuDataTypesEthereum};
+use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEthereum};
 use kabu_types_market::PoolClass;
 use kabu_types_market::{PoolId, PoolLoader, PoolWrapper};
 use revm::DatabaseRef;
@@ -20,9 +21,9 @@ impl<P, N, LDT> PoolLoader<P, N, LDT> for CurvePoolLoader<P, N, LDT>
 where
     N: Network,
     P: Provider<N> + Clone + 'static,
-    LDT: KabuDataTypesEVM + 'static,
+    LDT: KabuDataTypes + 'static,
 {
-    fn get_pool_class_by_log(&self, _log_entry: &LDT::Log) -> Option<(PoolId, PoolClass)> {
+    fn get_pool_class_by_log(&self, _log_entry: &Log) -> Option<(PoolId, PoolClass)> {
         None
     }
 

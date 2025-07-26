@@ -16,6 +16,7 @@ kabu-types-swap.workspace = true
 alloy-consensus.workspace = true
 alloy-eips.workspace = true
 alloy-primitives.workspace = true
+alloy-rpc-types.workspace = true
 revm.workspace = true
 
 chrono.workspace = true

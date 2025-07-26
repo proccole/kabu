@@ -6,7 +6,7 @@ mod uniswap3;
 use crate::loaders::curve::CurvePoolLoader;
 use alloy::providers::network::Ethereum;
 use alloy::providers::{Network, Provider};
-use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEVM, KabuDataTypesEthereum};
+use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEthereum};
 use kabu_types_market::PoolClass;
 use kabu_types_market::{PoolLoader, PoolLoaders, PoolsLoadingConfig};
 pub use maverick::MaverickPoolLoader;
@@ -113,7 +113,7 @@ impl<P, N, LDT> PoolLoadersBuilder<P, N, LDT>
 where
     N: Network,
     P: Provider<N> + Clone + 'static,
-    LDT: KabuDataTypesEVM + 'static,
+    LDT: KabuDataTypes + 'static,
 {
     pub fn default_pool_loaders(provider: P, config: PoolsLoadingConfig) -> PoolLoaders<P, N, LDT>
     where

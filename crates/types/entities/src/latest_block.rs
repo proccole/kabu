@@ -1,27 +1,27 @@
 use alloy_primitives::map::B256HashMap;
 use alloy_primitives::{Address, BlockHash, BlockNumber, B256};
 use alloy_rpc_types::state::{AccountOverride, StateOverride};
-use alloy_rpc_types::Header;
+use alloy_rpc_types::{Header, Log};
 
-use kabu_types_blockchain::{GethStateUpdate, KabuBlock, KabuHeader};
+use kabu_types_blockchain::{GethStateUpdateVec, KabuBlock};
 use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEthereum};
 
 pub struct LatestBlock<LDT: KabuDataTypes = KabuDataTypesEthereum> {
     pub block_number: BlockNumber,
     pub block_hash: BlockHash,
-    pub block_header: Option<LDT::Header>,
+    pub block_header: Option<Header>,
     pub block_with_txs: Option<LDT::Block>,
-    pub logs: Option<Vec<LDT::Log>>,
-    pub diff: Option<Vec<LDT::StateUpdate>>,
+    pub logs: Option<Vec<Log>>,
+    pub diff: Option<GethStateUpdateVec>,
 }
 
-impl<LDT: KabuDataTypes<Header = Header, StateUpdate = GethStateUpdate>> LatestBlock<LDT> {
+impl<LDT: KabuDataTypes> LatestBlock<LDT> {
     pub fn hash(&self) -> BlockHash {
         self.block_hash
     }
 
     pub fn parent_hash(&self) -> Option<BlockHash> {
-        self.block_header.as_ref().map(|x| <Header as KabuHeader<LDT>>::get_parent_hash(x))
+        self.block_header.as_ref().map(|x| x.parent_hash)
     }
     pub fn number(&self) -> BlockNumber {
         self.block_number
@@ -59,7 +59,7 @@ impl<LDT: KabuDataTypes<Header = Header, StateUpdate = GethStateUpdate>> LatestB
 
     pub fn coinbase(&self) -> Option<Address> {
         if let Some(block) = &self.block_with_txs {
-            return Some(<alloy_rpc_types::Header as KabuHeader<LDT>>::get_beneficiary(&block.get_header()));
+            return Some(block.get_header().beneficiary);
         }
         None
     }
@@ -68,10 +68,10 @@ impl<LDT: KabuDataTypes<Header = Header, StateUpdate = GethStateUpdate>> LatestB
         &mut self,
         block_number: BlockNumber,
         block_hash: BlockHash,
-        block_header: Option<LDT::Header>,
+        block_header: Option<Header>,
         block_with_txes: Option<LDT::Block>,
-        logs: Option<Vec<LDT::Log>>,
-        diff: Option<Vec<LDT::StateUpdate>>,
+        logs: Option<Vec<Log>>,
+        diff: Option<GethStateUpdateVec>,
     ) -> bool {
         if block_number >= self.block_number {
             let is_new = block_number > self.block_number;

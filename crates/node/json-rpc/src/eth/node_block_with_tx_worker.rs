@@ -3,7 +3,7 @@ use alloy_network::{BlockResponse, Network};
 use alloy_provider::Provider;
 use alloy_rpc_types::Header;
 use kabu_core_actors::{subscribe, Broadcaster, WorkerResult};
-use kabu_types_blockchain::KabuDataTypesEVM;
+use kabu_types_blockchain::KabuDataTypes;
 use kabu_types_events::{BlockUpdate, Message, MessageBlock};
 use tracing::{debug, error};
 
@@ -15,7 +15,7 @@ pub async fn new_block_with_tx_worker<P, N, LDT>(
 where
     N: Network<BlockResponse = LDT::Block>,
     P: Provider<N> + Send + Sync + 'static,
-    LDT: KabuDataTypesEVM,
+    LDT: KabuDataTypes,
     LDT::Block: RpcRecv + BlockResponse,
 {
     subscribe!(block_header_receiver);

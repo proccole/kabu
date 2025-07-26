@@ -32,7 +32,7 @@ use kabu_strategy_backrun::{
     BackrunConfig, BlockStateChangeProcessorActor, PendingTxStateChangeProcessorActor, StateChangeArbSearcherActor,
 };
 use kabu_strategy_merger::{ArbSwapPathMergerActor, DiffPathMergerActor, SamePathMergerActor};
-use kabu_types_blockchain::{KabuDataTypesEVM, KabuDataTypesEthereum};
+use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEthereum};
 use kabu_types_entities::{BlockHistoryState, TxSigners};
 use kabu_types_market::{PoolClass, RequiredState};
 use kabu_types_swap::SwapEncoder;
@@ -47,7 +47,7 @@ pub struct BlockchainActors<
     N,
     DB: Clone + Send + Sync + 'static,
     E: Clone = MulticallerSwapEncoder,
-    LDT: KabuDataTypesEVM + 'static = KabuDataTypesEthereum,
+    LDT: KabuDataTypes + 'static = KabuDataTypesEthereum,
 > {
     provider: P,
     bc: Blockchain<LDT>,

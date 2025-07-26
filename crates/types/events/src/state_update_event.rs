@@ -2,7 +2,7 @@
 
 use alloy_consensus::Header;
 use alloy_primitives::TxHash;
-use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEVM, KabuDataTypesEthereum};
+use kabu_types_blockchain::{GethStateUpdateVec, KabuDataTypes, KabuDataTypesEthereum};
 use kabu_types_market::PoolWrapper;
 use kabu_types_market::SwapDirection;
 use revm::DatabaseRef;
@@ -14,8 +14,8 @@ pub struct StateUpdateEvent<DB, LDT: KabuDataTypes = KabuDataTypesEthereum> {
     pub next_block_timestamp: u64,
     pub next_base_fee: u64,
     market_state: DB,
-    state_update: Vec<LDT::StateUpdate>,
-    state_required: Option<Vec<LDT::StateUpdate>>,
+    state_update: GethStateUpdateVec,
+    state_required: Option<GethStateUpdateVec>,
     directions: BTreeMap<PoolWrapper, Vec<SwapDirection>>,
     pub stuffing_txs_hashes: Vec<TxHash>,
     pub stuffing_txs: Vec<LDT::Transaction>,
@@ -30,8 +30,8 @@ impl<DB: DatabaseRef, LDT: KabuDataTypes> StateUpdateEvent<DB, LDT> {
         next_block_timestamp: u64,
         next_base_fee: u64,
         market_state: DB,
-        state_update: Vec<LDT::StateUpdate>,
-        state_required: Option<Vec<LDT::StateUpdate>>,
+        state_update: GethStateUpdateVec,
+        state_required: Option<GethStateUpdateVec>,
         directions: BTreeMap<PoolWrapper, Vec<SwapDirection>>,
         stuffing_txs_hashes: Vec<TxHash>,
         stuffing_txs: Vec<LDT::Transaction>,
@@ -60,11 +60,11 @@ impl<DB: DatabaseRef, LDT: KabuDataTypes> StateUpdateEvent<DB, LDT> {
         &self.market_state
     }
 
-    pub fn state_update(&self) -> &Vec<LDT::StateUpdate> {
+    pub fn state_update(&self) -> &GethStateUpdateVec {
         &self.state_update
     }
 
-    pub fn state_required(&self) -> &Option<Vec<LDT::StateUpdate>> {
+    pub fn state_required(&self) -> &Option<GethStateUpdateVec> {
         &self.state_required
     }
 
@@ -84,7 +84,7 @@ impl<DB: DatabaseRef, LDT: KabuDataTypes> StateUpdateEvent<DB, LDT> {
     }
 }
 
-impl<DB: DatabaseRef, LDT: KabuDataTypesEVM> StateUpdateEvent<DB, LDT> {
+impl<DB: DatabaseRef, LDT: KabuDataTypes> StateUpdateEvent<DB, LDT> {
     pub fn next_header(&self) -> Header {
         Header { number: self.next_block_number, timestamp: self.next_block_timestamp, ..Default::default() }
     }

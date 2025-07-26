@@ -1,7 +1,7 @@
 use alloy_json_rpc::RpcRecv;
 use alloy_network::{BlockResponse, Network};
 use alloy_provider::Provider;
-use alloy_rpc_types::Block;
+use alloy_rpc_types::{Block, Header};
 use std::marker::PhantomData;
 
 use crate::eth::new_eth_node_block_workers_starter;
@@ -10,7 +10,7 @@ use kabu_core_actors_macros::Producer;
 use kabu_core_blockchain::Blockchain;
 use kabu_node_actor_config::NodeBlockActorConfig;
 use kabu_node_debug_provider::DebugProviderExt;
-use kabu_types_blockchain::{KabuDataTypes, KabuDataTypesEVM};
+use kabu_types_blockchain::KabuDataTypes;
 use kabu_types_events::{MessageBlock, MessageBlockHeader, MessageBlockLogs, MessageBlockStateUpdate};
 
 #[derive(Producer)]
@@ -30,9 +30,9 @@ pub struct NodeBlockActor<P, N, LDT: KabuDataTypes + 'static> {
 
 impl<P, N, LDT> NodeBlockActor<P, N, LDT>
 where
-    N: Network<HeaderResponse = LDT::Header, BlockResponse = LDT::Block>,
+    N: Network<HeaderResponse = Header, BlockResponse = LDT::Block>,
     P: Provider<N> + DebugProviderExt<N> + Send + Sync + Clone + 'static,
-    LDT: KabuDataTypesEVM<Block = Block>,
+    LDT: KabuDataTypes<Block = Block>,
     LDT::Block: BlockResponse + RpcRecv,
 {
     pub fn new(client: P, config: NodeBlockActorConfig) -> NodeBlockActor<P, N, LDT> {
@@ -60,9 +60,9 @@ where
 
 impl<P, N, LDT> Actor for NodeBlockActor<P, N, LDT>
 where
-    N: Network<HeaderResponse = LDT::Header, BlockResponse = LDT::Block>,
+    N: Network<HeaderResponse = Header, BlockResponse = LDT::Block>,
     P: Provider + DebugProviderExt + Send + Sync + Clone + 'static,
-    LDT: KabuDataTypesEVM<Block = Block>,
+    LDT: KabuDataTypes<Block = Block>,
     LDT::Block: BlockResponse + RpcRecv,
 {
     fn start(&self) -> ActorResult {

@@ -4,6 +4,7 @@ use crate::{KabuDataTypes, KabuDataTypesEthereum};
 use alloy_primitives::map::HashMap;
 use alloy_primitives::BlockNumber;
 use alloy_primitives::{Address, TxHash};
+use alloy_rpc_types_eth::Log;
 use chrono::{DateTime, Utc};
 use eyre::{eyre, Result};
 use std::collections::hash_map::Entry;
@@ -38,13 +39,13 @@ impl<LDT: KabuDataTypes> Mempool<LDT> {
         self
     }
 
-    pub fn add_tx_logs(&mut self, tx_hash: TxHash, logs: Vec<LDT::Log>) -> &mut Self {
+    pub fn add_tx_logs(&mut self, tx_hash: TxHash, logs: Vec<Log>) -> &mut Self {
         let entry = self.txs.entry(tx_hash).or_default();
         entry.logs = Some(logs);
         self
     }
 
-    pub fn add_tx_state_change(&mut self, tx_hash: TxHash, state_update: LDT::StateUpdate) -> &mut Self {
+    pub fn add_tx_state_change(&mut self, tx_hash: TxHash, state_update: GethStateUpdate) -> &mut Self {
         let entry = self.txs.entry(tx_hash).or_default();
         entry.state_update = Some(state_update);
         self

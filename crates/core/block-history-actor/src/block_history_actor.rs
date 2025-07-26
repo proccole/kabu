@@ -9,8 +9,7 @@ use kabu_core_actors_macros::{Accessor, Consumer, Producer};
 use kabu_core_blockchain::{Blockchain, BlockchainState};
 use kabu_evm_db::DatabaseKabuExt;
 use kabu_node_debug_provider::DebugProviderExt;
-use kabu_types_blockchain::KabuHeader;
-use kabu_types_blockchain::{ChainParameters, KabuBlock, KabuDataTypes, KabuDataTypesEVM};
+use kabu_types_blockchain::{ChainParameters, KabuBlock, KabuDataTypes};
 use kabu_types_entities::{BlockHistory, BlockHistoryManager, BlockHistoryState, LatestBlock};
 use kabu_types_events::{MarketEvents, MessageBlock, MessageBlockHeader, MessageBlockLogs, MessageBlockStateUpdate};
 use kabu_types_market::MarketState;
@@ -26,14 +25,14 @@ pub async fn set_chain_head<P, N, DB, LDT>(
     block_history: &mut BlockHistory<DB, LDT>,
     latest_block: &mut LatestBlock<LDT>,
     market_events_tx: Broadcaster<MarketEvents>,
-    header: LDT::Header,
+    header: Header,
     chain_parameters: &ChainParameters,
 ) -> Result<(bool, usize)>
 where
     N: Network<BlockResponse = LDT::Block>,
     P: Provider<N> + DebugProviderExt<N> + Send + Sync + Clone + 'static,
     DB: BlockHistoryState<LDT> + Clone,
-    LDT: KabuDataTypesEVM,
+    LDT: KabuDataTypes,
     LDT::Block: RpcRecv + BlockResponse,
 {
     let block_number = header.number;
@@ -49,15 +48,19 @@ where
 
             if is_new_block {
                 let base_fee = header.base_fee_per_gas.unwrap_or_default();
-                let next_base_fee = chain_parameters.calc_next_block_base_fee(header.gas_used, header.gas_limit, base_fee);
+                let next_base_fee = chain_parameters.calc_next_block_base_fee_from_header(&header) as u128;
 
                 let timestamp: u64 = header.timestamp;
 
                 latest_block.update(block_number, block_hash, Some(header), None, None, None);
 
-                if let Err(e) =
-                    market_events_tx.send(MarketEvents::BlockHeaderUpdate { block_number, block_hash, timestamp, base_fee, next_base_fee })
-                {
+                if let Err(e) = market_events_tx.send(MarketEvents::BlockHeaderUpdate {
+                    block_number,
+                    block_hash,
+                    timestamp,
+                    base_fee,
+                    next_base_fee: next_base_fee as u64,
+                }) {
                     error!("market_events_tx.send : {}", e);
                 }
             }
@@ -88,7 +91,7 @@ where
     N: Network<BlockResponse = LDT::Block>,
     P: Provider<N> + DebugProviderExt<N> + Send + Sync + Clone + 'static,
     DB: BlockHistoryState<LDT> + DatabaseRef + DatabaseCommit + DatabaseKabuExt + Send + Sync + Clone + 'static,
-    LDT: KabuDataTypesEVM,
+    LDT: KabuDataTypes,
     LDT::Block: RpcRecv + BlockResponse,
 {
     subscribe!(block_header_update_rx);
@@ -111,7 +114,7 @@ where
 
                         let header = block_header.inner.header.clone();
 
-                        debug!("Block Header, Update {} {}", <alloy_rpc_types::Header as KabuHeader<LDT>>::get_number(&header), <alloy_rpc_types::Header as KabuHeader<LDT>>::get_hash(&header));
+                        debug!("Block Header, Update {} {}", header.number, header.hash);
 
 
                         set_chain_head(
@@ -134,11 +137,11 @@ where
                 match block_update {
                     Ok(block)=>{
                         let block = block.inner.block;
-                        let block_header : Header = block.get_header().clone();
+                        let block_header = block.get_header();
                         let block_hash : BlockHash = block_header.hash;
                         let block_number : BlockNumber = block_header.number;
 
-                        debug!("Block Update {} {}", block_number, block_header.hash);
+                        debug!("Block Update {} {}", block_number, block_hash);
 
                         let mut block_history_guard = block_history.write().await;
                         let mut latest_block_guard = latest_block.write().await;
@@ -184,11 +187,11 @@ where
                 match log_update {
                     Ok(msg) =>{
                         let blocklogs = msg.inner;
-                        let block_header : Header = blocklogs.block_header.clone();
+                        let block_header = blocklogs.block_header.clone();
                         let block_hash : BlockHash = block_header.hash;
                         let block_number : BlockNumber = block_header.number;
 
-                        debug!("Block Logs Update {} {}", block_number, block_header.hash);
+                        debug!("Block Logs Update {} {}", block_number, block_hash);
 
                         let mut block_history_guard = block_history.write().await;
                         let mut latest_block_guard = latest_block.write().await;
@@ -422,7 +425,7 @@ where
     N: Network<BlockResponse = LDT::Block>,
     P: Provider<N> + DebugProviderExt<N> + Sync + Send + Clone + 'static,
     DB: BlockHistoryState<LDT> + DatabaseRef + DatabaseCommit + DatabaseKabuExt + Send + Sync + Clone + 'static,
-    LDT: KabuDataTypesEVM,
+    LDT: KabuDataTypes,
     LDT::Block: BlockResponse + RpcRecv,
 {
     fn start(&self) -> ActorResult {
