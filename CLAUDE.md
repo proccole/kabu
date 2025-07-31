@@ -8,7 +8,7 @@ This guide helps Claude instances understand and work with the Kabu MEV bot code
 # Run tests
 make test
 
-# Pre-release checks
+# Pre-release checks (includes fmt, clippy, taplo, and udeps)
 make pre-release
 
 # Clean unused dependencies
@@ -17,36 +17,41 @@ make udeps
 # Type checking and linting
 make lint
 make check
+make clippy  # Run clippy on all targets including tests and benches
 
 # Build the project
 cargo build --release
 
 # Run the main binary
 cargo run -p kabu
+
+# Run specific swap tests
+make swap-test FILE=./testing/backtest-runner/test_18567709.toml
+make swap-test-all  # Run all swap tests
 ```
 
 ## Architecture Overview
 
-Kabu is an MEV (Maximum Extractable Value) bot built with Rust, using an actor-based architecture for concurrent processing of blockchain data and arbitrage opportunities.
+Kabu is an MEV (Maximum Extractable Value) bot built with Rust, using a component-based architecture (evolved from actor-based) for concurrent processing of blockchain data and arbitrage opportunities.
 
 ### Core Design Principles
 
-1. **Actor-Based Concurrency**: Each component runs as an independent actor with message-passing communication
+1. **Component-Based Concurrency**: Each component runs independently with message-passing communication
 2. **Type Safety**: Extensive use of Rust's type system for correctness
 3. **Modular Design**: Clear separation between data types, business logic, and infrastructure
 4. **Performance First**: Optimized for low-latency arbitrage detection and execution
 
 ### Key Components
 
-1. **Actor System** (`crates/core/actors/`)
+1. **Component System** (`crates/core/components/`)
    - Message-passing concurrency model using tokio
-   - Actors communicate via channels (Broadcaster/Consumer/Producer traits)
-   - ActorManager orchestrates actor lifecycle
-   - Key actors:
-     - StateChangeArbSearcher: Finds arbitrage in state changes
-     - SwapRouter: Routes and encodes swap transactions
-     - TxSigners: Signs transactions with managed keys
-     - Broadcast actors: Submit to network/flashbots
+   - Components communicate via broadcast channels
+   - Builder pattern for component initialization
+   - Key components:
+     - StateChangeArbSearcherComponent: Finds arbitrage in state changes
+     - SwapRouterComponent: Routes and encodes swap transactions
+     - TxSignersComponent: Signs transactions with managed keys
+     - Broadcast components: Submit to network/flashbots
 
 2. **Type System** (split into three crates for modularity)
    - `crates/types/entities/` - Core blockchain entities
@@ -98,16 +103,37 @@ Kabu is an MEV (Maximum Extractable Value) bot built with Rust, using an actor-b
    - Fork database for simulations
    - State diff application
 
-## Actor Communication Pattern
+## Component Communication Pattern
 
 ```rust
-// Typical actor setup
-let mut actor = StateChangeArbSearcherActor::new(config);
-actor
-    .access(market.clone())           // Shared state access
-    .consume(state_updates.clone())   // Input channel
-    .produce(swaps.clone())          // Output channel
-    .start()?;
+// Typical component setup using builder pattern
+let component = StateChangeArbSearcherComponent::new(backrun_config)
+    .on_bc(&blockchain, &strategy)  // Wire blockchain channels
+    .with_market(market.clone());    // Set shared state
+
+component.spawn(executor)?;          // Spawn with task executor
+
+// Or using the centralized builder
+let kabu_context = KabuBuildContext::builder(
+    provider.clone(),
+    blockchain,
+    blockchain_state.clone(),
+    topology_config.clone(),
+    backrun_config.clone(),
+    multicaller_address,
+    db_pool.clone(),
+    is_exex,
+)
+.with_pools_config(pools_config.clone())
+.with_swap_encoder(swap_encoder.clone())
+.build();
+
+let components = KabuComponentsBuilder::new(&kabu_context)
+    .with_market_components()
+    .with_network_components()
+    .with_monitoring_components()
+    .build()
+    .await?;
 ```
 
 ## Type System Organization
@@ -169,35 +195,71 @@ pub enum PoolClass {
 }
 ```
 
-### Creating a New Actor
+### Creating a New Component
 
-1. Define actor struct:
+1. Define component struct:
 ```rust
-#[derive(Accessor, Consumer, Producer)]
-pub struct MyActor {
-    #[accessor]
-    market: Option<SharedState<Market>>,
-    #[consumer]
-    input_rx: Option<Broadcaster<InputMessage>>,
-    #[producer]
-    output_tx: Option<Broadcaster<OutputMessage>>,
+pub struct MyComponent<DB: Clone + Send + Sync + 'static> {
+    config: MyConfig,
+    market: Option<Arc<RwLock<Market>>>,
+    input_rx: Option<broadcast::Sender<InputMessage>>,
+    output_tx: Option<broadcast::Sender<OutputMessage>>,
 }
 ```
 
-2. Implement Actor trait:
+2. Implement builder methods:
 ```rust
-impl Actor for MyActor {
-    fn start(&self) -> ActorResult {
-        let task = tokio::task::spawn(my_actor_worker(
-            self.market.clone().unwrap(),
-            self.input_rx.clone().unwrap(),
-            self.output_tx.clone().unwrap(),
-        ));
-        Ok(vec![task])
+impl<DB> MyComponent<DB> {
+    pub fn new(config: MyConfig) -> Self {
+        Self {
+            config,
+            market: None,
+            input_rx: None,
+            output_tx: None,
+        }
+    }
+    
+    pub fn with_market(self, market: Arc<RwLock<Market>>) -> Self {
+        Self { market: Some(market), ..self }
+    }
+    
+    pub fn on_bc(self, bc: &Blockchain) -> Self {
+        Self {
+            market: Some(bc.market()),
+            input_rx: Some(bc.some_channel()),
+            ..self
+        }
+    }
+}
+```
+
+3. Implement Component trait:
+```rust
+impl<DB> Component for MyComponent<DB> 
+where
+    DB: DatabaseRef + Send + Sync + Clone + 'static,
+{
+    fn spawn(self, executor: TaskExecutor) -> Result<()> {
+        let name = self.name();
+        
+        let market = self.market.ok_or_else(|| eyre!("market not set"))?;
+        let input_rx = self.input_rx.ok_or_else(|| eyre!("input_rx not set"))?.subscribe();
+        
+        executor.spawn_critical(name, async move {
+            if let Err(e) = my_component_worker(market, input_rx).await {
+                error!("Component failed: {}", e);
+            }
+        });
+        
+        Ok(())
+    }
+    
+    fn spawn_boxed(self: Box<Self>, executor: TaskExecutor) -> Result<()> {
+        (*self).spawn(executor)
     }
     
     fn name(&self) -> &'static str {
-        "MyActor"
+        "MyComponent"
     }
 }
 ```
@@ -408,3 +470,19 @@ make swap-test-all     # Run all swap tests
 # Run replayer
 make replayer
 ```
+
+## Testing Tips
+
+1. **Swap Tests**:
+   - Use `make swap-test FILE=./testing/backtest-runner/test_NAME.toml`
+   - Check assertions for `swaps_encoded`, `swaps_ok`, and `best_profit_eth`
+
+2. **Debug Logging**:
+   ```bash
+   RUST_LOG=kabu_strategy_backrun=debug,kabu_strategy_merger=debug make swap-test
+   ```
+
+3. **Pre-release Checks**:
+   - Always run `make pre-release` before committing
+   - Includes formatting, clippy (with tests/benches), taplo, and unused deps
+   - Fix any warnings to maintain code quality
