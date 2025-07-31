@@ -4,10 +4,11 @@ use alloy_primitives::map::HashMap;
 use alloy_primitives::{Address, U256};
 use alloy_rpc_types::Block;
 use futures::TryStreamExt;
-use kabu_core_actors::Broadcaster;
+use tokio::sync::broadcast;
+
 use kabu_core_blockchain::Blockchain;
 use kabu_evm_utils::reth_types::append_all_matching_block_logs_sealed;
-use kabu_node_actor_config::NodeBlockActorConfig;
+use kabu_node_config::NodeBlockComponentConfig;
 use kabu_types_blockchain::{GethStateUpdate, KabuDataTypesEthereum, MempoolTx};
 use kabu_types_events::{
     BlockHeaderEventData, BlockLogs, BlockStateUpdate, BlockUpdate, Message, MessageBlock, MessageBlockHeader, MessageBlockLogs,
@@ -17,7 +18,6 @@ use reth_exex::{ExExContext, ExExEvent, ExExNotification};
 use reth_node_api::{FullNodeComponents, NodeTypes};
 use reth_primitives::EthPrimitives;
 use reth_provider::Chain;
-// RpcNodeCore and TransactionCompat removed in new reth version
 use reth_transaction_pool::{EthPooledTransaction, TransactionPool};
 use revm::database::states::StorageSlot;
 use revm::database::{BundleAccount, StorageWithOriginalValues};
@@ -27,11 +27,11 @@ use tracing::{debug, error, info};
 
 async fn process_chain(
     chain: Arc<Chain<EthPrimitives>>,
-    block_header_channel: Broadcaster<MessageBlockHeader>,
-    block_with_tx_channel: Broadcaster<MessageBlock>,
-    logs_channel: Broadcaster<MessageBlockLogs>,
-    state_update_channel: Broadcaster<MessageBlockStateUpdate>,
-    config: &NodeBlockActorConfig,
+    block_header_channel: broadcast::Sender<MessageBlockHeader>,
+    block_with_tx_channel: broadcast::Sender<MessageBlock>,
+    logs_channel: broadcast::Sender<MessageBlockLogs>,
+    state_update_channel: broadcast::Sender<MessageBlockStateUpdate>,
+    config: &NodeBlockComponentConfig,
 ) -> eyre::Result<()> {
     if config.block_header {
         for sealed_header in chain.headers() {
@@ -59,7 +59,6 @@ async fn process_chain(
         // Block with tx
         if config.block_with_tx {
             info!(block_number=?block_hash_num.number, block_hash=?block_hash_num.hash, "Processing block");
-            // Convert block - reth API changed
             let block = Block {
                 header: alloy_rpc_types::Header {
                     hash: sealed_block.hash(),
@@ -159,7 +158,7 @@ async fn process_chain(
     Ok(())
 }
 
-pub async fn kabu_exex<Node>(mut ctx: ExExContext<Node>, bc: Blockchain, config: NodeBlockActorConfig) -> eyre::Result<()>
+pub async fn kabu_exex<Node>(mut ctx: ExExContext<Node>, bc: Blockchain, config: NodeBlockComponentConfig) -> eyre::Result<()>
 where
     Node: FullNodeComponents<Types: NodeTypes<Primitives = EthPrimitives>>,
 {

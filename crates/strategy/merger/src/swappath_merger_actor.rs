@@ -1,12 +1,13 @@
 use alloy_primitives::{Address, U256};
 use alloy_rpc_types::Header;
 use eyre::{eyre, Result};
+use kabu_core_components::Component;
+use reth_tasks::TaskExecutor;
 use revm::{Database, DatabaseCommit, DatabaseRef};
-use tokio::sync::broadcast::error::RecvError;
-use tracing::{debug, error, info};
+use std::sync::Arc;
+use tokio::sync::{broadcast, broadcast::error::RecvError, RwLock};
+use tracing::{debug, error};
 
-use kabu_core_actors::{subscribe, Accessor, Actor, ActorResult, Broadcaster, Consumer, Producer, SharedState, WorkerResult};
-use kabu_core_actors_macros::{Accessor, Consumer, Producer};
 use kabu_core_blockchain::{Blockchain, Strategy};
 use kabu_evm_db::KabuDBError;
 use kabu_types_entities::LatestBlock;
@@ -18,7 +19,7 @@ use revm::context_interface::block::BlobExcessGasAndPrice;
 async fn arb_swap_steps_optimizer_task<
     DB: DatabaseRef<Error = KabuDBError> + Database<Error = KabuDBError> + DatabaseCommit + Send + Sync + Clone,
 >(
-    compose_channel_tx: Broadcaster<MessageSwapCompose<DB>>,
+    compose_channel_tx: broadcast::Sender<MessageSwapCompose<DB>>,
     _state_db: DB,
     header: Header,
     request: SwapComposeData<DB>,
@@ -64,19 +65,20 @@ async fn arb_swap_path_merger_worker<
     DB: DatabaseRef<Error = KabuDBError> + Database<Error = KabuDBError> + DatabaseCommit + Send + Sync + Clone + 'static,
 >(
     multicaller_address: Address,
-    latest_block: SharedState<LatestBlock>,
-    market_events_rx: Broadcaster<MarketEvents>,
-    compose_channel_rx: Broadcaster<MessageSwapCompose<DB>>,
-    compose_channel_tx: Broadcaster<MessageSwapCompose<DB>>,
-) -> WorkerResult {
-    subscribe!(market_events_rx);
-    subscribe!(compose_channel_rx);
+    latest_block: Arc<RwLock<LatestBlock>>,
+    market_events_rx: broadcast::Sender<MarketEvents>,
+    compose_channel_rx: broadcast::Sender<MessageSwapCompose<DB>>,
+    compose_channel_tx: broadcast::Sender<MessageSwapCompose<DB>>,
+) -> Result<()> {
+    let mut market_events_receiver = market_events_rx.subscribe();
+    let mut compose_channel_receiver = compose_channel_rx.subscribe();
 
     let mut ready_requests: Vec<SwapComposeData<DB>> = Vec::new();
+    let mut processed_swaps = std::collections::HashSet::new();
 
     loop {
         tokio::select! {
-            msg = market_events_rx.recv() => {
+            msg = market_events_receiver.recv() => {
                 let msg : Result<MarketEvents, RecvError> = msg;
                 match msg {
                     Ok(event) => {
@@ -84,6 +86,7 @@ async fn arb_swap_path_merger_worker<
                             MarketEvents::BlockHeaderUpdate{..} =>{
                                 debug!("Cleaning ready requests");
                                 ready_requests = Vec::new();
+                                processed_swaps.clear();
                             }
                             MarketEvents::BlockStateUpdate{..}=>{
                                 debug!("State updated");
@@ -96,7 +99,7 @@ async fn arb_swap_path_merger_worker<
                 }
 
             },
-            msg = compose_channel_rx.recv() => {
+            msg = compose_channel_receiver.recv() => {
                 let msg : Result<MessageSwapCompose<DB>, RecvError> = msg;
                 match msg {
                     Ok(swap) => {
@@ -111,8 +114,14 @@ async fn arb_swap_path_merger_worker<
                             _=>continue,
                         };
 
+                        // Create a unique key for this swap to detect duplicates
+                        let swap_key = format!("{:?}", compose_data.swap);
 
-                        info!("MessageSwapPathEncodeRequest received. stuffing: {:?} swap: {}", compose_data.tx_compose.stuffing_txs_hashes, compose_data.swap);
+                        // Skip if we've already processed this exact swap
+                        if processed_swaps.contains(&swap_key) {
+                            debug!("Skipping duplicate swap in merger");
+                            continue;
+                        }
 
                         for req in ready_requests.iter() {
 
@@ -126,6 +135,10 @@ async fn arb_swap_path_merger_worker<
                                 continue
                             };
 
+                            // Pre-filter: check if paths can be merged before attempting expensive merge
+                            if !SwapStep::can_merge_swap_paths(req_swap, swap_path) {
+                                continue;
+                            }
 
                             match SwapStep::merge_swap_paths( req_swap.clone(), swap_path.clone(), multicaller_address ){
                                 Ok((sp0, sp1)) => {
@@ -137,9 +150,6 @@ async fn arb_swap_path_merger_worker<
                                         swap : Swap::BackrunSwapSteps((sp0,sp1)),
                                         ..compose_data.clone()
                                     };
-
-
-
 
                                     if let Some(db) = compose_data.poststate.clone() {
                                         let db_clone = db.clone();
@@ -161,8 +171,14 @@ async fn arb_swap_path_merger_worker<
                                 }
                             }
                         }
+                        processed_swaps.insert(swap_key);
                         ready_requests.push(compose_data.clone());
-                        ready_requests.sort_by(|r0,r1| r1.swap.arb_profit().cmp(&r0.swap.arb_profit())  )
+                        ready_requests.sort_by(|r0,r1| r1.swap.arb_profit().cmp(&r0.swap.arb_profit())  );
+
+                        // Keep only top 20 most profitable swaps to prevent O(n²) comparison explosion
+                        if ready_requests.len() > 20 {
+                            ready_requests.truncate(20);
+                        }
 
                     }
                     Err(e)=>{error!("{}",e)}
@@ -172,25 +188,24 @@ async fn arb_swap_path_merger_worker<
     }
 }
 
-#[derive(Consumer, Producer, Accessor)]
-pub struct ArbSwapPathMergerActor<DB: Send + Sync + Clone + 'static> {
+pub struct ArbSwapPathMergerComponent<DB: Send + Sync + Clone + 'static> {
     multicaller_address: Address,
-    #[accessor]
-    latest_block: Option<SharedState<LatestBlock>>,
-    #[consumer]
-    market_events: Option<Broadcaster<MarketEvents>>,
-    #[consumer]
-    compose_channel_rx: Option<Broadcaster<MessageSwapCompose<DB>>>,
-    #[producer]
-    compose_channel_tx: Option<Broadcaster<MessageSwapCompose<DB>>>,
+
+    latest_block: Option<Arc<RwLock<LatestBlock>>>,
+
+    market_events: Option<broadcast::Sender<MarketEvents>>,
+
+    compose_channel_rx: Option<broadcast::Sender<MessageSwapCompose<DB>>>,
+
+    compose_channel_tx: Option<broadcast::Sender<MessageSwapCompose<DB>>>,
 }
 
-impl<DB> ArbSwapPathMergerActor<DB>
+impl<DB> ArbSwapPathMergerComponent<DB>
 where
     DB: DatabaseRef + Send + Sync + Clone + 'static,
 {
-    pub fn new(multicaller_address: Address) -> ArbSwapPathMergerActor<DB> {
-        ArbSwapPathMergerActor {
+    pub fn new(multicaller_address: Address) -> ArbSwapPathMergerComponent<DB> {
+        ArbSwapPathMergerComponent {
             multicaller_address,
             latest_block: None,
             market_events: None,
@@ -198,6 +213,19 @@ where
             compose_channel_tx: None,
         }
     }
+
+    pub fn with_latest_block(self, latest_block: Arc<RwLock<LatestBlock>>) -> Self {
+        Self { latest_block: Some(latest_block), ..self }
+    }
+
+    pub fn with_market_events_channel(self, market_events: broadcast::Sender<MarketEvents>) -> Self {
+        Self { market_events: Some(market_events), ..self }
+    }
+
+    pub fn with_compose_channel(self, compose_channel: broadcast::Sender<MessageSwapCompose<DB>>) -> Self {
+        Self { compose_channel_rx: Some(compose_channel.clone()), compose_channel_tx: Some(compose_channel), ..self }
+    }
+
     pub fn on_bc(self, bc: &Blockchain, strategy: &Strategy<DB>) -> Self {
         Self {
             latest_block: Some(bc.latest_block()),
@@ -209,23 +237,41 @@ where
     }
 }
 
-impl<DB> Actor for ArbSwapPathMergerActor<DB>
+impl<DB> Component for ArbSwapPathMergerComponent<DB>
 where
     DB: DatabaseRef<Error = KabuDBError> + Database<Error = KabuDBError> + DatabaseCommit + Send + Sync + Clone + 'static,
 {
-    fn start(&self) -> ActorResult {
-        let task = tokio::task::spawn(arb_swap_path_merger_worker(
-            self.multicaller_address,
-            self.latest_block.clone().unwrap(),
-            self.market_events.clone().unwrap(),
-            self.compose_channel_rx.clone().unwrap(),
-            self.compose_channel_tx.clone().unwrap(),
-        ));
-        Ok(vec![task])
+    fn spawn(self, executor: TaskExecutor) -> Result<()> {
+        let name = self.name();
+
+        let compose_channel_rx = self.compose_channel_rx.ok_or_else(|| eyre!("compose_channel_rx not set"))?;
+        let compose_channel_tx = self.compose_channel_tx.ok_or_else(|| eyre!("compose_channel_tx not set"))?;
+        let market_events_rx = self.market_events.ok_or_else(|| eyre!("market_events not set"))?;
+        let latest_block = self.latest_block.ok_or_else(|| eyre!("latest_block not set"))?;
+
+        executor.spawn_critical(name, async move {
+            if let Err(e) = arb_swap_path_merger_worker(
+                self.multicaller_address,
+                latest_block,
+                market_events_rx,
+                compose_channel_rx,
+                compose_channel_tx,
+            )
+            .await
+            {
+                error!("Arb swap path merger worker failed: {}", e);
+            }
+        });
+
+        Ok(())
+    }
+
+    fn spawn_boxed(self: Box<Self>, executor: TaskExecutor) -> Result<()> {
+        (*self).spawn(executor)
     }
 
     fn name(&self) -> &'static str {
-        "ArbSwapPathMergerActor"
+        "ArbSwapPathMergerComponent"
     }
 }
 
